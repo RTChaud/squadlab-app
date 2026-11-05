@@ -10,6 +10,15 @@ Personal Football Manager companion. Static site with no build step or backend, 
 
 Imported extracts are stored only in this browser's IndexedDB. They are never uploaded.
 
+## Data
+The **Data** button in the header opens:
+- **Import FM snapshot**: adds a dated extract to the active career's history. The newest in-game date is always shown.
+- **Import app backup**: restores a SquadLab backup and replaces the current data, after you confirm.
+- **Export app backup**: saves one JSON file containing every snapshot and setting. On iPhone, use Save to Files.
+- **Reset app data**: clears everything so you can start a different career.
+
+SquadLab holds one career at a time. If your browser data is cleared, the export is your only copy, so keep backups in iCloud Drive.
+
 To test locally, run `python3 -m http.server` in the folder and open `http://localhost:8000/`. ES modules won't load if you open the file directly with `file://`.
 
 ## Structure
@@ -19,12 +28,13 @@ css/styles.css
 icons/logo.png
 js/app.js              shell, import flow, view dispatch
 js/router.js           hash routes (add profile/compare/history/XI routes here)
-js/store.js            active snapshot + per-career settings
-js/data/db.js          IndexedDB (snapshots + settings)
-js/data/importer.js    JSON parsing + validation
-js/data/snapshot.js    model building, player summary values
+js/store.js            active career, snapshot history, backup/restore/reset
+js/data/db.js          IndexedDB (snapshots, snapshotIndex, settings; v1→v2 migration)
+js/data/importer.js    snapshot + backup parsing and validation
+js/data/snapshot.js    model building, team_slot squad linking, player summary values
 js/data/positions.js   FM-style position formatting
 js/ui/dom.js           DOM helper + icons
-js/ui/components/      playerList.js, feedback.js
+js/ui/dataMenu.js      Data menu and import/export/reset flows
+js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js
 js/ui/views/           home.js, squad.js, shortlists.js
 ```
