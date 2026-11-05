@@ -29,12 +29,15 @@ icons/logo.png
 js/app.js              shell, import flow, view dispatch
 js/router.js           hash routes (add profile/compare/history/XI routes here)
 js/store.js            active career, snapshot history, backup/restore/reset
-js/data/db.js          IndexedDB (snapshots, snapshotIndex, settings; v1→v2 migration)
+js/data/db.js          IndexedDB (snapshots, snapshotIndex, settings, metrics; upgrades keep data)
 js/data/importer.js    snapshot + backup parsing and validation
 js/data/snapshot.js    model building, team_slot squad linking, player summary values
 js/data/positions.js   FM-style position formatting
+js/data/attributes.js  attribute groups/labels, colour bands, traits, future role hooks
+js/data/players.js     persistent player identity (player_key), metrics, history
+js/data/nations.js     nation ID → name mapping (empty until verified)
 js/ui/dom.js           DOM helper + icons
 js/ui/dataMenu.js      Data menu and import/export/reset flows
-js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js
-js/ui/views/           home.js, squad.js, shortlists.js
+js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js
+js/ui/views/           home.js, squad.js, shortlists.js, player.js, development.js
 ```
