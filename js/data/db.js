@@ -6,15 +6,21 @@
 //   snapshotIndex : the same records without `data`, so listing history stays
 //                   fast even after many seasons of monthly snapshots.
 //   settings      : small key/value records ('career', last shortlist, …).
+//   metrics       : compact per-snapshot values (CA, PA, attributes per player)
+//                   derived from snapshots for development graphs. Rebuildable,
+//                   so it is not included in backups.
 //
 // Version history
 //   1  first release (snapshot id = career|date|exported_at)
 //   2  snapshot id = career|date, snapshotIndex store, 'career' setting.
 //      Existing v1 data is migrated in place — nothing is cleared.
+//   3  metrics store (filled from existing snapshots on first load).
+
+import { buildMetrics } from './players.js';
 
 const DB_NAME = 'squadlab';
-const DB_VERSION = 2;
-export const ALL_STORES = ['snapshots', 'snapshotIndex', 'settings'];
+const DB_VERSION = 3;
+export const ALL_STORES = ['snapshots', 'snapshotIndex', 'settings', 'metrics'];
 
 let dbPromise = null;
 
@@ -75,6 +81,7 @@ function openDb() {
       if (!db.objectStoreNames.contains('snapshots')) db.createObjectStore('snapshots', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
       if (!db.objectStoreNames.contains('snapshotIndex')) db.createObjectStore('snapshotIndex', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('metrics')) db.createObjectStore('metrics', { keyPath: 'id' });
       if (e.oldVersion === 1) migrateFromV1(req.transaction);
     };
     req.onsuccess = () => {
@@ -128,12 +135,29 @@ export const listSnapshotMeta = () =>
 export const getAllSnapshots = () =>
   tx(['snapshots'], 'readonly', (s, out) => collect(out, s.snapshots.getAll())).then((r) => r || []);
 
-/** Add or replace one snapshot (record + index entry) atomically. */
-export const putSnapshot = (record) =>
-  tx(['snapshots', 'snapshotIndex'], 'readwrite', (s) => {
+/** Add or replace one snapshot (record + index + metrics) atomically. */
+export const putSnapshot = (record) => {
+  const metrics = buildMetrics(record);
+  return tx(['snapshots', 'snapshotIndex', 'metrics'], 'readwrite', (s) => {
     s.snapshots.put(record);
     s.snapshotIndex.put(metaOf(record));
+    s.metrics.put(metrics);
   });
+};
+
+// ---- Metrics (derived) -------------------------------------------------------
+
+export const listMetrics = () =>
+  tx(['metrics'], 'readonly', (s, out) => collect(out, s.metrics.getAll())).then((r) => r || []);
+
+export const listMetricIds = () =>
+  tx(['metrics'], 'readonly', (s, out) => collect(out, s.metrics.getAllKeys())).then((r) => r || []);
+
+export const putMetrics = (metrics) =>
+  tx(['metrics'], 'readwrite', (s) => { s.metrics.put(metrics); });
+
+export const deleteMetrics = (ids) =>
+  tx(['metrics'], 'readwrite', (s) => { ids.forEach((id) => s.metrics.delete(id)); });
 
 // ---- Settings --------------------------------------------------------------
 
@@ -152,14 +176,17 @@ export const getAllSettings = () =>
  * Replace everything with the given snapshots and settings in ONE transaction.
  * If anything fails, the browser rolls back and the previous data remains.
  */
-export const replaceAll = (snapshots, settings) =>
-  tx(ALL_STORES, 'readwrite', (s) => {
+export const replaceAll = (snapshots, settings) => {
+  const metrics = snapshots.map(buildMetrics);
+  return tx(ALL_STORES, 'readwrite', (s) => {
     ALL_STORES.forEach((n) => s[n].clear());
-    for (const rec of snapshots) {
+    snapshots.forEach((rec, i) => {
       s.snapshots.put(rec);
       s.snapshotIndex.put(metaOf(rec));
-    }
+      s.metrics.put(metrics[i]);
+    });
     for (const st of settings) s.settings.put(st);
   });
+};
 
 export const clearAll = () => replaceAll([], []);

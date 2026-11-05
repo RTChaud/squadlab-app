@@ -2,6 +2,7 @@
 // The original JSON is always kept in `model.raw`; nothing is dropped.
 
 import { describePositions } from './positions.js';
+import { persistentId } from './players.js';
 
 /** Build the IndexedDB record for a freshly imported extract. */
 export function makeSnapshotRecord(data, fileName = '') {
@@ -98,6 +99,7 @@ export function playerSummary(p) {
   const str = (v) => (typeof v === 'string' && v.trim() !== '' ? v.trim() : null);
   return {
     uid: p.uid,
+    pid: persistentId(p),
     firstName: str(p.first_name),
     lastName: str(p.last_name),
     ca: ca !== null && ca >= 0 ? ca : null,
