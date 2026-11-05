@@ -19,10 +19,17 @@
   --max: 760px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --header-gap: 8px;      /* breathing room below the status bar / safe area */
+  --header-gap: 8px;      /* breathing room below the status bar / safe area (browser) */
   --header-h: 69px;       /* real value is set by app.js from the header's height */
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
+
+/* Installed Home Screen app: iOS draws its own soft blur under the status bar
+   that reaches below the safe-area inset, so keep the header text out of it. */
+@media (display-mode: standalone) {
+  :root { --header-gap: 40px; }
+}
+html.standalone { --header-gap: 40px; }
 
 *, *::before, *::after { box-sizing: border-box; }
 
