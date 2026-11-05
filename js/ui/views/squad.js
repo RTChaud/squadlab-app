@@ -77,7 +77,7 @@ export function SquadTeamView({ slotKey }) {
     back: '#/squad',
     body: h('div', { class: 'stack' },
       t.issues.length ? issueBox(t.issues) : null,
-      PlayerList(t.players, { emptyTitle: 'No players in this squad' }),
+      PlayerList(t.players, { emptyTitle: 'No players in this squad', from: `/squad/${t.key}` }),
     ),
   };
 }

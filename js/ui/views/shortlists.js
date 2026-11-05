@@ -51,6 +51,7 @@ export async function ShortlistsView({ listId }) {
       PlayerList(players, {
         emptyTitle: 'This shortlist is empty',
         emptyText: `“${current.name}” has no players in this extract.`,
+        from: `/shortlists/${encodeURIComponent(current.id)}`,
       }),
     ),
   };
