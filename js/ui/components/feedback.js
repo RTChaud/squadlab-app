@@ -1,6 +1,7 @@
-// Toast messages and the import error sheet.
+// Toast messages and the error / notice sheet.
 
 import { h } from '../dom.js';
+import { openSheet } from './sheet.js';
 
 let toastTimer = null;
 
@@ -9,24 +10,23 @@ export function toast(message, kind = 'ok') {
   el.className = `toast show ${kind}`;
   el.textContent = message;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = 'toast'; }, 3800);
+  toastTimer = setTimeout(() => { el.className = 'toast'; }, 4200);
 }
 
-/** Modal-style sheet listing what went wrong. */
-export function showError(title, details = [], note = 'Nothing was changed — your previously imported data is still available.') {
-  const close = () => sheet.remove();
-  const sheet = h('div', { class: 'sheet-backdrop', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'err-title',
-    onclick: (e) => { if (e.target === sheet) close(); } },
-    h('div', { class: 'sheet' },
-      h('h2', { id: 'err-title', class: 'sheet-title' }, title),
+/** Sheet listing what went wrong (or a notice when `tone` is 'info'). */
+export function showError(title, details = [], note = 'Nothing was changed — your existing data is still available.', tone = 'error') {
+  openSheet({
+    title,
+    titleClass: tone === 'error' ? 'danger' : '',
+    content: [
       details.length
         ? h('ul', { class: 'sheet-list' }, details.slice(0, 12).map((d) => h('li', {}, d)),
             details.length > 12 ? h('li', {}, `…and ${details.length - 12} more.`) : null)
         : null,
       note ? h('p', { class: 'sheet-note' }, note) : null,
-      h('button', { type: 'button', class: 'btn btn-primary btn-block', onclick: close }, 'OK'),
-    )
-  );
-  document.body.append(sheet);
-  sheet.querySelector('button').focus();
+    ],
+    actions: [{ label: 'OK', onClick: (close) => close() }],
+  });
 }
+
+export const showNotice = (title, details = [], note = '') => showError(title, details, note, 'info');
