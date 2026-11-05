@@ -1,18 +1,19 @@
 import { h, icon } from '../dom.js';
-import { getModel, getSquadMap, TEAM_SLOTS } from '../../store.js';
-import { formatGameDate } from '../../data/snapshot.js';
+import { getModel, getHistory } from '../../store.js';
+import { formatGameDate, resolveTeams } from '../../data/snapshot.js';
 
-function welcome(onImport) {
+function welcome(onImport, onRestore) {
   return h('div', { class: 'welcome' },
     h('img', { class: 'welcome-logo', src: 'icons/logo.png', alt: 'SquadLab' }),
-    h('p', { class: 'welcome-text' }, 'Import a JSON extract from your Football Manager save to see your squad and shortlists.'),
+    h('p', { class: 'welcome-text' }, 'Import a snapshot from your Football Manager save to see your squad and shortlists.'),
     h('button', { type: 'button', class: 'btn btn-primary btn-large', onclick: onImport },
-      icon('upload'), 'Import JSON'),
-    h('p', { class: 'privacy' }, 'Your extract stays on this device. It is stored in this browser only and never uploaded.'),
+      icon('upload'), 'Import FM snapshot'),
+    h('button', { type: 'button', class: 'btn btn-text', onclick: onRestore }, 'or restore an app backup'),
+    h('p', { class: 'privacy' }, 'Your data stays on this device. It is stored in this browser only and never uploaded.'),
   );
 }
 
-export function SnapshotCard(model) {
+export function SnapshotCard(model, count) {
   return h('div', { class: 'snapshot' },
     h('div', { class: 'snapshot-main' },
       h('span', { class: 'snapshot-club' }, model.club?.name || '—'),
@@ -21,6 +22,7 @@ export function SnapshotCard(model) {
     h('div', { class: 'snapshot-date' },
       h('span', { class: 'snapshot-label' }, 'In-game date'),
       h('span', { class: 'snapshot-value' }, formatGameDate(model.gameDate)),
+      count > 1 ? h('span', { class: 'snapshot-label' }, `${count} snapshots`) : null,
     ),
   );
 }
@@ -36,23 +38,25 @@ function widget({ href, iconName, title, meta }) {
   );
 }
 
-export function HomeView({ onImport }) {
+export function HomeView({ onImport, onRestore }) {
   const model = getModel();
-  if (!model) return { title: 'SquadLab', isHome: true, body: welcome(onImport) };
+  if (!model) return { title: 'SquadLab', isHome: true, body: welcome(onImport, onRestore) };
 
-  const map = getSquadMap();
-  const assigned = TEAM_SLOTS.filter((s) => map[s.key]).length;
+  const teams = resolveTeams(model);
+  const teamMeta = teams.some((t) => t.issues.length)
+    ? 'Squad data problem — tap for details'
+    : teams.map((t) => `${t.label.replace(' Team', '')} ${t.players.length}`).join(' · ');
   const listCount = model.shortlists.length;
 
   return {
     title: 'SquadLab',
     isHome: true,
     body: h('div', { class: 'stack' },
-      SnapshotCard(model),
+      SnapshotCard(model, getHistory().length),
       h('div', { class: 'widgets' },
         widget({
           href: '#/squad', iconName: 'squad', title: 'Squad',
-          meta: `${model.raw.squad_player_uids?.length ?? model.squads.reduce((n, s) => n + s.playerUids.length, 0)} club players · ${assigned} of 3 teams assigned`,
+          meta: teamMeta,
         }),
         widget({
           href: '#/shortlists', iconName: 'list', title: 'Shortlists',
