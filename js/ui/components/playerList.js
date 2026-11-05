@@ -4,6 +4,7 @@
 
 import { h, orDash } from '../dom.js';
 import { playerSummary } from '../../data/snapshot.js';
+import { linkWithFrom } from '../../router.js';
 
 const COLUMNS = [
   { key: 'name', label: 'Name', defaultDir: 'asc' },
@@ -41,8 +42,8 @@ function sorted(rows) {
   });
 }
 
-function rowEl(r) {
-  return h('li', { class: 'prow', dataset: { uid: r.uid } },
+function rowEl(r, from) {
+  const inner = [
     h('div', { class: 'pname' },
       h('span', { class: 'pfirst' }, orDash(r.firstName)),
       h('span', { class: 'plast' }, orDash(r.lastName)),
@@ -53,12 +54,17 @@ function rowEl(r) {
     ),
     h('div', { class: 'pnum' + (r.ca === null ? ' dash' : '') }, orDash(r.ca)),
     h('div', { class: 'pnum pa' + (r.pa === null ? ' dash' : '') }, orDash(r.pa)),
-  );
+  ];
+  // Rows open the shared player profile, remembering which list we came from.
+  return h('li', { dataset: { uid: r.uid } },
+    r.pid
+      ? h('a', { class: 'prow', href: linkWithFrom(`/player/${encodeURIComponent(r.pid)}`, from) }, inner)
+      : h('div', { class: 'prow' }, inner));
 }
 
 /**
  * @param {object[]} players  player records from the snapshot
- * @param {object}   opts     { emptyTitle, emptyText }
+ * @param {object}   opts     { emptyTitle, emptyText, from (route path to return to) }
  */
 export function PlayerList(players, opts = {}) {
   const rows = players.map(playerSummary);
@@ -92,7 +98,7 @@ export function PlayerList(players, opts = {}) {
         }, c.label, active ? h('span', { class: 'sort-arrow' }, sort.dir === 'asc' ? '▲' : '▼') : null);
       })
     );
-    list.replaceChildren(...sorted(rows).map(rowEl));
+    list.replaceChildren(...sorted(rows).map((r) => rowEl(r, opts.from)));
   };
   render();
 
