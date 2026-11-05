@@ -6,8 +6,8 @@ import { describePositions } from './positions.js';
 /** Build the IndexedDB record for a freshly imported extract. */
 export function makeSnapshotRecord(data, fileName = '') {
   return {
-    // Re-importing the exact same extract replaces it rather than duplicating.
-    id: `${data.career_id}|${data.game_date}|${data.exported_at_utc || ''}`,
+    // One snapshot per career and in-game date.
+    id: `${data.career_id}|${data.game_date}`,
     careerId: data.career_id,
     gameDate: data.game_date,
     exportedAt: data.exported_at_utc || null,
@@ -104,6 +104,61 @@ export function playerSummary(p) {
     pa: pa !== null && pa > 0 ? pa : null,
     positions: describePositions(p),
   };
+}
+
+// ---- Squad widgets -------------------------------------------------------------
+//
+// The three widgets are linked to imported squads through the extractor's
+// team_slot metadata (0 = first team, 1 = reserves, 2 = youth). Membership is
+// read only from each squad's player_uids — never inferred from player data.
+
+export const TEAM_SLOTS = [
+  { key: 'first', label: 'First Team', slot: 0 },
+  { key: 'reserve', label: 'Reserve Team', slot: 1 },
+  { key: 'youth', label: 'Youth Team', slot: 2 },
+];
+
+/**
+ * For each widget: { key, label, slot, squad, players, issues[], fatal }.
+ * `fatal` means no squad could be linked; `issues` explain any inconsistency.
+ */
+export function resolveTeams(model) {
+  const result = TEAM_SLOTS.map((t) => {
+    const matches = model.squads.filter((s) => s.kind === 'team' && s.teamSlot === t.slot);
+    const base = { ...t, squad: null, players: [], issues: [], fatal: false };
+    if (matches.length === 0) {
+      return { ...base, fatal: true, issues: [`This snapshot has no squad with team_slot ${t.slot}, so the ${t.label} cannot be linked.`] };
+    }
+    if (matches.length > 1) {
+      return { ...base, fatal: true, issues: [`${matches.length} squads share team_slot ${t.slot} (${matches.map((m) => m.name).join(', ')}), so the ${t.label} is ambiguous.`] };
+    }
+    const squad = matches[0];
+    const players = model.resolve(squad.playerUids);
+    const issues = [];
+    const missing = squad.playerUids.filter((u) => !model.playersByUid.has(u));
+    if (missing.length) {
+      issues.push(`${missing.length} member${missing.length === 1 ? ' is' : 's are'} listed in this squad but missing from the players data (uid ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? ', …' : ''}).`);
+    }
+    const mismatched = players.filter((p) => Number.isInteger(p.team_id) && p.team_id !== squad.teamId);
+    if (mismatched.length) {
+      issues.push(`${mismatched.length} player${mismatched.length === 1 ? '' : 's'} in this squad ${mismatched.length === 1 ? 'has' : 'have'} a different team_id on ${mismatched.length === 1 ? 'its' : 'their'} own record.`);
+    }
+    return { ...base, squad, players, issues };
+  });
+
+  // A player should belong to only one of the three teams.
+  const seen = new Map();
+  for (const t of result) for (const p of t.players) {
+    if (!seen.has(p.uid)) seen.set(p.uid, []);
+    seen.get(p.uid).push(t);
+  }
+  for (const [, teams] of seen) {
+    if (teams.length > 1) for (const t of teams) {
+      const msg = 'Some players are listed in more than one team.';
+      if (!t.issues.includes(msg)) t.issues.push(msg);
+    }
+  }
+  return result;
 }
 
 /** "2026-04-24" -> "24 Apr 2026" without timezone drift. */
