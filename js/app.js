@@ -1,31 +1,28 @@
-// SquadLab entry point: wires the shell (header, import button) to the views.
+// SquadLab entry point: wires the shell (header, Data menu) to the views.
 
 import * as store from './store.js';
 import { currentRoute, onRouteChange } from './router.js';
-import { ImportError } from './data/importer.js';
 import { formatGameDate } from './data/snapshot.js';
-import { toast, showError } from './ui/components/feedback.js';
+import { showError } from './ui/components/feedback.js';
+import { openDataMenu, pick, wireFileInput } from './ui/dataMenu.js';
 import { HomeView } from './ui/views/home.js';
-import { SquadView, SquadTeamView, SquadSetupView } from './ui/views/squad.js';
+import { SquadView, SquadTeamView } from './ui/views/squad.js';
 import { ShortlistsView } from './ui/views/shortlists.js';
 
 const els = {
+  header: document.querySelector('.topbar'),
   view: document.getElementById('view'),
   back: document.getElementById('back-btn'),
   brand: document.getElementById('brand'),
   title: document.getElementById('page-title'),
   titleMain: document.getElementById('page-title-main'),
   titleSub: document.getElementById('page-title-sub'),
-  importBtn: document.getElementById('import-btn'),
-  fileInput: document.getElementById('file-input'),
+  dataBtn: document.getElementById('data-btn'),
 };
 
-const openPicker = () => els.fileInput.click();
-
 const VIEWS = {
-  home: () => HomeView({ onImport: openPicker }),
+  home: () => HomeView({ onImport: () => pick('snapshot'), onRestore: () => pick('backup') }),
   squad: () => SquadView(),
-  squadSetup: () => SquadSetupView(),
   squadTeam: (p) => SquadTeamView(p),
   shortlists: (p) => ShortlistsView(p),
 };
@@ -35,7 +32,7 @@ let lastPath = null;
 
 async function render() {
   const token = ++renderToken;
-  let route = currentRoute();
+  const route = currentRoute();
 
   // Everything except Home needs imported data.
   if (!store.getModel() && route.name !== 'home') {
@@ -43,7 +40,7 @@ async function render() {
     return;
   }
 
-  let vm = VIEWS[route.name] ? await VIEWS[route.name](route.params) : null;
+  const vm = VIEWS[route.name] ? await VIEWS[route.name](route.params) : null;
   if (token !== renderToken) return; // a newer render started
   if (!vm) {
     location.replace('#/');
@@ -55,7 +52,6 @@ async function render() {
   els.back.hidden = !vm.back;
   if (vm.back) els.back.setAttribute('href', vm.back);
   els.brand.hidden = !vm.isHome;
-  els.importBtn.classList.toggle('compact', !vm.isHome);
   els.title.hidden = !!vm.isHome;
   els.titleMain.textContent = vm.title;
   const sub = vm.subtitle || (model ? `${model.club?.name ?? '—'} · ${formatGameDate(model.gameDate)}` : '');
@@ -68,45 +64,34 @@ async function render() {
   lastPath = route.path;
 }
 
-async function handleFile(file) {
-  els.importBtn.disabled = true;
-  els.importBtn.classList.add('busy');
-  try {
-    const { warnings, shownIsImported } = await store.importExtract(file);
-    const m = store.getModel();
-    if (shownIsImported) {
-      toast(`Imported ${m.club?.name ?? 'extract'} · ${formatGameDate(m.gameDate)}`);
-    } else {
-      toast('Imported and saved. A later in-game date is already shown.', 'info');
-    }
-    if (warnings.length) showError('Imported with warnings', warnings, 'The extract was imported and saved.');
-    if (currentRoute().name !== 'home') location.hash = '#/';
-  } catch (e) {
-    if (e instanceof ImportError) showError(e.message, e.details);
-    else showError('Import failed', [String(e?.message || e)]);
-  } finally {
-    els.importBtn.disabled = false;
-    els.importBtn.classList.remove('busy');
-    els.fileInput.value = ''; // allow re-selecting the same file
-  }
+// Keep sticky elements (list column headings) just below the real header height,
+// whatever the safe-area inset is.
+function trackHeaderHeight() {
+  const set = () => document.documentElement.style.setProperty('--header-h', `${els.header.offsetHeight}px`);
+  set();
+  // border-box so changes to the safe-area padding are noticed too
+  if ('ResizeObserver' in window) new ResizeObserver(set).observe(els.header, { box: 'border-box' });
+  window.addEventListener('resize', set);
+  window.addEventListener('orientationchange', set);
 }
 
-function wire() {
-  els.importBtn.addEventListener('click', openPicker);
-  els.fileInput.addEventListener('change', () => {
-    const file = els.fileInput.files && els.fileInput.files[0];
-    if (file) handleFile(file);
-  });
-  store.subscribe(() => render());
-  onRouteChange(render);
+// Mark the installed Home Screen app so CSS can be checked/tuned for it.
+function markDisplayMode() {
+  const standalone = window.navigator.standalone === true || window.matchMedia?.('(display-mode: standalone)').matches;
+  document.documentElement.classList.toggle('standalone', !!standalone);
 }
 
 async function start() {
-  wire();
+  markDisplayMode();
+  trackHeaderHeight();
+  els.dataBtn.addEventListener('click', openDataMenu);
+  wireFileInput();
+  store.subscribe(() => render());
+  onRouteChange(render);
   try {
     await store.init();
   } catch (e) {
-    showError('Could not load saved data', [String(e?.message || e)], 'You can still import an extract.');
+    showError('Could not load saved data', [String(e?.message || e)], 'Nothing has been deleted. Try reloading the app.');
     render();
   }
 }

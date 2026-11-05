@@ -1,18 +1,17 @@
-// App state: the active snapshot model plus small per-career settings.
+// App state: one active career, its snapshot history, and the newest snapshot
+// as the in-memory model. All data operations go through here.
 
 import * as db from './data/db.js';
-import { importFile } from './data/importer.js';
+import {
+  readJsonFile, validateSnapshot, validateBackup, ImportError,
+  BACKUP_FORMAT, BACKUP_VERSION,
+} from './data/importer.js';
 import { makeSnapshotRecord, buildModel } from './data/snapshot.js';
 
-export const TEAM_SLOTS = [
-  { key: 'first', label: 'First Team' },
-  { key: 'reserve', label: 'Reserve Team' },
-  { key: 'youth', label: 'Youth Team' },
-];
-
 const state = {
-  model: null,
-  squadMap: { first: null, reserve: null, youth: null },
+  career: null,   // { careerId, createdAt }
+  history: [],    // snapshot metadata for the active career, newest first
+  model: null,    // newest snapshot
 };
 
 const listeners = new Set();
@@ -20,87 +19,144 @@ export function subscribe(fn) { listeners.add(fn); return () => listeners.delete
 function emit() { listeners.forEach((fn) => fn(state)); }
 
 export const getModel = () => state.model;
-export const getSquadMap = () => ({ ...state.squadMap });
+export const getCareer = () => state.career;
+export const getHistory = () => [...state.history];
+
+const byDateDesc = (a, b) => b.gameDate.localeCompare(a.gameDate);
+
+async function reload() {
+  let career = await db.getSetting('career', null);
+  const metas = await db.listSnapshotMeta();
+  if (!career && metas.length) {
+    // Data without a career record (shouldn't happen): adopt the latest import.
+    const latest = [...metas].sort((a, b) => b.importedAt.localeCompare(a.importedAt))[0];
+    career = { careerId: latest.careerId, createdAt: latest.importedAt };
+    await db.setSetting('career', career);
+  }
+  state.career = career;
+  state.history = career ? metas.filter((m) => m.careerId === career.careerId).sort(byDateDesc) : [];
+  state.model = state.history.length ? buildModel(await db.getSnapshot(state.history[0].id)) : null;
+  emit();
+}
+
+export const init = reload;
+
+// ---- FM snapshot import ------------------------------------------------------
 
 /**
- * Pick the snapshot to show: the career of the most recent import, and within
- * that career the latest in-game date (so importing an older extract later
- * for history does not replace the current view).
+ * Read and validate a snapshot, and work out how it relates to stored data.
+ * Nothing is written here.
+ * status: 'first' | 'new' | 'older' | 'duplicate' | 'sameDate' | 'otherCareer'
  */
-function pickLatest(metas) {
-  if (!metas.length) return null;
-  const byImport = [...metas].sort((a, b) => b.importedAt.localeCompare(a.importedAt));
-  const careerId = byImport[0].careerId;
-  return metas
-    .filter((m) => m.careerId === careerId)
-    .sort((a, b) =>
-      b.gameDate.localeCompare(a.gameDate) ||
-      String(b.exportedAt || '').localeCompare(String(a.exportedAt || '')) ||
-      b.importedAt.localeCompare(a.importedAt)
-    )[0];
-}
+export async function prepareSnapshot(file) {
+  const obj = await readJsonFile(file, 'snapshot');
+  const { data, warnings } = validateSnapshot(obj);
+  const out = { data, warnings, fileName: file.name || '' };
 
-async function loadSquadMap(model) {
-  const saved = await db.getSetting(`squadMap:${model.careerId}`, null);
-  const valid = (id) => {
-    const s = id ? model.squadById(id) : null;
-    return s && s.kind === 'team' ? id : null;
-  };
-  if (saved) {
-    return { first: valid(saved.first), reserve: valid(saved.reserve), youth: valid(saved.youth) };
+  if (!state.career) return { ...out, status: 'first' };
+  if (data.career_id !== state.career.careerId) return { ...out, status: 'otherCareer' };
+
+  const id = db.snapshotId(data.career_id, data.game_date);
+  const existing = state.history.find((m) => m.id === id);
+  if (existing) {
+    const rec = await db.getSnapshot(id);
+    const same = rec && JSON.stringify(rec.data) === JSON.stringify(data);
+    return { ...out, status: same ? 'duplicate' : 'sameDate', existing };
   }
-  // Only the first team is labelled by the extract itself; reserve/youth stay
-  // unassigned until chosen, because their names are placeholders.
-  const first = model.squads.find((s) => s.kind === 'team' && s.labelSource === 'first_team_slot');
-  return { first: first ? first.id : null, reserve: null, youth: null };
+  const newest = state.history[0];
+  return { ...out, status: newest && data.game_date < newest.gameDate ? 'older' : 'new' };
 }
 
-async function activate(meta) {
-  if (!meta) {
-    state.model = null;
-    state.squadMap = { first: null, reserve: null, youth: null };
-    return;
+/** Add (or replace the same-date) snapshot to the active career's history. */
+export async function addSnapshot(prepared) {
+  const { data, fileName } = prepared;
+  if (state.career && data.career_id !== state.career.careerId) {
+    throw new ImportError('This snapshot belongs to a different career.');
   }
-  const record = await db.getSnapshot(meta.id);
-  state.model = buildModel(record);
-  state.squadMap = await loadSquadMap(state.model);
-}
-
-export async function init() {
-  const metas = await db.listSnapshotMeta();
-  await activate(pickLatest(metas));
-  emit();
-}
-
-/** Import a File. Resolves to { warnings, shownIsImported } or throws ImportError. */
-export async function importExtract(file) {
-  const { data, warnings } = await importFile(file);
-  const record = makeSnapshotRecord(data, file.name || '');
-  try {
+  const record = makeSnapshotRecord(data, fileName);
+  if (!state.career) {
+    // First snapshot: create the career and its first snapshot together.
+    await db.replaceAll([record], [{ key: 'career', value: { careerId: data.career_id, createdAt: record.importedAt } }]);
+  } else {
     await db.putSnapshot(record);
-  } catch (e) {
-    throw new Error(`The file is valid but could not be saved locally: ${e?.message || e}`);
   }
-  const metas = await db.listSnapshotMeta();
-  const latest = pickLatest(metas);
-  await activate(latest);
-  emit();
-  return { warnings, shownIsImported: latest?.id === record.id };
+  await reload();
+  return { shownIsImported: state.model?.id === record.id };
 }
 
-export async function setSquadMapping(slotKey, squadId) {
-  if (!state.model) return;
-  state.squadMap = { ...state.squadMap, [slotKey]: squadId || null };
-  await db.setSetting(`squadMap:${state.model.careerId}`, state.squadMap);
-  emit();
+/** Wipe all data and start a new career from this snapshot (one transaction). */
+export async function startNewCareer(prepared) {
+  const record = makeSnapshotRecord(prepared.data, prepared.fileName);
+  await db.replaceAll([record], [{ key: 'career', value: { careerId: record.careerId, createdAt: record.importedAt } }]);
+  await reload();
 }
+
+// ---- App backup ----------------------------------------------------------------
+
+const slug = (s) => String(s || 'career')
+  .normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'career';
+
+/** Build the complete backup for the active career. Returns { blob, filename, summary }. */
+export async function buildBackup() {
+  if (!state.career) throw new Error('There is no data to back up yet.');
+  const careerId = state.career.careerId;
+  const snapshots = (await db.getAllSnapshots()).filter((r) => r.careerId === careerId).sort(byDateDesc).reverse();
+  const settings = await db.getAllSettings();
+  const now = new Date();
+  const newest = snapshots[snapshots.length - 1];
+
+  const backup = {
+    format: BACKUP_FORMAT,
+    backup_version: BACKUP_VERSION,
+    exported_at: now.toISOString(),
+    app: { name: 'SquadLab', db_version: 2 },
+    career: {
+      careerId,
+      createdAt: state.career.createdAt ?? null,
+      clubName: newest?.data?.club?.name ?? null,
+      managerName: newest?.data?.club?.manager_name ?? null,
+      snapshotCount: snapshots.length,
+      firstGameDate: snapshots[0]?.gameDate ?? null,
+      lastGameDate: newest?.gameDate ?? null,
+    },
+    snapshots,
+    settings,
+  };
+
+  const date = now.toISOString().slice(0, 10);
+  const filename = `SquadLab_${slug(backup.career.clubName)}_backup_${date}.json`;
+  const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
+  return { blob, filename, summary: backup.career };
+}
+
+/** Read + fully validate a backup file. Nothing is written here. */
+export async function prepareBackup(file) {
+  const obj = await readJsonFile(file, 'backup');
+  return validateBackup(obj);
+}
+
+/** Replace all app data with the backup, atomically. */
+export async function restoreBackup(backup) {
+  const settings = backup.settings.filter((s) => s.key !== 'career');
+  settings.push({ key: 'career', value: { createdAt: null, ...(backup.settings.find((s) => s.key === 'career')?.value || {}), careerId: backup.career.careerId } });
+  await db.replaceAll(backup.snapshots, settings);
+  await reload();
+}
+
+export async function resetAll() {
+  await db.clearAll();
+  await reload();
+}
+
+// ---- Small per-career settings ---------------------------------------------------
 
 export async function getLastShortlist() {
-  if (!state.model) return null;
-  return db.getSetting(`lastShortlist:${state.model.careerId}`, null);
+  if (!state.career) return null;
+  return db.getSetting(`lastShortlist:${state.career.careerId}`, null);
 }
 
 export function setLastShortlist(id) {
-  if (!state.model) return Promise.resolve();
-  return db.setSetting(`lastShortlist:${state.model.careerId}`, id);
+  if (!state.career) return Promise.resolve();
+  return db.setSetting(`lastShortlist:${state.career.careerId}`, id);
 }
