@@ -8,6 +8,8 @@ import { openDataMenu, pick, wireFileInput } from './ui/dataMenu.js';
 import { HomeView } from './ui/views/home.js';
 import { SquadView, SquadTeamView } from './ui/views/squad.js';
 import { ShortlistsView } from './ui/views/shortlists.js';
+import { PlayerView } from './ui/views/player.js';
+import { DevelopmentView } from './ui/views/development.js';
 
 const els = {
   header: document.querySelector('.topbar'),
@@ -25,10 +27,16 @@ const VIEWS = {
   squad: () => SquadView(),
   squadTeam: (p) => SquadTeamView(p),
   shortlists: (p) => ShortlistsView(p),
+  player: (p, q) => PlayerView({ ...p, query: q }),
+  development: (p, q) => DevelopmentView({ ...p, query: q }),
 };
 
+// Remember list scroll positions so Back from a profile returns to the same spot.
+const scrollMemory = new Map();
+const REMEMBER_SCROLL = new Set(['squadTeam', 'shortlists']);
+
 let renderToken = 0;
-let lastPath = null;
+let lastRoute = null;
 
 async function render() {
   const token = ++renderToken;
@@ -40,7 +48,9 @@ async function render() {
     return;
   }
 
-  const vm = VIEWS[route.name] ? await VIEWS[route.name](route.params) : null;
+  if (lastRoute && REMEMBER_SCROLL.has(lastRoute.name)) scrollMemory.set(lastRoute.full, window.scrollY);
+
+  const vm = VIEWS[route.name] ? await VIEWS[route.name](route.params, route.query) : null;
   if (token !== renderToken) return; // a newer render started
   if (!vm) {
     location.replace('#/');
@@ -60,8 +70,11 @@ async function render() {
   document.title = vm.isHome ? 'SquadLab' : `${vm.title} · SquadLab`;
 
   els.view.replaceChildren(vm.body);
-  if (route.path !== lastPath) window.scrollTo(0, 0);
-  lastPath = route.path;
+  if (route.full !== lastRoute?.full) {
+    const remembered = REMEMBER_SCROLL.has(route.name) ? scrollMemory.get(route.full) : null;
+    window.scrollTo(0, remembered ?? 0);
+  }
+  lastRoute = route;
 }
 
 // Keep sticky elements (list column headings) just below the real header height,

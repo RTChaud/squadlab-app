@@ -7,11 +7,13 @@ import {
   BACKUP_FORMAT, BACKUP_VERSION,
 } from './data/importer.js';
 import { makeSnapshotRecord, buildModel } from './data/snapshot.js';
+import { buildMetrics, keyFor, findInSnapshot, playerHistory } from './data/players.js';
 
 const state = {
   career: null,   // { careerId, createdAt }
   history: [],    // snapshot metadata for the active career, newest first
   model: null,    // newest snapshot
+  metrics: null,  // cached metrics for the active career (loaded on demand)
 };
 
 const listeners = new Set();
@@ -36,8 +38,66 @@ async function reload() {
   state.career = career;
   state.history = career ? metas.filter((m) => m.careerId === career.careerId).sort(byDateDesc) : [];
   state.model = state.history.length ? buildModel(await db.getSnapshot(state.history[0].id)) : null;
+  state.metrics = null;
+  await ensureMetrics(metas);
   emit();
 }
+
+/**
+ * Make sure every stored snapshot has its derived metrics (e.g. data stored
+ * before this version), and drop metrics whose snapshot no longer exists.
+ */
+async function ensureMetrics(metas) {
+  const have = new Set(await db.listMetricIds());
+  const want = new Set(metas.map((m) => m.id));
+  for (const m of metas) {
+    if (have.has(m.id)) continue;
+    const rec = await db.getSnapshot(m.id);
+    if (rec) await db.putMetrics(buildMetrics(rec));
+  }
+  const orphans = [...have].filter((id) => !want.has(id));
+  if (orphans.length) await db.deleteMetrics(orphans);
+}
+
+async function careerMetrics() {
+  if (!state.career) return [];
+  if (!state.metrics) {
+    state.metrics = (await db.listMetrics()).filter((m) => m.careerId === state.career.careerId);
+  }
+  return state.metrics;
+}
+
+// ---- Players -------------------------------------------------------------------
+
+/**
+ * Resolve a player by persistent ID. Uses the newest in-game snapshot; if the
+ * player is not in it, falls back to their last recorded snapshot and marks
+ * the result as historical (current: false).
+ * Returns { player, model, current, latestDate } or null.
+ */
+export async function getPlayerProfile(pid) {
+  if (!state.model) return null;
+  const key = keyFor(state.career.careerId, pid);
+  const latest = findInSnapshot(state.model.raw, key);
+  if (latest) return { player: latest, model: state.model, current: true, latestDate: state.model.gameDate };
+
+  const metrics = await careerMetrics();
+  const lastSeen = [...metrics]
+    .sort((a, b) => b.gameDate.localeCompare(a.gameDate))
+    .find((m) => m.players.some((p) => p.key === key));
+  if (!lastSeen) return null;
+  const model = buildModel(await db.getSnapshot(lastSeen.id));
+  return { player: findInSnapshot(model.raw, key), model, current: false, latestDate: state.model.gameDate };
+}
+
+/** Chronological observations for one player across the active career. */
+export async function getPlayerHistory(pid) {
+  if (!state.career) return [];
+  return playerHistory(await careerMetrics(), state.career.careerId, keyFor(state.career.careerId, pid));
+}
+
+export const getPref = (key, fallback = null) => db.getSetting(`pref:${key}`, fallback);
+export const setPref = (key, value) => db.setSetting(`pref:${key}`, value);
 
 export const init = reload;
 
