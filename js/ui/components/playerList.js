@@ -48,6 +48,7 @@ function rowEl(r, from) {
     h('div', { class: 'pname' },
       h('span', { class: 'pfirst' }, orDash(r.firstName)),
       h('span', { class: 'plast' }, orDash(r.lastName)),
+      r.note ? h('span', { class: 'pnote' }, r.note) : null,
     ),
     h('div', { class: 'ppos' },
       r.positions.natural ? h('span', {}, r.positions.natural) : h('span', { class: 'dash' }, '—'),
@@ -66,10 +67,11 @@ function rowEl(r, from) {
 
 /**
  * @param {object[]} players  player records from the snapshot
- * @param {object}   opts     { emptyTitle, emptyText, from (route path to return to) }
+ * @param {object}   opts     { emptyTitle, emptyText, from (route path to return to),
+ *                              rowNote(player) → optional small note under the name }
  */
 export function PlayerList(players, opts = {}) {
-  const rows = players.map(playerSummary);
+  const rows = players.map((p) => ({ ...playerSummary(p), note: opts.rowNote ? opts.rowNote(p) : null }));
   const wrap = h('section', { class: 'plist-wrap' });
 
   if (rows.length === 0) {
