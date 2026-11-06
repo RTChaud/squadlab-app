@@ -748,18 +748,37 @@ details.group[open] > summary::after { transform: rotate(-135deg) translateY(-2p
 .ptile {
   display: flex; align-items: center; justify-content: space-between; gap: 4px;
   min-height: 34px; padding: 0 9px; border-radius: 8px;
-  background: rgba(255, 255, 255, var(--fam, 0.06));
+  border: 1px solid transparent;
   font-size: 12px; color: var(--text);
 }
-.ptile.ptile-blank { background: none; }
+.ptile.ptile-blank { background: none; border-color: transparent; }
 .ptile-code { font-weight: 600; white-space: nowrap; }
 .ptile-val { font-weight: 800; font-variant-numeric: tabular-nums; }
-.ptile.natural { background: #e9ebef; color: #15171b; }
-.ptile.accomplished { background: transparent; box-shadow: inset 0 0 0 1.5px #e9ebef; }
-.fam-legend { margin: 0; font-size: 12px; color: var(--text-2); display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; }
-.ptile-key { display: inline-block; width: 14px; height: 10px; border-radius: 3px; }
-.ptile-key.natural { background: #e9ebef; }
-.ptile-key.accomplished { box-shadow: inset 0 0 0 1.5px #e9ebef; margin-left: 8px; }
+
+/* Position familiarity bands (SquadLab display bands). Tinted background +
+   matching border; low values stay quiet, high values stand out. Separate
+   from the football attribute colours (.b1–.b5). */
+.f1 { --fam-c: 226, 132, 124; --fam-bg: 0.07; --fam-bd: 0.22; color: var(--text-2); }  /* 1      muted light red */
+.f2 { --fam-c: 240, 120, 90;  --fam-bg: 0.13; --fam-bd: 0.38; }                        /* 2–5    coral */
+.f3 { --fam-c: 247, 150, 60;  --fam-bg: 0.15; --fam-bd: 0.45; }                        /* 6–9    orange */
+.f4 { --fam-c: 236, 196, 70;  --fam-bg: 0.16; --fam-bd: 0.50; }                        /* 10–14  amber */
+.f5 { --fam-c: 125, 214, 140; --fam-bg: 0.18; --fam-bd: 0.60; }                        /* 15–17  light green */
+.f6 { --fam-c: 46, 196, 100;  --fam-bg: 0.30; --fam-bd: 0.85; }                        /* 18–20  strong green */
+.ptile.f1, .ptile.f2, .ptile.f3, .ptile.f4, .ptile.f5, .ptile.f6,
+.fam-chip.f1, .fam-chip.f2, .fam-chip.f3, .fam-chip.f4, .fam-chip.f5, .fam-chip.f6 {
+  background: rgba(var(--fam-c), var(--fam-bg));
+  border-color: rgba(var(--fam-c), var(--fam-bd));
+}
+.ptile.f6 { font-weight: 700; }
+.ptile.f1 .ptile-val { font-weight: 600; }
+.ptile.fnone { background: var(--surface-2); border-color: var(--border); color: var(--muted); }
+
+.fam-legend { display: flex; flex-wrap: wrap; gap: 6px; }
+.fam-chip {
+  min-width: 44px; padding: 3px 8px; border-radius: 6px; border: 1px solid transparent;
+  text-align: center; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text);
+}
+.fam-chip.f1 { color: var(--text-2); }
 
 /* ---- Development -------------------------------------------------------------------- */
 
