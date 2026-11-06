@@ -1,7 +1,8 @@
 // Shared player profile — opened from any squad or shortlist.
 
 import { h, icon, orDash, DASH } from '../dom.js';
-import { getPlayerProfile } from '../../store.js';
+import { getPlayerProfile, tagsForPlayer, playerKeyOf } from '../../store.js';
+import { openTagSheet } from '../components/tagSheet.js';
 import { formatGameDate, resolveTeams } from '../../data/snapshot.js';
 import { describePositions, formatPositions } from '../../data/positions.js';
 import { persistentId } from '../../data/players.js';
@@ -216,6 +217,19 @@ function hiddenSection(p) {
   );
 }
 
+/** Development | Tags, side by side. */
+function actionRow(p, devHref) {
+  const key = playerKeyOf(p);
+  const count = key ? tagsForPlayer(key).length : 0;
+  return h('div', { class: 'profile-actions' },
+    h('a', { class: 'btn btn-primary dev-btn', href: devHref }, icon('chart'), 'Development'),
+    h('button', {
+      type: 'button', class: 'btn btn-secondary tags-btn', disabled: !key,
+      onclick: () => openTagSheet({ playerKey: key, playerName: displayName(p).main }),
+    }, icon('tag'), 'Tags', count ? h('span', { class: 'count-badge' }, String(count)) : null),
+  );
+}
+
 // ---- View -----------------------------------------------------------------------------
 
 export async function PlayerView({ pid, query }) {
@@ -243,7 +257,7 @@ export async function PlayerView({ pid, query }) {
         h('p', {}, h('strong', {}, `Not in the latest snapshot (${formatGameDate(latestDate)}).`),
           ` Showing their last recorded data, from ${formatGameDate(model.gameDate)}.`)),
       header(p, model),
-      h('a', { class: 'btn btn-primary btn-block dev-btn', href: devHref }, icon('chart'), 'Development'),
+      actionRow(p, devHref),
       details(p, model, current),
       attributesSection(p),
       traitsSection(p),

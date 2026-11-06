@@ -1,5 +1,5 @@
 import { h, icon } from '../dom.js';
-import { getModel, getHistory } from '../../store.js';
+import { getModel, getHistory, listTags } from '../../store.js';
 import { formatGameDate, resolveTeams } from '../../data/snapshot.js';
 
 function welcome(onImport, onRestore) {
@@ -47,6 +47,7 @@ export function HomeView({ onImport, onRestore }) {
     ? 'Squad data problem — tap for details'
     : teams.map((t) => `${t.short} ${t.players.length}`).join(' · ');
   const listCount = model.visibleShortlists.length;
+  const tagCount = listTags().length;
 
   return {
     title: 'SquadLab',
@@ -61,6 +62,10 @@ export function HomeView({ onImport, onRestore }) {
         widget({
           href: '#/shortlists', iconName: 'list', title: 'Shortlists',
           meta: `${listCount} ${listCount === 1 ? 'list' : 'lists'}`,
+        }),
+        widget({
+          href: '#/tags', iconName: 'tag', title: 'Tags',
+          meta: tagCount ? `${tagCount} ${tagCount === 1 ? 'tag' : 'tags'}` : 'Add tags from player profiles',
         }),
       ),
     ),
