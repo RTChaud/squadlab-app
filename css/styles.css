@@ -1003,10 +1003,6 @@ details.group[open] > summary::after { transform: rotate(-135deg) translateY(-2p
 .radar-ring { fill: none; stroke: rgba(10, 11, 14, 0.22); stroke-width: 0.75; }
 .radar-spoke { stroke: rgba(10, 11, 14, 0.22); stroke-width: 0.75; }
 .radar-spoke.active { stroke: rgba(255, 255, 255, 0.8); stroke-width: 1.25; stroke-dasharray: 3 3; }
-.radar-tick {
-  fill: rgba(255, 255, 255, 0.78); font-size: 9.5px; font-weight: 600;
-  stroke: rgba(10, 11, 14, 0.55); stroke-width: 2.5px; paint-order: stroke; stroke-linejoin: round;
-}
 /* Score zones behind the shape: solid, opaque, non-overlapping rings at the
    same boundaries as the attribute colours (1–<6, 6–<10, 10–<13, 13–<15,
    15–<18, 18–20). Deeper tones of the same hues, a little softer than FM. */
