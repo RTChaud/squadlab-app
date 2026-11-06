@@ -61,19 +61,52 @@ export const PERSONALITY_ATTRS = [
   label('sportsmanship', 'Sportsmanship'), label('temperament', 'Temperament'),
 ];
 
-/** Value band for the 1–20 colour scale (null when not a recorded 1–20 value). */
-export function attrBand(v) {
-  if (!Number.isInteger(v) || v < 1 || v > 20) return null;
-  if (v <= 5) return 'b1';
-  if (v <= 9) return 'b2';
-  if (v <= 13) return 'b3';
-  if (v <= 16) return 'b4';
-  return 'b5';
-}
-export const BAND_LEGEND = [
-  { band: 'b1', range: '1–5' }, { band: 'b2', range: '6–9' }, { band: 'b3', range: '10–13' },
-  { band: 'b4', range: '14–16' }, { band: 'b5', range: '17–20' },
+// ---- Attribute value colours ------------------------------------------------
+// Fixed SquadLab visual bands for 1–20 values (same for every player and
+// snapshot; not FM categories). Anything that is not an integer 1–20 —
+// missing or out of range — gets no band and is shown neutrally.
+
+export const ATTR_BANDS = [
+  { cls: 'a1', min: 1, max: 5 },    // muted red
+  { cls: 'a2', min: 6, max: 9 },    // coral
+  { cls: 'a3', min: 10, max: 12 },  // orange
+  { cls: 'a4', min: 13, max: 14 },  // amber
+  { cls: 'a5', min: 15, max: 17 },  // light green
+  { cls: 'a6', min: 18, max: 20 },  // strong green
 ];
+
+/**
+ * Band class for a value. direction: 'positive' (high = good), 'negative'
+ * (high = bad: colours mirrored, number unchanged) or 'neutral' (no colour).
+ */
+export function attrBand(v, direction = 'positive') {
+  if (direction === 'neutral' || !Number.isInteger(v) || v < 1 || v > 20) return null;
+  const x = direction === 'negative' ? 21 - v : v;
+  return ATTR_BANDS.find((b) => x >= b.min && x <= b.max).cls;
+}
+
+/**
+ * Explicit direction for each hidden attribute and personality value.
+ * Only fields whose meaning is clear are coloured; context-dependent ones
+ * stay neutral until we decide otherwise.
+ */
+export const VALUE_DIRECTION = {
+  // hidden attributes
+  consistency: 'positive',
+  important_matches: 'positive',
+  versatility: 'positive',
+  injury_proneness: 'negative',
+  dirtiness: 'negative',
+  // personality values
+  professionalism: 'positive',
+  pressure: 'positive',
+  temperament: 'positive',
+  sportsmanship: 'positive',
+  adaptability: 'positive',
+  controversy: 'negative',
+  ambition: 'neutral',   // drives development but also unsettles players at smaller clubs
+  loyalty: 'neutral',    // matters for retention, not performance
+};
 
 export const intOrNull = (v) => (Number.isInteger(v) ? v : null);
 
