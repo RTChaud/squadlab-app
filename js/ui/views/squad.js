@@ -30,32 +30,19 @@ export function SquadView() {
         : h('span', { class: 'widget-count' }, t.players.length),
       h('span', { class: 'widget-body' },
         h('span', { class: 'widget-title' }, t.label),
-        h('span', { class: `widget-meta${hasIssue ? ' warn' : ''}` },
-          t.fatal ? 'Not available in this snapshot — tap for details'
-            : hasIssue ? `${t.squad.name} · data problem — tap for details`
-            : t.squad.name),
+        // Subtitle only when something is wrong with this group's data.
+        hasIssue ? h('span', { class: 'widget-meta warn' },
+          t.fatal ? 'Not available in this snapshot — tap for details' : 'Data problem — tap for details') : null,
       ),
       icon('chevron', 'widget-chevron'),
     );
   });
-
-  // Groups that exist in the extract but aren't one of the three teams.
-  const linked = new Set(teams.filter((t) => t.squad).map((t) => t.squad.id));
-  const others = model.squads.filter((s) => !linked.has(s.id));
 
   return {
     title: 'Squad',
     back: '#/',
     body: h('div', { class: 'stack' },
       h('div', { class: 'widgets' }, widgets),
-      others.length
-        ? h('div', { class: 'note' },
-            h('p', { class: 'note-title' }, 'Other groups in this snapshot'),
-            h('ul', { class: 'note-list' },
-              others.map((s) => h('li', {}, h('span', {}, s.name), h('span', { class: 'muted' }, plural(s.playerUids.length, 'player'))))),
-            h('p', { class: 'note-text' }, 'Kept in your data but not shown as teams. These players are not added to any of the three teams.'),
-          )
-        : null,
     ),
   };
 }
@@ -73,7 +60,7 @@ export function SquadTeamView({ slotKey }) {
 
   return {
     title: t.label,
-    subtitle: `${t.squad.name} · ${plural(t.players.length, 'player')}`,
+    subtitle: plural(t.players.length, 'player'),
     back: '#/squad',
     body: h('div', { class: 'stack' },
       t.issues.length ? issueBox(t.issues) : null,

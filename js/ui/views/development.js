@@ -129,7 +129,7 @@ export async function DevelopmentView({ pid, query }) {
 }
 
 function table(points, series) {
-  return h('details', { class: 'group dev-table' },
+  return h('details', { class: 'group dev-table', open: true },
     h('summary', {}, h('span', {}, 'Values as a table')),
     h('div', { class: 'table-scroll' },
       h('table', {},

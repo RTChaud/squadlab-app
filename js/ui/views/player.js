@@ -199,8 +199,6 @@ function familiaritySection(p) {
   return h('section', { class: 'psection' },
     h('h3', {}, 'Position familiarity'),
     h('div', { class: 'pitch' }, PITCH.map((row) => h('div', { class: 'pitch-row' }, row.map(tile)))),
-    h('div', { class: 'fam-legend', 'aria-label': 'Familiarity colour bands' },
-      FAM_BANDS.map((b) => h('span', { class: `fam-chip ${b.cls}` }, b.label))),
   );
 }
 

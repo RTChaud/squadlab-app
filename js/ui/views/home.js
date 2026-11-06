@@ -45,7 +45,7 @@ export function HomeView({ onImport, onRestore }) {
   const teams = resolveTeams(model);
   const teamMeta = teams.some((t) => t.issues.length)
     ? 'Squad data problem — tap for details'
-    : teams.map((t) => `${t.label.replace(' Team', '')} ${t.players.length}`).join(' · ');
+    : teams.map((t) => `${t.short} ${t.players.length}`).join(' · ');
   const listCount = model.visibleShortlists.length;
 
   return {

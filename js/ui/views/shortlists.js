@@ -20,11 +20,12 @@ export async function ShortlistsView({ listId }) {
     };
   }
 
+  const lists = [...model.visibleShortlists].sort((a, b) => a.name.localeCompare(b.name, 'en-GB', { sensitivity: 'base', numeric: true }));
   const visible = (id) => model.visibleShortlists.find((l) => l.id === id) || null;
   let current = listId ? visible(listId) : null;
   if (!current) {
     const last = await getLastShortlist();
-    current = (last && visible(last)) || model.visibleShortlists[0];
+    current = (last && visible(last)) || lists[0];
   }
   setLastShortlist(current.id);
 
@@ -35,7 +36,7 @@ export async function ShortlistsView({ listId }) {
       location.replace(`#/shortlists/${encodeURIComponent(e.target.value)}`);
     },
   },
-    model.visibleShortlists.map((l) =>
+    lists.map((l) =>
       h('option', { value: l.id, selected: l.id === current.id }, `${l.name} (${model.resolve(l.playerUids).length})`)),
   );
 
