@@ -9,6 +9,7 @@ import {
 import { makeSnapshotRecord, buildModel } from './data/snapshot.js';
 import { buildMetrics, keyFor, findInSnapshot, playerHistory, playerKey } from './data/players.js';
 import * as Tags from './data/tags.js';
+import * as Lineups from './data/lineups.js';
 
 const state = {
   career: null,   // { careerId, createdAt }
@@ -16,6 +17,9 @@ const state = {
   model: null,    // newest snapshot
   metrics: null,  // cached metrics for the active career (loaded on demand)
   tags: Tags.emptyTags(), // app-created player tags for the active career
+  lineups: { lineups: [] }, // app-created lineups for the active career
+  slotIndex: new Map(),     // derived: playerKey → Squad slot entries (default lineups only)
+  prefs: new Map(),         // cached "pref:*" settings, readable synchronously
 };
 
 const listeners = new Set();
@@ -42,11 +46,27 @@ async function reload() {
   state.model = state.history.length ? buildModel(await db.getSnapshot(state.history[0].id)) : null;
   state.metrics = null;
   state.tags = career ? Tags.sanitizeTags(await db.getSetting(tagsKey(career), null)) : Tags.emptyTags();
+  await loadLineups(career);
+  state.prefs = new Map((await db.getAllSettings()).filter((x) => x.key.startsWith('pref:')).map((x) => [x.key.slice(5), x.value]));
   await ensureMetrics(metas);
   emit();
 }
 
 const tagsKey = (career) => `tags:${career.careerId}`;
+const lineupsKey = (career) => `lineups:${career.careerId}`;
+
+/**
+ * Load (or create once) the career's lineups. The three defaults have fixed
+ * IDs, so this never duplicates them; they are saved the first time so they
+ * are part of every backup.
+ */
+async function loadLineups(career) {
+  if (!career) { state.lineups = { lineups: [] }; state.slotIndex = new Map(); return; }
+  const raw = await db.getSetting(lineupsKey(career), null);
+  state.lineups = Lineups.sanitizeLineups(raw, career.careerId);
+  if (!raw || JSON.stringify(raw) !== JSON.stringify(state.lineups)) await db.setSetting(lineupsKey(career), state.lineups);
+  state.slotIndex = Lineups.buildSquadSlotIndex(state.lineups);
+}
 
 /**
  * Make sure every stored snapshot has its derived metrics (e.g. data stored
@@ -102,7 +122,11 @@ export async function getPlayerHistory(pid) {
 }
 
 export const getPref = (key, fallback = null) => db.getSetting(`pref:${key}`, fallback);
-export const setPref = (key, value) => db.setSetting(`pref:${key}`, value);
+export const getPrefSync = (key, fallback = null) => (state.prefs.has(key) ? state.prefs.get(key) : fallback);
+export function setPref(key, value) {
+  state.prefs.set(key, value);
+  return db.setSetting(`pref:${key}`, value);
+}
 
 export const init = reload;
 
@@ -259,13 +283,21 @@ export async function removeTagFromPlayer(key, tagId) {
  * Resolves [{ player, current, gameDate }].
  */
 export async function getTagMembers(tagId) {
+  return resolvePlayers(Tags.playerKeysForTag(state.tags, tagId));
+}
+
+/**
+ * Resolve player keys to their newest data: the latest snapshot if present,
+ * otherwise their last recorded snapshot (current: false). Keys found in no
+ * snapshot are skipped. Resolves [{ key, player, current, gameDate }].
+ */
+export async function resolvePlayers(keys) {
   if (!state.model) return [];
-  const keys = Tags.playerKeysForTag(state.tags, tagId);
   const out = [];
   const missing = [];
   for (const key of keys) {
     const p = findInSnapshot(state.model.raw, key);
-    if (p) out.push({ player: p, current: true, gameDate: state.model.gameDate });
+    if (p) out.push({ key, player: p, current: true, gameDate: state.model.gameDate });
     else missing.push(key);
   }
   if (missing.length) {
@@ -276,7 +308,7 @@ export async function getTagMembers(tagId) {
       if (!m) continue; // not in any stored snapshot: keep the tag, nothing to show
       if (!cache.has(m.id)) cache.set(m.id, await db.getSnapshot(m.id));
       const p = findInSnapshot(cache.get(m.id).data, key);
-      if (p) out.push({ player: p, current: false, gameDate: m.gameDate });
+      if (p) out.push({ key, player: p, current: false, gameDate: m.gameDate });
     }
   }
   return out;
@@ -288,3 +320,32 @@ export async function getLastTag() {
 export function setLastTag(id) {
   return state.career ? db.setSetting(`lastTag:${state.career.careerId}`, id) : Promise.resolve();
 }
+
+// ---- Lineups (app-created; never touched by FM snapshot imports) -----------------
+
+export const listLineups = () => state.lineups.lineups;
+export const getLineup = (id) => state.lineups.lineups.find((l) => l.id === id) || null;
+/** Squad slot entries for a player (from the three default lineups only). */
+export const squadSlotsFor = (key) => (key && state.slotIndex.get(key)) || [];
+
+async function saveLineups(next) {
+  await db.setSetting(lineupsKey(state.career), next);
+  state.lineups = next;
+  state.slotIndex = Lineups.buildSquadSlotIndex(next);
+  emit();
+}
+
+export const assignLineupSlot = (id, slot, key) => saveLineups(Lineups.assignSlot(state.lineups, id, slot, key));
+export const clearLineupSlot = (id, slot) => saveLineups(Lineups.clearSlot(state.lineups, id, slot));
+export async function createLineup(name) {
+  const r = Lineups.createLineup(state.lineups, name);
+  await saveLineups(r.state);
+  return r.lineup;
+}
+export async function duplicateLineup(id, name) {
+  const r = Lineups.duplicateLineup(state.lineups, id, name);
+  await saveLineups(r.state);
+  return r.lineup;
+}
+export const renameLineup = (id, name) => saveLineups(Lineups.renameLineup(state.lineups, id, name));
+export const deleteLineup = (id) => saveLineups(Lineups.deleteLineup(state.lineups, id));

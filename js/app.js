@@ -9,6 +9,9 @@ import { HomeView } from './ui/views/home.js';
 import { SquadView } from './ui/views/squad.js';
 import { ShortlistsView } from './ui/views/shortlists.js';
 import { TagsView } from './ui/views/tags.js';
+import { LineupsView } from './ui/views/lineups.js';
+import { LineupView } from './ui/views/lineup.js';
+import { LineupPickerView, pickerOpenedFrom } from './ui/views/lineupPicker.js';
 import { PlayerView } from './ui/views/player.js';
 import { DevelopmentView } from './ui/views/development.js';
 
@@ -28,6 +31,9 @@ const VIEWS = {
   squadTeam: (p) => SquadView(p),
   shortlists: (p) => ShortlistsView(p),
   tags: (p) => TagsView(p),
+  lineups: () => LineupsView(),
+  lineup: (p) => LineupView(p),
+  lineupPick: (p) => LineupPickerView(p),
   player: (p, q) => PlayerView({ ...p, query: q }),
   development: (p, q) => DevelopmentView({ ...p, query: q }),
 };
@@ -50,6 +56,9 @@ async function render() {
   }
 
   if (lastRoute && REMEMBER_SCROLL.has(lastRoute.name)) scrollMemory.set(lastRoute.full, window.scrollY);
+
+  // The picker returns to the pitch with Back when it was opened from it.
+  if (route.name === 'lineupPick' && lastRoute?.name !== 'lineupPick') pickerOpenedFrom(lastRoute ? `#${lastRoute.full}` : null);
 
   const vm = VIEWS[route.name] ? await VIEWS[route.name](route.params, route.query) : null;
   if (token !== renderToken) return; // a newer render started
