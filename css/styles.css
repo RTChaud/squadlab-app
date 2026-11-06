@@ -667,7 +667,7 @@ body.sheet-open { overflow: hidden; }
   font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums;
 }
 .dev-btn .icon { width: 20px; height: 20px; }
-.pnote { font-size: 12px; font-weight: 600; color: var(--b2, #e0a43c); }
+.pnote { font-size: 12px; font-weight: 600; color: #e0a43c; }
 
 /* Tags sheet */
 .tag-chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -704,20 +704,14 @@ body.sheet-open { overflow: hidden; }
 .psection h3 { margin: 6px 0 0; font-size: 17px; font-weight: 750; }
 .psection-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 
-/* Attribute value colours (1–20). Numbers are always shown; colour is extra. */
-:root {
-  --b1: #d97a72;   /* 1–5   muted red */
-  --b2: #e0a43c;   /* 6–9   amber */
-  --b3: #d9dce2;   /* 10–13 neutral light */
-  --b4: #5fc77a;   /* 14–16 green */
-  --b5: #2fd6c8;   /* 17–20 bright teal */
-}
-.band-legend { display: flex; gap: 4px; flex-wrap: wrap; }
-.band-chip {
-  font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
-  padding: 2px 7px; border-radius: 6px; background: var(--surface-2);
-}
-.b1 { color: var(--b1); } .b2 { color: var(--b2); } .b3 { color: var(--b3); } .b4 { color: var(--b4); } .b5 { color: var(--b5); }
+/* Attribute value colours: fixed SquadLab bands (1–20), applied to the value
+   badge only. Separate from position-familiarity colours (.f1–.f6). */
+.a1 { --av: 226, 132, 124; --av-bg: 0.10; }   /* 1–5    muted red */
+.a2 { --av: 240, 128, 98;  --av-bg: 0.14; }   /* 6–9    coral */
+.a3 { --av: 247, 152, 64;  --av-bg: 0.15; }   /* 10–12  orange */
+.a4 { --av: 236, 198, 78;  --av-bg: 0.15; }   /* 13–14  amber */
+.a5 { --av: 132, 218, 148; --av-bg: 0.16; }   /* 15–17  light green */
+.a6 { --av: 62, 210, 112;  --av-bg: 0.22; }   /* 18–20  strong green */
 
 details.group {
   border: 1px solid var(--border); border-radius: var(--radius);
@@ -742,15 +736,22 @@ details.group[open] > summary::after { transform: rotate(-135deg) translateY(-2p
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 10px;
 }
 .attr {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  min-height: 34px; padding: 0 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  min-height: 34px; padding: 0 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   border-radius: 6px;
 }
-.attr-name { font-size: 14px; line-height: 1.25; padding: 4px 0; color: var(--text-2); min-width: 0; overflow-wrap: anywhere; }
-.attr-val { flex: none; min-width: 26px; text-align: right; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.attr-val.none { color: var(--text); font-weight: 650; }
+.attr-name { flex: 1; font-size: 14px; line-height: 1.25; padding: 4px 0; color: var(--text-2); min-width: 0; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; }
+.attr-val {
+  flex: none; min-width: 28px; padding: 2px 4px; border-radius: 6px;
+  text-align: center; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums;
+  color: rgb(var(--av)); background: rgba(var(--av), var(--av-bg));
+  box-shadow: inset 0 0 0 1px rgba(var(--av), 0.28);
+}
+.attr-val.none { color: var(--text); font-weight: 650; background: none; box-shadow: none; }
 /* Reserved for future role key attributes (orange), separate from value colours. */
-.attr.key-attr { box-shadow: inset 0 0 0 1.5px var(--accent); }
+/* Reserved for future role key attributes: small orange marker before the name. */
+.attr-mark { flex: none; width: 3px; height: 16px; margin-right: -3px; border-radius: 2px; background: transparent; }
+.attr.key-attr .attr-mark { background: var(--accent); }
 
 .hidden-group > p { margin: 0 14px 6px; }
 .sub-head { margin: 8px 14px 2px !important; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
@@ -778,7 +779,7 @@ details.group[open] > summary::after { transform: rotate(-135deg) translateY(-2p
 
 /* Position familiarity bands (SquadLab display bands). Tinted background +
    matching border; low values stay quiet, high values stand out. Separate
-   from the football attribute colours (.b1–.b5). */
+   from the football attribute colours (.a1–.a6). */
 .f1 { --fam-c: 226, 132, 124; --fam-bg: 0.07; --fam-bd: 0.22; color: var(--text-2); }  /* 1      muted light red */
 .f2 { --fam-c: 240, 120, 90;  --fam-bg: 0.13; --fam-bd: 0.38; }                        /* 2–5    coral */
 .f3 { --fam-c: 247, 150, 60;  --fam-bg: 0.15; --fam-bd: 0.45; }                        /* 6–9    orange */
