@@ -109,6 +109,7 @@ export function playerSummary(p) {
     pid: persistentId(p),
     firstName: str(p.first_name),
     lastName: str(p.last_name),
+    age: intOrNull(p.age),
     ca: ca !== null && ca >= 0 ? ca : null,
     pa: pa !== null && pa > 0 ? pa : null,
     positions: describePositions(p),
@@ -122,9 +123,11 @@ export function playerSummary(p) {
 // read only from each squad's player_uids — never inferred from player data.
 
 export const TEAM_SLOTS = [
-  { key: 'first', label: 'First Team', slot: 0 },
-  { key: 'reserve', label: 'Reserve Team', slot: 1 },
-  { key: 'youth', label: 'Youth Team', slot: 2 },
+  { key: 'first', label: 'First Team', short: 'First', slot: 0 },
+  { key: 'reserve', label: 'Reserve Team', short: 'Reserve', slot: 1 },
+  { key: 'youth', label: 'Youth Team', short: 'Youth', slot: 2 },
+  // Linked to the extract's "Out on loan" group (id out_on_loan), not a team slot.
+  { key: 'loan', label: 'Out on Loan', short: 'Loan', kind: 'loan' },
 ];
 
 /**
@@ -133,8 +136,14 @@ export const TEAM_SLOTS = [
  */
 export function resolveTeams(model) {
   const result = TEAM_SLOTS.map((t) => {
-    const matches = model.squads.filter((s) => s.kind === 'team' && s.teamSlot === t.slot);
+    const isLoan = t.kind === 'loan';
+    const matches = isLoan
+      ? model.squads.filter((s) => s.kind === 'loan')
+      : model.squads.filter((s) => s.kind === 'team' && s.teamSlot === t.slot);
     const base = { ...t, squad: null, players: [], issues: [], fatal: false };
+    if (isLoan && matches.length !== 1) {
+      return { ...base, fatal: true, issues: [matches.length ? 'This snapshot has more than one Out on loan group.' : 'This snapshot has no Out on loan group.'] };
+    }
     if (matches.length === 0) {
       return { ...base, fatal: true, issues: [`This snapshot has no squad with team_slot ${t.slot}, so the ${t.label} cannot be linked.`] };
     }
@@ -148,14 +157,15 @@ export function resolveTeams(model) {
     if (missing.length) {
       issues.push(`${missing.length} member${missing.length === 1 ? ' is' : 's are'} listed in this squad but missing from the players data (uid ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? ', …' : ''}).`);
     }
-    const mismatched = players.filter((p) => Number.isInteger(p.team_id) && p.team_id !== squad.teamId);
+    // Loaned players play for another club's team, so team_id is only checked for our own teams.
+    const mismatched = isLoan ? [] : players.filter((p) => Number.isInteger(p.team_id) && p.team_id !== squad.teamId);
     if (mismatched.length) {
       issues.push(`${mismatched.length} player${mismatched.length === 1 ? '' : 's'} in this squad ${mismatched.length === 1 ? 'has' : 'have'} a different team_id on ${mismatched.length === 1 ? 'its' : 'their'} own record.`);
     }
     return { ...base, squad, players, issues };
   });
 
-  // A player should belong to only one of the three teams.
+  // A player should belong to only one of these groups.
   const seen = new Map();
   for (const t of result) for (const p of t.players) {
     if (!seen.has(p.uid)) seen.set(p.uid, []);
@@ -163,7 +173,7 @@ export function resolveTeams(model) {
   }
   for (const [, teams] of seen) {
     if (teams.length > 1) for (const t of teams) {
-      const msg = 'Some players are listed in more than one team.';
+      const msg = 'Some players are listed in more than one group.';
       if (!t.issues.includes(msg)) t.issues.push(msg);
     }
   }
