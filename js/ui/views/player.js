@@ -5,7 +5,7 @@ import { getPlayerProfile } from '../../store.js';
 import { formatGameDate, resolveTeams } from '../../data/snapshot.js';
 import { describePositions, formatPositions } from '../../data/positions.js';
 import { persistentId } from '../../data/players.js';
-import { nationName } from '../../data/nations.js';
+import { nationName, loadNations } from '../../data/nations.js';
 import {
   ATTRIBUTE_GROUPS, HIDDEN_ATTRS, PERSONALITY_ATTRS, BAND_LEGEND,
   attrBand, describeTraits, intOrNull,
@@ -28,22 +28,16 @@ function footText(p) {
   return `${pref} (L ${l} · R ${r})`;
 }
 
-/**
- * FM's personality label (e.g. "Model Professional"). The extract currently
- * holds only the underlying values, so the label is shown only if the
- * extractor provides it (as `personality_label`) — never derived here.
- */
-function personalityText(p) {
-  // Missing, empty or not text (older extracts) → "n/a", never an error.
-  const label = str(p.personality_label);
-  return { text: label || 'n/a' };
-}
-
-function nationalityText(p) {
+/** Main nationality first, then any second nationalities. */
+function nationalityText(p, careerId) {
   const ids = [p.nation_id, ...(Array.isArray(p.second_nation_ids) ? p.second_nation_ids : [])].filter(Number.isInteger);
   if (!ids.length) return { text: DASH };
-  const names = ids.map(nationName);
-  if (names.every(Boolean)) return { text: names.map((n) => (n.flag ? `${n.flag} ${n.name}` : n.name)).join(', ') };
+  const names = ids.map((id) => nationName(id, careerId));
+  if (names.every(Boolean)) return { text: names.join(', ') };
+  if (names.some(Boolean)) {
+    const unknown = ids.filter((_, i) => !names[i]);
+    return { text: names.filter(Boolean).join(', '), note: `+ unknown nation ID${unknown.length > 1 ? 's' : ''} ${unknown.join(', ')}` };
+  }
   return { text: 'Nationality unavailable', note: `FM nation ID${ids.length > 1 ? 's' : ''} ${ids.join(', ')}` };
 }
 
@@ -91,7 +85,7 @@ function header(p, model) {
 
 function details(p, model, current) {
   const { clubText, squadText } = clubAndSquad(p, model);
-  const nat = nationalityText(p);
+  const nat = nationalityText(p, model.careerId);
   const row = (k, v, note) => h('div', { class: 'detail' },
     h('span', { class: 'detail-k' }, k),
     h('span', { class: 'detail-v' }, v, note ? h('span', { class: 'detail-note' }, note) : null));
@@ -101,7 +95,8 @@ function details(p, model, current) {
     row('Foot', footText(p)),
     row('Height', Number.isInteger(p.height_cm) ? `${p.height_cm} cm` : DASH),
     row('Nationality', nat.text, nat.note),
-    row('Personality', personalityText(p).text, personalityText(p).note),
+    // Reserved slot (kept empty for now) so the grid stays 2 × 3; to be used later.
+    h('div', { class: 'detail detail-reserved', 'aria-hidden': 'true' }),
   );
 }
 
@@ -204,7 +199,7 @@ function hiddenSection(p) {
 
 export async function PlayerView({ pid, query }) {
   const back = backTarget(query, '#/');
-  const res = await getPlayerProfile(pid);
+  const [res] = await Promise.all([getPlayerProfile(pid), loadNations()]);
   if (!res || !res.player) {
     return {
       title: 'Player', back,
