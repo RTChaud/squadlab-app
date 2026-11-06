@@ -363,8 +363,8 @@ svg { display: block; width: 100%; height: 100%; }
 
 .phead, .prow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 6.6rem 2.6rem 2.6rem;
-  column-gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 5.9rem 2rem 2.4rem 2.4rem;
+  column-gap: 6px;
   align-items: center;
   padding: 0 12px 0 14px;
 }
@@ -393,7 +393,7 @@ svg { display: block; width: 100%; height: 100%; }
   cursor: pointer;
 }
 .phead-btn.active { color: var(--accent); }
-.phead-btn.col-ca, .phead-btn.col-pa { justify-content: flex-end; }
+.phead-btn.col-age, .phead-btn.col-ca, .phead-btn.col-pa { justify-content: flex-end; }
 .sort-arrow { font-size: 8px; }
 
 .plist { list-style: none; margin: 0; padding: 0; }
@@ -430,10 +430,11 @@ a.prow:active { background: var(--surface-2); }
   font-variant-numeric: tabular-nums;
 }
 .pnum.pa { color: var(--accent); }
+.pnum.page { font-weight: 600; color: var(--text-2); }
 .dash { color: var(--muted); font-weight: 500; }
 
 @media (min-width: 620px) {
-  .phead, .prow { grid-template-columns: minmax(0, 1fr) 11rem 3.5rem 3.5rem; column-gap: 16px; padding: 0 18px; }
+  .phead, .prow { grid-template-columns: minmax(0, 1fr) 11rem 3rem 3.5rem 3.5rem; column-gap: 16px; padding: 0 18px; }
   .prow { padding-top: 8px; padding-bottom: 8px; }
   .pname { flex-direction: row; align-items: baseline; gap: 6px; }
   .pfirst { font-size: 16px; color: var(--text-2); flex: none; max-width: 45%; }
@@ -773,7 +774,6 @@ details.group[open] > summary::after { transform: rotate(-135deg) translateY(-2p
 .ptile.f1 .ptile-val { font-weight: 600; }
 .ptile.fnone { background: var(--surface-2); border-color: var(--border); color: var(--muted); }
 
-.fam-legend { display: flex; flex-wrap: wrap; gap: 6px; }
 .fam-chip {
   min-width: 44px; padding: 3px 8px; border-radius: 6px; border: 1px solid transparent;
   text-align: center; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text);
@@ -842,7 +842,6 @@ details.group[open] > summary::after { transform: rotate(-135deg) translateY(-2p
   background: var(--surface); border: 1px solid var(--border); overflow: hidden;
 }
 .chart-title { display: flex; justify-content: space-between; gap: 8px; padding: 0 12px 2px; font-size: 13px; font-weight: 700; }
-.chart-scale { font-weight: 600; color: var(--muted); }
 .chart { display: block; width: 100%; height: auto; touch-action: pan-y; }
 .chart .grid { stroke: rgba(255, 255, 255, 0.07); stroke-width: 1; }
 .chart .ylab, .chart .xlab { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
