@@ -172,27 +172,35 @@ const PITCH = [
   [null, 'gk', null],
 ];
 
+// SquadLab display bands for position familiarity (1–20). These are only a
+// colour aid for reading the numbers — not FM's own familiarity categories.
+const FAM_BANDS = [
+  { cls: 'f1', min: 1, max: 1, label: '1' },
+  { cls: 'f2', min: 2, max: 5, label: '2–5' },
+  { cls: 'f3', min: 6, max: 9, label: '6–9' },
+  { cls: 'f4', min: 10, max: 14, label: '10–14' },
+  { cls: 'f5', min: 15, max: 17, label: '15–17' },
+  { cls: 'f6', min: 18, max: 20, label: '18–20' },
+];
+const famBand = (v) => (Number.isInteger(v) ? FAM_BANDS.find((b) => v >= b.min && v <= b.max) || null : null);
+
 function familiaritySection(p) {
+  // Values come straight from the extract's `positions` block (sw is kept in
+  // the data but not drawn). Missing values stay "—", never 0 or 1.
   const fam = p.positions && typeof p.positions === 'object' ? p.positions : {};
-  const natural = new Set((p.natural_positions || []).map((c) => String(c).toLowerCase()));
-  const accomplished = new Set((p.accomplished_positions || []).map((c) => String(c).toLowerCase()));
   const tile = (code) => {
     if (!code) return h('span', { class: 'ptile ptile-blank' });
     const v = intOrNull(fam[code]);
-    const cls = natural.has(code) ? 'natural' : accomplished.has(code) ? 'accomplished' : '';
-    // Neutral shading by value: deliberately not the attribute colour scale.
-    const style = v !== null && !cls ? `--fam:${(0.12 + (v / 20) * 0.5).toFixed(2)}` : null;
-    return h('span', { class: `ptile ${cls}`, style, title: `${formatPositions([code])}: ${v ?? '—'}` },
+    const band = famBand(v);
+    return h('span', { class: `ptile ${band ? band.cls : 'fnone'}`, title: `${formatPositions([code])}: ${v ?? '—'}` },
       h('span', { class: 'ptile-code' }, formatPositions([code])),
       h('span', { class: 'ptile-val' }, orDash(v)));
   };
   return h('section', { class: 'psection' },
     h('h3', {}, 'Position familiarity'),
     h('div', { class: 'pitch' }, PITCH.map((row) => h('div', { class: 'pitch-row' }, row.map(tile)))),
-    h('p', { class: 'fam-legend' },
-      h('span', { class: 'ptile-key natural' }), 'Natural',
-      h('span', { class: 'ptile-key accomplished' }), 'Accomplished',
-    ),
+    h('div', { class: 'fam-legend', 'aria-label': 'Familiarity colour bands' },
+      FAM_BANDS.map((b) => h('span', { class: `fam-chip ${b.cls}` }, b.label))),
   );
 }
 

@@ -10,7 +10,7 @@ import { PlayerList } from '../components/playerList.js';
 export async function ShortlistsView({ listId }) {
   const model = getModel();
 
-  if (model.shortlists.length === 0) {
+  if (model.visibleShortlists.length === 0) {
     return {
       title: 'Shortlists',
       back: '#/',
@@ -20,10 +20,11 @@ export async function ShortlistsView({ listId }) {
     };
   }
 
-  let current = listId ? model.shortlistById(listId) : null;
+  const visible = (id) => model.visibleShortlists.find((l) => l.id === id) || null;
+  let current = listId ? visible(listId) : null;
   if (!current) {
     const last = await getLastShortlist();
-    current = (last && model.shortlistById(last)) || model.shortlists[0];
+    current = (last && visible(last)) || model.visibleShortlists[0];
   }
   setLastShortlist(current.id);
 
@@ -34,7 +35,7 @@ export async function ShortlistsView({ listId }) {
       location.replace(`#/shortlists/${encodeURIComponent(e.target.value)}`);
     },
   },
-    model.shortlists.map((l) =>
+    model.visibleShortlists.map((l) =>
       h('option', { value: l.id, selected: l.id === current.id }, `${l.name} (${model.resolve(l.playerUids).length})`)),
   );
 
