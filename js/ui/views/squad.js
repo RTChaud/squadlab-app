@@ -1,9 +1,12 @@
+// Squad screen: one dropdown (First Team, Reserve Team, Youth Team, Out on
+// Loan — in that fixed order) and the selected group's players, using the
+// same player list as the shortlists.
+// Route: #/squad (First Team) or #/squad/<first|reserve|youth|loan>
+
 import { h, icon } from '../dom.js';
 import { getModel } from '../../store.js';
 import { resolveTeams, TEAM_SLOTS } from '../../data/snapshot.js';
 import { PlayerList } from '../components/playerList.js';
-
-const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 function issueBox(issues) {
   return h('div', { class: 'issue', role: 'alert' },
@@ -16,55 +19,31 @@ function issueBox(issues) {
   );
 }
 
-// ---- Squad overview: three team widgets ------------------------------------
-
-export function SquadView() {
+export function SquadView({ slotKey } = {}) {
   const model = getModel();
-  const teams = resolveTeams(model);
+  const key = TEAM_SLOTS.some((s) => s.key === slotKey) ? slotKey : 'first';
+  const teams = resolveTeams(model); // already in TEAM_SLOTS order
+  const t = teams.find((x) => x.key === key);
 
-  const widgets = teams.map((t) => {
-    const hasIssue = t.issues.length > 0;
-    return h('a', { class: `widget${hasIssue ? ' widget-warn' : ''}`, href: `#/squad/${t.key}` },
-      t.fatal
-        ? icon('alert', 'widget-icon warn')
-        : h('span', { class: 'widget-count' }, t.players.length),
-      h('span', { class: 'widget-body' },
-        h('span', { class: 'widget-title' }, t.label),
-        // Subtitle only when something is wrong with this group's data.
-        hasIssue ? h('span', { class: 'widget-meta warn' },
-          t.fatal ? 'Not available in this snapshot — tap for details' : 'Data problem — tap for details') : null,
-      ),
-      icon('chevron', 'widget-chevron'),
-    );
-  });
+  const select = h('select', {
+    class: 'select', id: 'squad-select', 'aria-label': 'Squad',
+    // replace so Back returns to Home rather than stepping through each squad
+    onchange: (e) => location.replace(`#/squad/${e.target.value}`),
+  },
+    teams.map((x) => h('option', { value: x.key, selected: x.key === key },
+      `${x.label} (${x.fatal ? '—' : x.players.length})`)),
+  );
 
   return {
     title: 'Squad',
     back: '#/',
     body: h('div', { class: 'stack' },
-      h('div', { class: 'widgets' }, widgets),
-    ),
-  };
-}
-
-// ---- One team's players ----------------------------------------------------
-
-export function SquadTeamView({ slotKey }) {
-  const model = getModel();
-  if (!TEAM_SLOTS.some((s) => s.key === slotKey)) return null;
-  const t = resolveTeams(model).find((x) => x.key === slotKey);
-
-  if (t.fatal) {
-    return { title: t.label, back: '#/squad', body: issueBox(t.issues) };
-  }
-
-  return {
-    title: t.label,
-    subtitle: plural(t.players.length, 'player'),
-    back: '#/squad',
-    body: h('div', { class: 'stack' },
+      h('div', { class: 'field' },
+        h('label', { class: 'field-label', for: 'squad-select' }, 'Squad'),
+        select,
+      ),
       t.issues.length ? issueBox(t.issues) : null,
-      PlayerList(t.players, { emptyTitle: 'No players in this squad', from: `/squad/${t.key}` }),
+      t.fatal ? null : PlayerList(t.players, { emptyTitle: 'No players in this squad', from: `/squad/${t.key}` }),
     ),
   };
 }
