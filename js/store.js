@@ -10,6 +10,7 @@ import { makeSnapshotRecord, buildModel } from './data/snapshot.js';
 import { buildMetrics, keyFor, findInSnapshot, playerHistory, playerKey } from './data/players.js';
 import * as Tags from './data/tags.js';
 import * as Lineups from './data/lineups.js';
+import * as Radar from './data/radar.js';
 
 const state = {
   career: null,   // { careerId, createdAt }
@@ -20,6 +21,7 @@ const state = {
   lineups: { lineups: [] }, // app-created lineups for the active career
   slotIndex: new Map(),     // derived: playerKey → Squad slot entries (default lineups only)
   prefs: new Map(),         // cached "pref:*" settings, readable synchronously
+  radar: Radar.emptyRadarPrefs(), // per-player radar choices for the active career
 };
 
 const listeners = new Set();
@@ -47,6 +49,7 @@ async function reload() {
   state.metrics = null;
   state.tags = career ? Tags.sanitizeTags(await db.getSetting(tagsKey(career), null)) : Tags.emptyTags();
   await loadLineups(career);
+  state.radar = career ? Radar.sanitizeRadarPrefs(await db.getSetting(radarKey(career), null)) : Radar.emptyRadarPrefs();
   state.prefs = new Map((await db.getAllSettings()).filter((x) => x.key.startsWith('pref:')).map((x) => [x.key.slice(5), x.value]));
   await ensureMetrics(metas);
   emit();
@@ -54,6 +57,7 @@ async function reload() {
 
 const tagsKey = (career) => `tags:${career.careerId}`;
 const lineupsKey = (career) => `lineups:${career.careerId}`;
+const radarKey = (career) => `radar:${career.careerId}`;
 
 /**
  * Load (or create once) the career's lineups. The three defaults have fixed
@@ -349,3 +353,16 @@ export async function duplicateLineup(id, name) {
 }
 export const renameLineup = (id, name) => saveLineups(Lineups.renameLineup(state.lineups, id, name));
 export const deleteLineup = (id) => saveLineups(Lineups.deleteLineup(state.lineups, id));
+
+// ---- Radar preferences (per player, per career) -----------------------------------
+// Saved without re-rendering the page, so the radar keeps its current view.
+
+export const getRadarPrefs = (key) => Radar.playerRadarPrefs(state.radar, key);
+
+export async function saveRadarSelection(key, selected) {
+  if (!state.career || !key) return;
+  const current = Radar.playerRadarPrefs(state.radar, key);
+  const next = Radar.sanitizeRadarPrefs({ players: { ...state.radar.players, [key]: { ...current, selected } } });
+  state.radar = next;
+  await db.setSetting(radarKey(state.career), next);
+}
