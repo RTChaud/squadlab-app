@@ -6,7 +6,7 @@ import { formatGameDate } from './data/snapshot.js';
 import { showError } from './ui/components/feedback.js';
 import { openDataMenu, pick, wireFileInput } from './ui/dataMenu.js';
 import { HomeView } from './ui/views/home.js';
-import { SquadView, SquadTeamView } from './ui/views/squad.js';
+import { SquadView } from './ui/views/squad.js';
 import { ShortlistsView } from './ui/views/shortlists.js';
 import { PlayerView } from './ui/views/player.js';
 import { DevelopmentView } from './ui/views/development.js';
@@ -24,8 +24,7 @@ const els = {
 
 const VIEWS = {
   home: () => HomeView({ onImport: () => pick('snapshot'), onRestore: () => pick('backup') }),
-  squad: () => SquadView(),
-  squadTeam: (p) => SquadTeamView(p),
+  squadTeam: (p) => SquadView(p),
   shortlists: (p) => ShortlistsView(p),
   player: (p, q) => PlayerView({ ...p, query: q }),
   development: (p, q) => DevelopmentView({ ...p, query: q }),
