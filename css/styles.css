@@ -108,13 +108,11 @@ svg { display: block; width: 100%; height: 100%; }
   overflow: hidden;
   background: #111214;
 }
-/* Crop the supplied logo to its flask for the small header mark. */
+/* icons/logo-mark.png: the flask from the supplied logo, cut out at 192px. */
 .brand-mark img {
   display: block;
-  width: 160%;
-  max-width: none;
-  margin-left: -30%;
-  margin-top: -19%;
+  width: 100%;
+  height: 100%;
 }
 .brand-name {
   font-size: 21px;
