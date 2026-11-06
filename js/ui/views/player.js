@@ -3,6 +3,8 @@
 import { h, icon, orDash, DASH } from '../dom.js';
 import { getPlayerProfile, tagsForPlayer, playerKeyOf } from '../../store.js';
 import { openTagSheet } from '../components/tagSheet.js';
+import { RadarSection } from '../components/radarSection.js';
+import { isNaturalGoalkeeper } from '../../data/radar.js';
 import { formatGameDate, resolveTeams } from '../../data/snapshot.js';
 import { describePositions, formatPositions } from '../../data/positions.js';
 import { persistentId } from '../../data/players.js';
@@ -144,7 +146,7 @@ function attributeGroup(group, p, open, highlightKeys = new Set()) {
 }
 
 function attributesSection(p) {
-  const isGK = (p.natural_positions || []).some((c) => String(c).toUpperCase() === 'GK');
+  const isGK = isNaturalGoalkeeper(p);
   // Goalkeepers: goalkeeping first and open, outfield technical folded away.
   const order = isGK ? ['goalkeeping', 'mental', 'physical', 'technical'] : ['technical', 'mental', 'physical', 'goalkeeping'];
   const groups = order.map((k) => ATTRIBUTE_GROUPS.find((g) => g.key === k));
@@ -261,6 +263,7 @@ export async function PlayerView({ pid, query }) {
       header(p, model),
       actionRow(p, devHref),
       details(p, model, current),
+      RadarSection(p, playerKeyOf(p)),
       attributesSection(p),
       traitsSection(p),
       familiaritySection(p),
