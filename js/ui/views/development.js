@@ -90,7 +90,6 @@ export async function DevelopmentView({ pid, query }) {
       panels.push({ key: 'attrs', title: 'Attributes', min: 1, max: 20, ticks: [1, 5, 10, 15, 20], height: 210, series: attrSeries });
     }
 
-    if (observations === 1) notes.unshift('Only one snapshot so far. Import another snapshot to see development.');
     if (points.some((x) => !x.present)) notes.push('Gaps mark snapshots in which this player was not recorded.');
 
     const width = chartArea.clientWidth || Math.min(document.documentElement.clientWidth - 32, 728);

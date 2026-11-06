@@ -28,6 +28,16 @@ function footText(p) {
   return `${pref} (L ${l} · R ${r})`;
 }
 
+/**
+ * FM's personality label (e.g. "Model Professional"). The extract currently
+ * holds only the underlying values, so the label is shown only if the
+ * extractor provides it (as `personality_label`) — never derived here.
+ */
+function personalityText(p) {
+  const label = str(p.personality_label);
+  return label ? { text: label } : { text: DASH, note: 'Label not in extract' };
+}
+
 function nationalityText(p) {
   const ids = [p.nation_id, ...(Array.isArray(p.second_nation_ids) ? p.second_nation_ids : [])].filter(Number.isInteger);
   if (!ids.length) return { text: DASH };
@@ -86,11 +96,11 @@ function details(p, model, current) {
     h('span', { class: 'detail-v' }, v, note ? h('span', { class: 'detail-note' }, note) : null));
   return h('div', { class: 'details' },
     row(current ? 'Club' : 'Last club', clubText),
-    squadText ? row(current ? 'Squad' : 'Last squad', squadText) : null,
+    row(current ? 'Squad' : 'Last squad', squadText || 'n/a'),
     row('Foot', footText(p)),
     row('Height', Number.isInteger(p.height_cm) ? `${p.height_cm} cm` : DASH),
     row('Nationality', nat.text, nat.note),
-    row('Data from', formatGameDate(model.gameDate)),
+    row('Personality', personalityText(p).text, personalityText(p).note),
   );
 }
 
@@ -135,7 +145,7 @@ function traitsSection(p) {
       ? h('ul', { class: 'traits' }, known.map((t) => h('li', {}, t)))
       : (!unknownCodes.length ? h('p', { class: 'muted small' }, 'No traits recorded.') : null),
     unknownCodes.length
-      ? h('p', { class: 'muted small' }, `${unknownCodes.length} trait${unknownCodes.length === 1 ? '' : 's'} not yet decoded by the extractor (code${unknownCodes.length === 1 ? '' : 's'} ${unknownCodes.join(', ')}).`)
+      ? h('p', { class: 'muted small' }, `+${unknownCodes.length} trait${unknownCodes.length === 1 ? '' : 's'} the extractor can’t name yet (game code${unknownCodes.length === 1 ? '' : 's'} ${unknownCodes.join(', ')}).`)
       : null,
   );
 }
@@ -171,7 +181,7 @@ function familiaritySection(p) {
     h('p', { class: 'fam-legend' },
       h('span', { class: 'ptile-key natural' }), 'Natural',
       h('span', { class: 'ptile-key accomplished' }), 'Accomplished',
-      h('span', { class: 'muted' }, ' · as listed by the extractor; numbers are FM’s 1–20 familiarity.')),
+    ),
   );
 }
 
@@ -180,9 +190,8 @@ function hiddenSection(p) {
     defs.map((a) => h('li', { class: 'attr' },
       h('span', { class: 'attr-name' }, a.label),
       h('span', { class: 'attr-val none' }, orDash(intOrNull(source?.[a.key]))))));
-  return h('details', { class: 'group hidden-group' },
+  return h('details', { class: 'group hidden-group', open: true },
     h('summary', {}, h('span', {}, 'Hidden attributes & personality'), h('span', { class: 'group-count' }, HIDDEN_ATTRS.length + PERSONALITY_ATTRS.length)),
-    h('p', { class: 'muted small' }, 'Shown exactly as recorded, without colours: their ranges and whether higher is better differ from normal attributes.'),
     h('p', { class: 'sub-head' }, 'Hidden attributes'),
     list(HIDDEN_ATTRS, p.attributes),
     h('p', { class: 'sub-head' }, 'Personality values'),
