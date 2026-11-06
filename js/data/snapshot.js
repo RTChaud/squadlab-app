@@ -21,6 +21,9 @@ export function makeSnapshotRecord(data, fileName = '') {
   };
 }
 
+/** Shortlists hidden from the app (data is still stored and backed up). */
+export const HIDDEN_SHORTLIST_IDS = new Set(['default']);
+
 function squadKind(s) {
   if (Number.isInteger(s.team_id)) return 'team';
   if (s.id === 'out_on_loan') return 'loan';
@@ -52,6 +55,9 @@ export function buildModel(record) {
     playerUids: l.player_uids,
   }));
 
+  // FM's automatic "Default shortlist" is kept in the data but not shown.
+  const visibleShortlists = shortlists.filter((l) => !HIDDEN_SHORTLIST_IDS.has(l.id));
+
   // Reverse index: which shortlists each player belongs to (for future profiles).
   const shortlistsByUid = new Map();
   for (const l of shortlists) {
@@ -71,6 +77,7 @@ export function buildModel(record) {
     playersByUid,
     squads,
     shortlists,
+    visibleShortlists,
     shortlistsByUid,
     squadById: (id) => squads.find((s) => s.id === id) || null,
     shortlistById: (id) => shortlists.find((l) => l.id === id) || null,
