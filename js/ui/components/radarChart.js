@@ -76,10 +76,6 @@ export function RadarChart(o) {
     svg.append(line);
     return line;
   });
-  for (const ring of RADAR_SCALE.rings) {
-    const [x, y] = pt(0, ring);
-    svg.append(s('text', { class: 'radar-tick', x: x + 4, y: y + 3 }, String(ring)));
-  }
 
   // data
   const pts = o.axes.map((a, i) => (a.value === null ? null : pt(i, a.value)));
