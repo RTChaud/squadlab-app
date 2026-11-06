@@ -24,6 +24,7 @@ To test locally, run `python3 -m http.server` in the folder and open `http://loc
 ## Structure
 ```
 index.html, manifest.webmanifest
+data/fm-nation-mapping.json   nation ID → name map from the save (replace when regenerated)
 css/styles.css
 icons/logo.png
 js/app.js              shell, import flow, view dispatch
@@ -35,9 +36,12 @@ js/data/snapshot.js    model building, team_slot squad linking, player summary v
 js/data/positions.js   FM-style position formatting
 js/data/attributes.js  attribute groups/labels, colour bands, traits, future role hooks
 js/data/players.js     persistent player identity (player_key), metrics, history
-js/data/nations.js     nation ID → name mapping (empty until verified)
+js/data/nations.js     reads data/fm-nation-mapping.json to show nationalities
+js/data/flags.js       nation → flag emoji
+js/data/tags.js        player tags (app data, kept in backups)
+js/data/lineups.js     4-2-3-1 slot definitions, default/custom lineups, Squad slot ranks
 js/ui/dom.js           DOM helper + icons
 js/ui/dataMenu.js      Data menu and import/export/reset flows
-js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js
-js/ui/views/           home.js, squad.js, shortlists.js, player.js, development.js
+js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js, tagSheet.js, promptSheet.js
+js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js, lineups.js, lineup.js, lineupPicker.js
 ```
