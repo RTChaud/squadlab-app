@@ -1,11 +1,11 @@
 // Squad screen: one dropdown (First Team, Reserve Team, Youth Team, Out on
-// Loan — in that fixed order) and the selected group's players, using the
+// Loan, All — in that fixed order) and the selected group's players, using the
 // same player list as the shortlists.
-// Route: #/squad (First Team) or #/squad/<first|reserve|youth|loan>
+// Route: #/squad (First Team) or #/squad/<first|reserve|youth|loan|all>
 
 import { h, icon } from '../dom.js';
 import { getModel } from '../../store.js';
-import { resolveTeams, TEAM_SLOTS } from '../../data/snapshot.js';
+import { resolveTeams } from '../../data/snapshot.js';
 import { PlayerList } from '../components/playerList.js';
 
 function issueBox(issues) {
@@ -21,16 +21,21 @@ function issueBox(issues) {
 
 export function SquadView({ slotKey } = {}) {
   const model = getModel();
-  const key = TEAM_SLOTS.some((s) => s.key === slotKey) ? slotKey : 'first';
   const teams = resolveTeams(model); // already in TEAM_SLOTS order
-  const t = teams.find((x) => x.key === key);
+  // "All": everyone in the four groups above, once each.
+  const seen = new Set();
+  const everyone = teams.flatMap((x) => x.players).filter((p) => (seen.has(p.uid) ? false : seen.add(p.uid)));
+  const allIssues = teams.filter((x) => x.issues.length).map((x) => `${x.label}: ${x.issues.join(' ')}`);
+  const groups = [...teams, { key: 'all', label: 'All', players: everyone, issues: allIssues, fatal: false }];
+  const key = groups.some((x) => x.key === slotKey) ? slotKey : 'first';
+  const t = groups.find((x) => x.key === key);
 
   const select = h('select', {
     class: 'select', id: 'squad-select', 'aria-label': 'Squad',
     // replace so Back returns to Home rather than stepping through each squad
     onchange: (e) => location.replace(`#/squad/${e.target.value}`),
   },
-    teams.map((x) => h('option', { value: x.key, selected: x.key === key },
+    groups.map((x) => h('option', { value: x.key, selected: x.key === key },
       `${x.label} (${x.fatal ? '—' : x.players.length})`)),
   );
 
