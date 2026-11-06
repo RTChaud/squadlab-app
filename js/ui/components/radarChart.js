@@ -7,6 +7,7 @@
 
 import { h } from '../dom.js';
 import { RADAR_SCALE } from '../../data/radar.js';
+import { SCORE_BAND_EDGES } from '../../data/attributes.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const s = (tag, attrs = {}, ...kids) => {
@@ -30,7 +31,9 @@ function wrapLabel(text, max = 12) {
 
 /**
  * @param {object} o
- *   axes      [{ label, value (number|null), display (string) , marker? }]
+ *   axes      [{ label, value (number|null), display (string), marker?, band? ('a1'…'a6' or null = neutral) }]
+ *   showBands draw the faint red→green score bands behind the shape (only
+ *             where higher means better for every axis)
  *   onSelect  (index) => void — tap on an axis label / point
  *   ariaLabel string
  * Returns { el, setActive(index) } or { el } with a message when < 3 axes have values.
@@ -44,10 +47,24 @@ export function RadarChart(o) {
       h('p', { class: 'empty-text' }, `${known} of ${n} axes have values; at least 3 are needed.`)), setActive() {} };
   }
 
-  const W = 400, H = 340, cx = W / 2, cy = 168, R = 100, LR = R + 20;
+  const W = 400, H = 316, cx = W / 2, cy = 158, R = 100, LR = R + 20;
   const ang = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / n; // clockwise from the top
   const pt = (i, v) => [cx + Math.cos(ang(i)) * (R * v) / RADAR_SCALE.max, cy + Math.sin(ang(i)) * (R * v) / RADAR_SCALE.max];
-  const svg = s('svg', { class: 'radar', viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': o.ariaLabel || 'Radar chart' });
+  // A small margin around the drawing keeps long single-word labels (e.g.
+  // "Communication") and two-line top labels inside the chart.
+  const PADX = 20, PADY = 6;
+  const svg = s('svg', { class: 'radar', viewBox: `${-PADX} ${-PADY} ${W + 2 * PADX} ${H + 2 * PADY}`, role: 'img', 'aria-label': o.ariaLabel || 'Radar chart' });
+
+  // Score bands: concentric polygon rings at the same score boundaries as the
+  // attribute colours, so distance from the centre means the same on every
+  // axis and for every player. Very low opacity — context only.
+  if (o.showBands) {
+    const ringPath = (v) => o.axes.map((_, i) => pt(i, v)).map(([x, y], k) => `${k ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`).join('') + 'Z';
+    for (const b of SCORE_BAND_EDGES) {
+      const d = b.from > 0 ? ringPath(b.to) + ringPath(b.from) : ringPath(b.to);
+      svg.append(s('path', { class: `radar-band ${b.cls}`, d, 'fill-rule': 'evenodd' }));
+    }
+  }
 
   // grid: rings + spokes (muted)
   for (const ring of RADAR_SCALE.rings) {
@@ -74,7 +91,7 @@ export function RadarChart(o) {
       if (a && b) svg.append(s('line', { class: 'radar-edge', x1: a[0], y1: a[1], x2: b[0], y2: b[1] }));
     }
   }
-  pts.forEach((p) => p && svg.append(s('circle', { class: 'radar-dot', cx: p[0], cy: p[1], r: 4 })));
+  pts.forEach((p, i) => p && svg.append(s('circle', { class: `radar-dot ${o.axes[i].band || 'neutral'}`, cx: p[0], cy: p[1], r: 4.5 })));
 
   // labels (+ value) and generous tap targets
   const labelEls = o.axes.map((a, i) => {
@@ -87,7 +104,7 @@ export function RadarChart(o) {
     const top = sn < -0.5 ? y - (total - 1) * lh : sn > 0.5 ? y + 6 : y - ((total - 1) * lh) / 2;
     const g = s('g', { class: `radar-label${a.value === null ? ' unavailable' : ''}`, 'data-i': i });
     lines.forEach((ln, k) => g.append(s('text', { x, y: top + k * lh, 'text-anchor': anchor, class: 'radar-name' }, ln + (k === lines.length - 1 && a.marker ? ` ${a.marker}` : ''))));
-    g.append(s('text', { x, y: top + lines.length * lh, 'text-anchor': anchor, class: 'radar-val' }, a.value === null ? 'Unavailable' : a.display));
+    g.append(s('text', { x, y: top + lines.length * lh, 'text-anchor': anchor, class: `radar-val ${a.value === null ? '' : a.band || 'neutral'}` }, a.value === null ? 'Unavailable' : a.display));
     svg.append(g);
     const hx = anchor === 'middle' ? x - 46 : anchor === 'start' ? x - 8 : x - 84;
     const hit = s('rect', { class: 'radar-hit', x: hx, y: top - 14, width: 92, height: total * lh + 12, rx: 8 });

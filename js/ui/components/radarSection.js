@@ -4,6 +4,7 @@
 
 import { h, icon } from '../dom.js';
 import { getRadarPrefs, saveRadarSelection } from '../../store.js';
+import { scoreBand } from '../../data/attributes.js';
 import {
   computeOverview, computeSelected, definitionText, overviewFor,
   SELECTABLE_GROUPS, SELECTABLE, MIN_SELECTED, MAX_SELECTED, interpretationNote,
@@ -39,24 +40,26 @@ function infoSheet(p) {
   });
 }
 
-/** Chart + tap readout + expandable list of values. */
+/**
+ * Chart + tap readout (shown once an axis is tapped). A visually hidden list
+ * gives screen readers every plotted value.
+ */
 function chartBlock(axes, { title, describe }) {
-  const readout = h('div', { class: 'radar-readout', 'aria-live': 'polite' },
-    h('span', { class: 'muted small' }, 'Tap an axis for its exact value and how it’s calculated.'));
+  const readout = h('div', { class: 'radar-readout', 'aria-live': 'polite', hidden: true });
+  const coloured = axes.map((a) => ({ ...a, band: scoreBand(a.value, a.direction || 'positive') }));
+  // Bands assume "higher is better" on every axis, so they are hidden as soon
+  // as any axis is a tendency, context-dependent or reversed.
+  const showBands = axes.every((a) => (a.direction || 'positive') === 'positive');
   const chart = RadarChart({
-    axes: axes.map((a) => ({ label: a.label, value: a.value, display: a.display, marker: a.note ? '†' : '' })),
+    axes: coloured.map((a) => ({ label: a.label, value: a.value, display: a.display, marker: a.note ? '†' : '', band: a.band })),
     ariaLabel: title,
-    onSelect: (i) => readout.replaceChildren(...describe(axes[i]).filter(Boolean)),
+    showBands,
+    onSelect: (i) => { readout.hidden = false; readout.replaceChildren(...describe(axes[i]).filter(Boolean)); },
   });
-  const list = h('details', { class: 'group radar-list' },
-    h('summary', {}, h('span', {}, 'Values')),
-    h('ul', { class: 'radar-values' }, axes.map((a) => h('li', {},
-      h('span', { class: 'rv-name' }, a.label, a.note ? ' †' : ''),
-      h('span', { class: `rv-val${a.value === null ? ' unavailable' : ''}` }, a.value === null ? 'Unavailable' : a.display),
-      a.formula ? h('span', { class: 'rv-formula' }, a.formula) : null,
-      a.note ? h('span', { class: 'rv-formula' }, a.note) : null))));
+  const srList = h('ul', { class: 'sr-only' }, axes.map((a) =>
+    h('li', {}, `${a.label}: ${a.value === null ? 'Unavailable' : a.display}${a.formula ? ` (${a.formula})` : ''}${a.note ? ` — ${a.note}` : ''}`)));
   const hasNotes = axes.some((a) => a.note);
-  return [chart.el, readout, hasNotes ? h('p', { class: 'muted small radar-foot' }, '† Higher isn’t necessarily better for this attribute.') : null, list];
+  return [chart.el, srList, readout, hasNotes ? h('p', { class: 'muted small radar-foot' }, '† Higher isn’t necessarily better for this attribute.') : null];
 }
 
 function overviewView(p) {
