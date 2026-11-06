@@ -11,6 +11,8 @@
 // field, it is only used for that career; otherwise it is used as-is.
 // Anything that cannot be resolved is shown as unavailable — never guessed.
 
+import { FLAG_CODE_BY_DB_ID, flagEmoji } from './flags.js';
+
 const MAPPING_URL = 'data/fm-nation-mapping.json';
 
 let loading = null;
@@ -45,13 +47,17 @@ export function loadNations() {
 }
 
 /**
- * Name for a save-local nation ID, or null when it can't be resolved
- * (mapping missing, belongs to another career, or ID unknown).
+ * Resolve a save-local nation ID to { name, flag } (flag may be null), or
+ * null when it can't be resolved (mapping missing, other career, unknown ID).
  */
-export function nationName(id, careerId) {
+export function resolveNation(id, careerId) {
   if (!mapping || !Number.isInteger(id)) return null;
   if (mapping.careerId && careerId && mapping.careerId !== careerId) return null;
   const entry = mapping.local.get(id);
   if (!entry) return null;
-  return entry.name || (entry.databaseId !== null ? mapping.db.get(entry.databaseId) : null) || null;
+  const name = entry.name || (entry.databaseId !== null ? mapping.db.get(entry.databaseId) : null) || null;
+  if (!name) return null;
+  return { name, flag: entry.databaseId !== null ? flagEmoji(FLAG_CODE_BY_DB_ID[entry.databaseId]) : null };
 }
+
+export const nationName = (id, careerId) => resolveNation(id, careerId)?.name ?? null;
