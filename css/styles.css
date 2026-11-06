@@ -412,12 +412,13 @@ a.prow:active { background: var(--surface-2); }
 .pfirst {
   font-size: 13px;
   color: var(--text-2);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 .plast {
   font-size: 16px;
   font-weight: 650;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.25;
+  overflow-wrap: anywhere; /* long names wrap onto a second line */
 }
 
 .ppos { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.3; }
