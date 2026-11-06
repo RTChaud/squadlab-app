@@ -11,6 +11,8 @@ const ROUTES = [
   { pattern: /^\/squad\/(first|reserve|youth|loan)\/?$/, name: 'squadTeam', keys: ['slotKey'] },
   { pattern: /^\/shortlists\/?$/, name: 'shortlists' },
   { pattern: /^\/shortlists\/(.+)$/, name: 'shortlists', keys: ['listId'] },
+  { pattern: /^\/tags\/?$/, name: 'tags' },
+  { pattern: /^\/tags\/(.+)$/, name: 'tags', keys: ['tagId'] },
   { pattern: /^\/player\/([^/]+)\/development\/?$/, name: 'development', keys: ['pid'] },
   { pattern: /^\/player\/([^/]+)\/?$/, name: 'player', keys: ['pid'] },
 ];

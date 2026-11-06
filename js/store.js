@@ -7,13 +7,15 @@ import {
   BACKUP_FORMAT, BACKUP_VERSION,
 } from './data/importer.js';
 import { makeSnapshotRecord, buildModel } from './data/snapshot.js';
-import { buildMetrics, keyFor, findInSnapshot, playerHistory } from './data/players.js';
+import { buildMetrics, keyFor, findInSnapshot, playerHistory, playerKey } from './data/players.js';
+import * as Tags from './data/tags.js';
 
 const state = {
   career: null,   // { careerId, createdAt }
   history: [],    // snapshot metadata for the active career, newest first
   model: null,    // newest snapshot
   metrics: null,  // cached metrics for the active career (loaded on demand)
+  tags: Tags.emptyTags(), // app-created player tags for the active career
 };
 
 const listeners = new Set();
@@ -39,9 +41,12 @@ async function reload() {
   state.history = career ? metas.filter((m) => m.careerId === career.careerId).sort(byDateDesc) : [];
   state.model = state.history.length ? buildModel(await db.getSnapshot(state.history[0].id)) : null;
   state.metrics = null;
+  state.tags = career ? Tags.sanitizeTags(await db.getSetting(tagsKey(career), null)) : Tags.emptyTags();
   await ensureMetrics(metas);
   emit();
 }
+
+const tagsKey = (career) => `tags:${career.careerId}`;
 
 /**
  * Make sure every stored snapshot has its derived metrics (e.g. data stored
@@ -219,4 +224,67 @@ export async function getLastShortlist() {
 export function setLastShortlist(id) {
   if (!state.career) return Promise.resolve();
   return db.setSetting(`lastShortlist:${state.career.careerId}`, id);
+}
+
+// ---- Tags (app-created; never touched by FM snapshot imports) --------------------
+
+export const listTags = () => Tags.listTags(state.tags);
+export const tagsForPlayer = (key) => Tags.tagsForPlayer(state.tags, key);
+export const tagById = (id) => state.tags.tags[id] || null;
+export const playerKeyOf = (p) => (state.career ? playerKey(p, state.career.careerId) : null);
+
+async function saveTags(next) {
+  await db.setSetting(tagsKey(state.career), next);
+  state.tags = next;
+  emit();
+}
+
+/** Assign (creating if needed) a tag by name. Resolves { tag, created, already }. */
+export async function addTagToPlayer(key, name) {
+  const r = Tags.assignTag(state.tags, key, name);
+  if (!r.already) await saveTags(r.state);
+  return r;
+}
+
+/** Remove one tag from one player (deletes the tag if it was its last player). */
+export async function removeTagFromPlayer(key, tagId) {
+  const r = Tags.unassignTag(state.tags, key, tagId);
+  if (r.state !== state.tags) await saveTags(r.state);
+  return r;
+}
+
+/**
+ * Players in a tag, once each. Uses the newest snapshot when the player is in
+ * it; otherwise their last recorded snapshot (current: false, gameDate set).
+ * Resolves [{ player, current, gameDate }].
+ */
+export async function getTagMembers(tagId) {
+  if (!state.model) return [];
+  const keys = Tags.playerKeysForTag(state.tags, tagId);
+  const out = [];
+  const missing = [];
+  for (const key of keys) {
+    const p = findInSnapshot(state.model.raw, key);
+    if (p) out.push({ player: p, current: true, gameDate: state.model.gameDate });
+    else missing.push(key);
+  }
+  if (missing.length) {
+    const metrics = [...(await careerMetrics())].sort((a, b) => b.gameDate.localeCompare(a.gameDate));
+    const cache = new Map();
+    for (const key of missing) {
+      const m = metrics.find((x) => x.players.some((p) => p.key === key));
+      if (!m) continue; // not in any stored snapshot: keep the tag, nothing to show
+      if (!cache.has(m.id)) cache.set(m.id, await db.getSnapshot(m.id));
+      const p = findInSnapshot(cache.get(m.id).data, key);
+      if (p) out.push({ player: p, current: false, gameDate: m.gameDate });
+    }
+  }
+  return out;
+}
+
+export async function getLastTag() {
+  return state.career ? db.getSetting(`lastTag:${state.career.careerId}`, null) : null;
+}
+export function setLastTag(id) {
+  return state.career ? db.setSetting(`lastTag:${state.career.careerId}`, id) : Promise.resolve();
 }

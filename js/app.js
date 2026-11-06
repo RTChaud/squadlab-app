@@ -8,6 +8,7 @@ import { openDataMenu, pick, wireFileInput } from './ui/dataMenu.js';
 import { HomeView } from './ui/views/home.js';
 import { SquadView } from './ui/views/squad.js';
 import { ShortlistsView } from './ui/views/shortlists.js';
+import { TagsView } from './ui/views/tags.js';
 import { PlayerView } from './ui/views/player.js';
 import { DevelopmentView } from './ui/views/development.js';
 
@@ -26,13 +27,14 @@ const VIEWS = {
   home: () => HomeView({ onImport: () => pick('snapshot'), onRestore: () => pick('backup') }),
   squadTeam: (p) => SquadView(p),
   shortlists: (p) => ShortlistsView(p),
+  tags: (p) => TagsView(p),
   player: (p, q) => PlayerView({ ...p, query: q }),
   development: (p, q) => DevelopmentView({ ...p, query: q }),
 };
 
 // Remember list scroll positions so Back from a profile returns to the same spot.
 const scrollMemory = new Map();
-const REMEMBER_SCROLL = new Set(['squadTeam', 'shortlists']);
+const REMEMBER_SCROLL = new Set(['squadTeam', 'shortlists', 'tags']);
 
 let renderToken = 0;
 let lastRoute = null;
