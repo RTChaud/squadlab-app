@@ -1,28 +1,28 @@
 // Shared player list used by Squad, Shortlists and Tags.
 // Takes player records (one underlying object per player) and renders
-// First name / Last name / Position / Age / CA / PA, plus the optional
-// "Squad slot" field. Missing values show "—".
+// Name / Position / Age / CA / PA. Missing values show "—".
 //
-// Squad slot is derived from the three default lineups (see data/lineups.js)
-// and can be shown via the column toggle and sorted by even when hidden.
+// With opts.lineupSlots (the Squad screen) it adds the "XI" column first:
+// each slot the player holds in the three default lineups, coloured by tier
+// (First XI green, Backup XI orange, Future XI red), and sortable by the
+// lineup hierarchy (see data/lineups.js).
 
 import { h, orDash } from '../dom.js';
 import { playerSummary } from '../../data/snapshot.js';
 import { linkWithFrom } from '../../router.js';
-import { squadSlotsFor, playerKeyOf, getPrefSync, setPref } from '../../store.js';
-import { hierarchyRank } from '../../data/lineups.js';
+import { squadSlotsFor, playerKeyOf } from '../../store.js';
+import { hierarchyRank, DEFAULT_LINEUPS } from '../../data/lineups.js';
 
-/** Optional columns the user can switch on (stored as a preference). */
-const OPTIONAL_COLUMNS = [{ key: 'slot', label: 'Squad slot', pref: 'list.showSquadSlot' }];
+const TIER_NAME = Object.fromEntries(DEFAULT_LINEUPS.map((d) => [d.tier, d.name]));
 
-/** Everything the list can be sorted by, including hidden optional fields. */
+/** Everything the list can be sorted by ('slot' only where the XI column exists). */
 const SORT_OPTIONS = [
+  { key: 'slot', label: 'XI', defaultDir: 'asc', lineupOnly: true },
   { key: 'name', label: 'Name', defaultDir: 'asc' },
   { key: 'pos', label: 'Position', defaultDir: 'asc' },
   { key: 'age', label: 'Age', defaultDir: 'asc' },
   { key: 'ca', label: 'CA', defaultDir: 'desc' },
   { key: 'pa', label: 'PA', defaultDir: 'desc' },
-  { key: 'slot', label: 'Squad slot', defaultDir: 'asc' },
 ];
 
 // Sort choice is shared across lists for the session.
@@ -45,7 +45,7 @@ function compare(a, b, key) {
   }
 }
 
-function sorted(rows) {
+function sorted(rows, sort) {
   const dir = sort.dir === 'asc' ? 1 : -1;
   return [...rows].sort((a, b) => {
     // Unavailable values always sink to the bottom, whatever the direction.
@@ -62,43 +62,51 @@ function sorted(rows) {
   });
 }
 
-function rowEl(r, from, showSlot) {
+// Wrap between positions, never inside one ("ST (C)" stays on one line).
+const keepTogether = (text) => text.replace(/ \(/g, '\u00a0(');
+
+function xiCell(r) {
+  return h('div', { class: 'pxi' }, r.slots.map((x) =>
+    h('span', { class: `xi t${x.tier}`, title: `${TIER_NAME[x.tier]} · ${x.slot}`, 'aria-label': `${TIER_NAME[x.tier]} ${x.slot}` }, x.slot)));
+}
+
+function rowEl(r, from, withXI) {
   const inner = [
+    withXI ? xiCell(r) : null,
     h('div', { class: 'pname' },
       h('span', { class: 'pfirst' }, orDash(r.firstName)),
       h('span', { class: 'plast' }, orDash(r.lastName)),
       r.note ? h('span', { class: 'pnote' }, r.note) : null,
-      // Squad slot wraps under the name so the table never gets wider.
-      showSlot ? h('span', { class: `pslot-line${r.slotLabel ? '' : ' none'}` },
-        h('span', { class: 'pslot-k' }, 'Squad slot '), r.slotLabel || '—') : null,
     ),
     h('div', { class: 'ppos' },
-      r.positions.natural ? h('span', {}, r.positions.natural) : h('span', { class: 'dash' }, '—'),
-      r.positions.accomplished ? h('span', { class: 'ppos-alt' }, r.positions.accomplished) : null,
+      r.positions.natural ? h('span', {}, keepTogether(r.positions.natural)) : h('span', { class: 'dash' }, '—'),
+      r.positions.accomplished ? h('span', { class: 'ppos-alt' }, keepTogether(r.positions.accomplished)) : null,
     ),
     h('div', { class: 'pnum page' + (r.age === null ? ' dash' : '') }, orDash(r.age)),
     h('div', { class: 'pnum' + (r.ca === null ? ' dash' : '') }, orDash(r.ca)),
     h('div', { class: 'pnum pa' + (r.pa === null ? ' dash' : '') }, orDash(r.pa)),
   ];
   // Rows open the shared player profile, remembering which list we came from.
+  const cls = `prow${withXI ? ' with-xi' : ''}`;
   return h('li', { dataset: { uid: r.uid } },
     r.pid
-      ? h('a', { class: 'prow', href: linkWithFrom(`/player/${encodeURIComponent(r.pid)}`, from) }, inner)
-      : h('div', { class: 'prow' }, inner));
+      ? h('a', { class: cls, href: linkWithFrom(`/player/${encodeURIComponent(r.pid)}`, from) }, inner)
+      : h('div', { class: cls }, inner));
 }
 
 /**
  * @param {object[]} players  player records from the snapshot
  * @param {object}   opts     { emptyTitle, emptyText, from (route path to return to),
- *                              rowNote(player) → optional small note under the name }
+ *                              rowNote(player) → optional small note under the name,
+ *                              lineupSlots: true → show/sort the XI column (Squad screen) }
  */
 export function PlayerList(players, opts = {}) {
   const rows = players.map((p) => {
-    const slots = squadSlotsFor(playerKeyOf(p));
+    const slots = opts.lineupSlots ? squadSlotsFor(playerKeyOf(p)) : [];
     return {
       ...playerSummary(p),
       note: opts.rowNote ? opts.rowNote(p) : null,
-      slotLabel: slots.map((x) => x.label).join(' · '),
+      slots,
       slotRank: hierarchyRank(slots),
     };
   });
@@ -114,45 +122,46 @@ export function PlayerList(players, opts = {}) {
     return wrap;
   }
 
+  const withXI = !!opts.lineupSlots;
+  const options = SORT_OPTIONS.filter((o) => withXI || !o.lineupOnly);
   const list = h('ol', { class: 'plist' });
-  const head = h('div', { class: 'phead', role: 'row' });
+  const head = h('div', { class: `phead${withXI ? ' with-xi' : ''}`, role: 'row' });
   const tools = h('div', { class: 'plist-tools' });
-  const slotCol = OPTIONAL_COLUMNS[0];
-  let showSlot = !!getPrefSync(slotCol.pref, false);
+  // A list without the XI column falls back to CA if XI was the last sort used.
+  const effective = () => (options.some((o) => o.key === sort.key) ? sort : { key: 'ca', dir: 'desc' });
 
   const renderTools = () => {
+    const cur = effective();
     const sortSel = h('select', { class: 'select select-sm', 'aria-label': 'Sort by',
       onchange: (e) => {
-        const o = SORT_OPTIONS.find((x) => x.key === e.target.value);
+        const o = options.find((x) => x.key === e.target.value);
         sort = { key: o.key, dir: o.defaultDir };
         render();
       } },
-      SORT_OPTIONS.map((o) => h('option', { value: o.key, selected: o.key === sort.key }, `Sort: ${o.label}`)));
-    const dirBtn = h('button', { type: 'button', class: 'tool-btn', 'aria-label': sort.dir === 'asc' ? 'Ascending' : 'Descending',
-      onclick: () => { sort = { ...sort, dir: sort.dir === 'asc' ? 'desc' : 'asc' }; render(); } }, sort.dir === 'asc' ? '▲' : '▼');
-    const colBtn = h('button', { type: 'button', class: `tool-btn tool-toggle${showSlot ? ' on' : ''}`, 'aria-pressed': String(showSlot),
-      onclick: () => { showSlot = !showSlot; setPref(slotCol.pref, showSlot); render(); } },
-      h('span', { class: 'tool-check', 'aria-hidden': 'true' }, showSlot ? '✓' : ''), slotCol.label);
-    tools.replaceChildren(sortSel, dirBtn, colBtn);
+      options.map((o) => h('option', { value: o.key, selected: o.key === cur.key }, `Sort: ${o.label}`)));
+    const dirBtn = h('button', { type: 'button', class: 'tool-btn', 'aria-label': cur.dir === 'asc' ? 'Ascending' : 'Descending',
+      onclick: () => { sort = { ...cur, dir: cur.dir === 'asc' ? 'desc' : 'asc' }; render(); } }, cur.dir === 'asc' ? '▲' : '▼');
+    tools.replaceChildren(sortSel, dirBtn);
   };
 
   const render = () => {
     renderTools();
+    const cur = effective();
     head.replaceChildren(
-      ...SORT_OPTIONS.filter((c) => c.key !== 'slot').map((c) => {
-        const active = sort.key === c.key;
+      ...options.map((c) => {
+        const active = cur.key === c.key;
         return h('button', {
           type: 'button',
           class: `phead-btn col-${c.key}${active ? ' active' : ''}`,
-          'aria-sort': active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none',
+          'aria-sort': active ? (cur.dir === 'asc' ? 'ascending' : 'descending') : 'none',
           onclick: () => {
-            sort = active ? { key: c.key, dir: sort.dir === 'asc' ? 'desc' : 'asc' } : { key: c.key, dir: c.defaultDir };
+            sort = active ? { key: c.key, dir: cur.dir === 'asc' ? 'desc' : 'asc' } : { key: c.key, dir: c.defaultDir };
             render();
           },
-        }, c.key === 'pos' ? 'Pos' : c.label, active ? h('span', { class: 'sort-arrow' }, sort.dir === 'asc' ? '▲' : '▼') : null);
+        }, c.key === 'pos' ? 'Pos' : c.label, active ? h('span', { class: 'sort-arrow' }, cur.dir === 'asc' ? '▲' : '▼') : null);
       })
     );
-    list.replaceChildren(...sorted(rows).map((r) => rowEl(r, opts.from, showSlot)));
+    list.replaceChildren(...sorted(rows, cur).map((r) => rowEl(r, opts.from, withXI)));
   };
   render();
 
