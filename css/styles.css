@@ -670,6 +670,14 @@ body.sheet-open { overflow: hidden; }
 .detail-k { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .detail-v { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
 .detail-note { display: block; font-size: 12px; font-weight: 500; color: var(--muted); }
+.detail-note[hidden] { display: none; }
+.flags {
+  display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  min-height: 38px; margin: -3px 0; padding: 0; border: 0; background: none;
+  color: inherit; font: inherit; cursor: pointer;
+}
+.flag { font-size: 32px; line-height: 1; }
+.flag-text { font-size: 14px; font-weight: 600; }
 
 .psection { display: flex; flex-direction: column; gap: 8px; }
 .psection h3 { margin: 6px 0 0; font-size: 17px; font-weight: 750; }
