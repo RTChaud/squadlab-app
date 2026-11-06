@@ -710,14 +710,14 @@ details.group[open] > summary::after { transform: rotate(-135deg) translateY(-2p
 
 .attr-list {
   list-style: none; margin: 0; padding: 0 6px 8px;
-  display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 10px;
 }
 .attr {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   min-height: 34px; padding: 0 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   border-radius: 6px;
 }
-.attr-name { font-size: 14px; color: var(--text-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attr-name { font-size: 14px; line-height: 1.25; padding: 4px 0; color: var(--text-2); min-width: 0; overflow-wrap: anywhere; }
 .attr-val { flex: none; min-width: 26px; text-align: right; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .attr-val.none { color: var(--text); font-weight: 650; }
 /* Reserved for future role key attributes (orange), separate from value colours. */
