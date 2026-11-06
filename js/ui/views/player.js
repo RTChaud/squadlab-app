@@ -8,7 +8,7 @@ import { describePositions, formatPositions } from '../../data/positions.js';
 import { persistentId } from '../../data/players.js';
 import { resolveNation, loadNations } from '../../data/nations.js';
 import {
-  ATTRIBUTE_GROUPS, HIDDEN_ATTRS, PERSONALITY_ATTRS, BAND_LEGEND,
+  ATTRIBUTE_GROUPS, HIDDEN_ATTRS, PERSONALITY_ATTRS, VALUE_DIRECTION,
   attrBand, describeTraits, intOrNull,
 } from '../../data/attributes.js';
 import { backTarget, linkWithFrom } from '../../router.js';
@@ -117,9 +117,17 @@ function details(p, model, current) {
   );
 }
 
-function legend() {
-  return h('div', { class: 'band-legend', 'aria-label': 'Attribute colour scale' },
-    BAND_LEGEND.map((b) => h('span', { class: `band-chip ${b.band}` }, b.range)));
+/**
+ * One attribute row: neutral name, coloured value badge. The small marker
+ * before the name is reserved for future role key attributes (orange); it is
+ * empty for now.
+ */
+function attrRow(labelText, v, direction, isKey = false) {
+  const band = attrBand(v, direction);
+  return h('li', { class: `attr${isKey ? ' key-attr' : ''}` },
+    h('span', { class: 'attr-mark', 'aria-hidden': 'true' }),
+    h('span', { class: 'attr-name' }, labelText),
+    h('span', { class: `attr-val ${band || 'none'}` }, orDash(v)));
 }
 
 /**
@@ -128,11 +136,7 @@ function legend() {
  */
 function attributeGroup(group, p, open, highlightKeys = new Set()) {
   const rows = group.attrs.map((a) => {
-    const v = intOrNull(p.attributes?.[a.key]);
-    const band = attrBand(v);
-    return h('li', { class: `attr${highlightKeys.has(a.key) ? ' key-attr' : ''}` },
-      h('span', { class: 'attr-name' }, a.label),
-      h('span', { class: `attr-val ${band || 'none'}` }, orDash(v)));
+    return attrRow(a.label, intOrNull(p.attributes?.[a.key]), 'positive', highlightKeys.has(a.key));
   });
   return h('details', { class: 'group', open },
     h('summary', {}, h('span', {}, group.label), h('span', { class: 'group-count' }, group.attrs.length)),
@@ -145,7 +149,7 @@ function attributesSection(p) {
   const order = isGK ? ['goalkeeping', 'mental', 'physical', 'technical'] : ['technical', 'mental', 'physical', 'goalkeeping'];
   const groups = order.map((k) => ATTRIBUTE_GROUPS.find((g) => g.key === k));
   return h('section', { class: 'psection' },
-    h('div', { class: 'psection-head' }, h('h3', {}, 'Attributes'), legend()),
+    h('h3', {}, 'Attributes'),
     groups.map((g) => attributeGroup(g, p, isGK ? g.key !== 'technical' : g.key !== 'goalkeeping')),
   );
 }
@@ -205,9 +209,7 @@ function familiaritySection(p) {
 
 function hiddenSection(p) {
   const list = (defs, source) => h('ul', { class: 'attr-list neutral' },
-    defs.map((a) => h('li', { class: 'attr' },
-      h('span', { class: 'attr-name' }, a.label),
-      h('span', { class: 'attr-val none' }, orDash(intOrNull(source?.[a.key]))))));
+    defs.map((a) => attrRow(a.label, intOrNull(source?.[a.key]), VALUE_DIRECTION[a.key] || 'neutral')));
   return h('details', { class: 'group hidden-group', open: true },
     h('summary', {}, h('span', {}, 'Hidden attributes & personality'), h('span', { class: 'group-count' }, HIDDEN_ATTRS.length + PERSONALITY_ATTRS.length)),
     h('p', { class: 'sub-head' }, 'Hidden attributes'),
