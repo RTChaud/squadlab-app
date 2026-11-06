@@ -660,8 +660,29 @@ body.sheet-open { overflow: hidden; }
 .badge-value { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .badge-pa .badge-value { color: var(--accent); }
 
-.dev-btn { min-height: 50px; }
+.profile-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.dev-btn, .tags-btn { min-height: 50px; padding: 0 12px; }
+.tags-btn .icon { width: 20px; height: 20px; color: var(--accent); }
+.count-badge {
+  display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px;
+  border-radius: 999px; background: var(--accent); color: #17120c;
+  font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
 .dev-btn .icon { width: 20px; height: 20px; }
+.pnote { font-size: 12px; font-weight: 600; color: var(--b2, #e0a43c); }
+
+/* Tags sheet */
+.tag-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag-chip span { overflow-wrap: anywhere; }
+.tag-add { align-self: flex-start; min-height: 44px; font-size: 15px; }
+.tag-add .icon { width: 18px; height: 18px; }
+.tag-options { display: flex; flex-direction: column; max-height: 38vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.tag-options .opt { justify-content: space-between; width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
+.tag-opt-name { overflow-wrap: anywhere; }
+.tag-create { justify-content: flex-start !important; gap: 10px; color: var(--accent) !important; }
+.tag-create .icon { width: 18px; height: 18px; flex: none; }
+.tag-create strong { color: var(--text); }
+.tag-note { margin: 6px 8px; }
 
 .details {
   display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
