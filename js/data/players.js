@@ -69,3 +69,35 @@ export function playerHistory(metricsList, careerId, key) {
         : { gameDate: m.gameDate, present: false, ca: null, attrs: {}, club: null };
     });
 }
+
+// ---- Display helpers shared by lineups and pickers ------------------------------
+
+/**
+ * Club ownership from the extract's own field (is_club_player), falling back
+ * to squad membership. Shortlist membership never makes a player "ours".
+ */
+export function isClubOwned(p, data) {
+  if (typeof p.is_club_player === 'boolean') return p.is_club_player;
+  return Array.isArray(data?.squad_player_uids) ? data.squad_player_uids.includes(p.uid) : false;
+}
+
+const txt = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+
+/** Full display name: common name if FM has one, else first + last. */
+export function displayNameOf(p) {
+  return txt(p.common_name) || [txt(p.first_name), txt(p.last_name)].filter(Boolean).join(' ') || txt(p.name) || '—';
+}
+
+/** Compact name for small spaces: common name, else "N. Surname". */
+export function compactNameOf(p) {
+  if (txt(p.common_name)) return txt(p.common_name);
+  const first = txt(p.first_name), last = txt(p.last_name);
+  if (first && last) return `${first.charAt(0)}. ${last}`;
+  return last || first || txt(p.name) || '—';
+}
+
+/** Accent-insensitive search text for a player. */
+export function searchTextOf(p) {
+  return [p.common_name, p.first_name, p.last_name, p.name].filter((x) => typeof x === 'string')
+    .join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
