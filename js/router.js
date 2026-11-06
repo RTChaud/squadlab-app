@@ -8,7 +8,7 @@
 const ROUTES = [
   { pattern: /^\/?$/, name: 'home' },
   { pattern: /^\/squad\/?$/, name: 'squadTeam' },
-  { pattern: /^\/squad\/(first|reserve|youth|loan)\/?$/, name: 'squadTeam', keys: ['slotKey'] },
+  { pattern: /^\/squad\/(first|reserve|youth|loan|all)\/?$/, name: 'squadTeam', keys: ['slotKey'] },
   { pattern: /^\/shortlists\/?$/, name: 'shortlists' },
   { pattern: /^\/shortlists\/(.+)$/, name: 'shortlists', keys: ['listId'] },
   { pattern: /^\/lineups\/?$/, name: 'lineups' },
