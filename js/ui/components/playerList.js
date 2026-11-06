@@ -9,6 +9,7 @@ import { linkWithFrom } from '../../router.js';
 const COLUMNS = [
   { key: 'name', label: 'Name', defaultDir: 'asc' },
   { key: 'pos', label: 'Pos', defaultDir: 'asc' },
+  { key: 'age', label: 'Age', defaultDir: 'asc' },
   { key: 'ca', label: 'CA', defaultDir: 'desc' },
   { key: 'pa', label: 'PA', defaultDir: 'desc' },
 ];
@@ -34,7 +35,7 @@ function sorted(rows) {
   const dir = sort.dir === 'asc' ? 1 : -1;
   return [...rows].sort((a, b) => {
     // Unavailable values always sink to the bottom, whatever the direction.
-    if (sort.key === 'ca' || sort.key === 'pa') {
+    if (sort.key === 'ca' || sort.key === 'pa' || sort.key === 'age') {
       const an = a[sort.key] === null, bn = b[sort.key] === null;
       if (an !== bn) return an ? 1 : -1;
     }
@@ -52,6 +53,7 @@ function rowEl(r, from) {
       r.positions.natural ? h('span', {}, r.positions.natural) : h('span', { class: 'dash' }, '—'),
       r.positions.accomplished ? h('span', { class: 'ppos-alt' }, r.positions.accomplished) : null,
     ),
+    h('div', { class: 'pnum page' + (r.age === null ? ' dash' : '') }, orDash(r.age)),
     h('div', { class: 'pnum' + (r.ca === null ? ' dash' : '') }, orDash(r.ca)),
     h('div', { class: 'pnum pa' + (r.pa === null ? ' dash' : '') }, orDash(r.pa)),
   ];

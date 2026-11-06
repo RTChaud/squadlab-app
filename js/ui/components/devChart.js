@@ -129,7 +129,7 @@ export function DevChart(o) {
     svg.append(hit);
 
     return h('figure', { class: 'chart-panel' },
-      h('figcaption', { class: 'chart-title' }, panel.title, h('span', { class: 'chart-scale' }, `scale ${panel.min}–${panel.max}`)),
+      h('figcaption', { class: 'chart-title' }, panel.title),
       svg);
   });
 
