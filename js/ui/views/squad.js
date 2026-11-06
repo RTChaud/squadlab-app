@@ -43,7 +43,7 @@ export function SquadView({ slotKey } = {}) {
         select,
       ),
       t.issues.length ? issueBox(t.issues) : null,
-      t.fatal ? null : PlayerList(t.players, { emptyTitle: 'No players in this squad', from: `/squad/${t.key}` }),
+      t.fatal ? null : PlayerList(t.players, { emptyTitle: 'No players in this squad', from: `/squad/${t.key}`, lineupSlots: true }),
     ),
   };
 }
