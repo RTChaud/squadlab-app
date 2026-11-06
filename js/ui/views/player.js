@@ -5,7 +5,7 @@ import { getPlayerProfile } from '../../store.js';
 import { formatGameDate, resolveTeams } from '../../data/snapshot.js';
 import { describePositions, formatPositions } from '../../data/positions.js';
 import { persistentId } from '../../data/players.js';
-import { nationName, loadNations } from '../../data/nations.js';
+import { resolveNation, loadNations } from '../../data/nations.js';
 import {
   ATTRIBUTE_GROUPS, HIDDEN_ATTRS, PERSONALITY_ATTRS, BAND_LEGEND,
   attrBand, describeTraits, intOrNull,
@@ -28,17 +28,33 @@ function footText(p) {
   return `${pref} (L ${l} · R ${r})`;
 }
 
-/** Main nationality first, then any second nationalities. */
-function nationalityText(p, careerId) {
+/**
+ * Nationality value: small flags (main nationality first), tap to show the
+ * names. Nations without a flag emoji show their name instead.
+ */
+function nationalityValue(p, careerId) {
   const ids = [p.nation_id, ...(Array.isArray(p.second_nation_ids) ? p.second_nation_ids : [])].filter(Number.isInteger);
-  if (!ids.length) return { text: DASH };
-  const names = ids.map((id) => nationName(id, careerId));
-  if (names.every(Boolean)) return { text: names.join(', ') };
-  if (names.some(Boolean)) {
-    const unknown = ids.filter((_, i) => !names[i]);
-    return { text: names.filter(Boolean).join(', '), note: `+ unknown nation ID${unknown.length > 1 ? 's' : ''} ${unknown.join(', ')}` };
-  }
-  return { text: 'Nationality unavailable', note: `FM nation ID${ids.length > 1 ? 's' : ''} ${ids.join(', ')}` };
+  if (!ids.length) return { value: DASH };
+  const nations = ids.map((id) => resolveNation(id, careerId));
+  const known = nations.filter(Boolean);
+  if (!known.length) return { value: 'Nationality unavailable', note: `FM nation ID${ids.length > 1 ? 's' : ''} ${ids.join(', ')}` };
+
+  const unknown = ids.filter((_, i) => !nations[i]);
+  const names = known.map((n) => n.name).join(', ');
+  const namesEl = h('span', { class: 'detail-note', hidden: true }, names);
+  const btn = h('button', {
+    type: 'button', class: 'flags', 'aria-label': names, 'aria-expanded': 'false',
+    onclick: () => {
+      namesEl.hidden = !namesEl.hidden;
+      btn.setAttribute('aria-expanded', String(!namesEl.hidden));
+    },
+  }, known.map((n) => (n.flag
+    ? h('span', { class: 'flag', 'aria-hidden': 'true' }, n.flag)
+    : h('span', { class: 'flag-text' }, n.name))));
+  return {
+    value: btn,
+    extra: [namesEl, unknown.length ? h('span', { class: 'detail-note' }, `+ unknown nation ID${unknown.length > 1 ? 's' : ''} ${unknown.join(', ')}`) : null],
+  };
 }
 
 /** Club, plus the internal squad from the displayed snapshot's membership lists. */
@@ -85,16 +101,16 @@ function header(p, model) {
 
 function details(p, model, current) {
   const { clubText, squadText } = clubAndSquad(p, model);
-  const nat = nationalityText(p, model.careerId);
-  const row = (k, v, note) => h('div', { class: 'detail' },
+  const nat = nationalityValue(p, model.careerId);
+  const row = (k, v, note, extra) => h('div', { class: 'detail' },
     h('span', { class: 'detail-k' }, k),
-    h('span', { class: 'detail-v' }, v, note ? h('span', { class: 'detail-note' }, note) : null));
+    h('span', { class: 'detail-v' }, v, note ? h('span', { class: 'detail-note' }, note) : null, extra || null));
   return h('div', { class: 'details' },
     row(current ? 'Club' : 'Last club', clubText),
     row(current ? 'Squad' : 'Last squad', squadText || 'n/a'),
     row('Foot', footText(p)),
     row('Height', Number.isInteger(p.height_cm) ? `${p.height_cm} cm` : DASH),
-    row('Nationality', nat.text, nat.note),
+    row('Nationality', nat.value, nat.note, nat.extra),
     // Reserved slot (kept empty for now) so the grid stays 2 × 3; to be used later.
     h('div', { class: 'detail detail-reserved', 'aria-hidden': 'true' }),
   );
@@ -146,14 +162,13 @@ function traitsSection(p) {
   );
 }
 
-// Pitch layout, attack at the top; left side on the left.
+// Pitch layout, attack at the top; left side on the left. (No sweeper: not in current FM.)
 const PITCH = [
   [null, 'stc', null],
   ['aml', 'amc', 'amr'],
   ['ml', 'mc', 'mr'],
   ['wbl', 'dm', 'wbr'],
   ['dl', 'dc', 'dr'],
-  [null, 'sw', null],
   [null, 'gk', null],
 ];
 
