@@ -86,6 +86,29 @@ export function attrBand(v, direction = 'positive') {
 }
 
 /**
+ * Band for a possibly decimal score (e.g. a radar overview axis), using the
+ * same boundaries on the unrounded value: [1,6) a1, [6,10) a2, [10,13) a3,
+ * [13,15) a4, [15,18) a5, [18,20] a6. Integers give the same result as
+ * attrBand. Missing/out-of-range values and 'neutral' get null.
+ */
+export function scoreBand(v, direction = 'positive') {
+  if (direction === 'neutral' || typeof v !== 'number' || !Number.isFinite(v) || v < 1 || v > 20) return null;
+  const x = direction === 'negative' ? 21 - v : v;
+  if (x < 6) return 'a1';
+  if (x < 10) return 'a2';
+  if (x < 13) return 'a3';
+  if (x < 15) return 'a4';
+  if (x < 18) return 'a5';
+  return 'a6';
+}
+
+/** Score boundaries used for the radar background bands (radius values). */
+export const SCORE_BAND_EDGES = [
+  { cls: 'a1', from: 0, to: 6 }, { cls: 'a2', from: 6, to: 10 }, { cls: 'a3', from: 10, to: 13 },
+  { cls: 'a4', from: 13, to: 15 }, { cls: 'a5', from: 15, to: 18 }, { cls: 'a6', from: 18, to: 20 },
+];
+
+/**
  * Explicit direction for each hidden attribute and personality value.
  * Only fields whose meaning is clear are coloured; context-dependent ones
  * stay neutral until we decide otherwise.

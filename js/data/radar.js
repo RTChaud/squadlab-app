@@ -62,7 +62,7 @@ export function computeAxis(axis, p) {
   const missing = inputs.filter((i) => !valid(i.value)).map((i) => i.label);
   let value = null;
   if (!missing.length) value = inputs.reduce((sum, i) => sum + i.value * i.weight, 0);
-  return { id: axis.id, label: axis.label, value, inputs, missing, formula: formulaText(axis, inputs, value) };
+  return { id: axis.id, label: axis.label, value, inputs, missing, formula: formulaText(axis, inputs, value), direction: 'positive' };
 }
 
 function formulaText(axis, inputs, value) {
@@ -103,6 +103,18 @@ export const SELECTABLE_GROUPS = [
 ];
 export const SELECTABLE = Object.fromEntries(SELECTABLE_GROUPS.flatMap((g) => g.attrs.map((a) => [a.key, { ...a, group: g.key, groupLabel: g.label, source: g.source }])));
 
+/**
+ * Colour direction for a selectable attribute: tendencies are neutral;
+ * hidden/personality values follow VALUE_DIRECTION (unlisted = neutral);
+ * normal football attributes are positive.
+ */
+export function directionFor(key) {
+  if (TENDENCIES.has(key)) return 'neutral';
+  const def = SELECTABLE[key];
+  if (def && (def.group === 'hidden' || def.group === 'personality')) return VALUE_DIRECTION[key] || 'neutral';
+  return 'positive';
+}
+
 /** Caution text for attributes where higher isn't simply better, else null. */
 export function interpretationNote(key) {
   if (TENDENCIES.has(key)) return 'Tendency — higher isn’t necessarily better.';
@@ -118,7 +130,7 @@ export function computeSelected(p, keys) {
     const def = SELECTABLE[k];
     const raw = def.source === 'personality' ? p.personality?.[k] : p.attributes?.[k];
     const value = valid(raw) ? raw : null;
-    return { id: k, label: def.label, value, missing: value === null ? [def.label] : [], note: interpretationNote(k), group: def.groupLabel };
+    return { id: k, label: def.label, value, missing: value === null ? [def.label] : [], note: interpretationNote(k), group: def.groupLabel, direction: directionFor(k) };
   });
 }
 
