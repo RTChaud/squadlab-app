@@ -34,8 +34,9 @@ function footText(p) {
  * extractor provides it (as `personality_label`) — never derived here.
  */
 function personalityText(p) {
+  // Missing, empty or not text (older extracts) → "n/a", never an error.
   const label = str(p.personality_label);
-  return label ? { text: label } : { text: DASH, note: 'Label not in extract' };
+  return { text: label || 'n/a' };
 }
 
 function nationalityText(p) {
