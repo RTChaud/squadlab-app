@@ -1,11 +1,13 @@
 // Tags screen: one dropdown of all tags (alphabetical, with counts) and the
-// selected tag's players, using the same player list as Squad and Shortlists.
+// selected tag's players, in the same browser as Squad and Shortlists (search,
+// filters, sorting, columns and saved views; its settings are remembered
+// separately). Tagged players missing from the latest snapshot show their last
+// recorded data, marked "Last recorded <date>".
 // Route: #/tags or #/tags/<tagId>
 
 import { h } from '../dom.js';
 import { listTags, tagById, getTagMembers, getLastTag, setLastTag } from '../../store.js';
-import { formatGameDate } from '../../data/snapshot.js';
-import { PlayerList } from '../components/playerList.js';
+import { PlayerBrowser } from '../components/playerBrowser.js';
 
 export async function TagsView({ tagId }) {
   const tags = listTags();
@@ -34,7 +36,7 @@ export async function TagsView({ tagId }) {
   }, tags.map((t) => h('option', { value: t.id, selected: t.id === current.id }, `${t.name} (${t.count})`)));
 
   const members = await getTagMembers(current.id);
-  const notes = new Map(members.filter((m) => !m.current).map((m) => [m.player, `Last recorded: ${formatGameDate(m.gameDate)}`]));
+  const older = new Map(members.filter((m) => !m.current).map((m) => [m.player, m.gameDate]));
 
   return {
     title: 'Tags',
@@ -44,11 +46,12 @@ export async function TagsView({ tagId }) {
         h('label', { class: 'field-label', for: 'tag-select' }, 'Tag'),
         select,
       ),
-      PlayerList(members.map((m) => m.player), {
+      await PlayerBrowser({
+        section: 'tags', source: current.id, sourceName: `“${current.name}”`,
+        players: members.map((m) => m.player), older,
+        from: `/tags/${encodeURIComponent(current.id)}`,
         emptyTitle: 'No players to show',
         emptyText: 'None of this tag’s players are in a stored snapshot.',
-        from: `/tags/${encodeURIComponent(current.id)}`,
-        rowNote: (p) => notes.get(p) || null,
       }),
     ),
   };
