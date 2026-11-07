@@ -7,10 +7,11 @@ import {
 } from '../../store.js';
 import { openTagSheet } from '../components/tagSheet.js';
 import { openSheet } from '../components/sheet.js';
+import { FamiliarityPitch } from '../components/familiarityPitch.js';
 import { RadarSection } from '../components/radarSection.js';
 import { isNaturalGoalkeeper } from '../../data/radar.js';
 import { formatGameDate, resolveTeams } from '../../data/snapshot.js';
-import { describePositions, formatPositions, famBand } from '../../data/positions.js';
+import { describePositions } from '../../data/positions.js';
 import { persistentId, profileNameOf } from '../../data/players.js';
 import { resolveNation, loadNations } from '../../data/nations.js';
 import {
@@ -262,33 +263,8 @@ function traitsSection(p) {
 }
 
 // Pitch layout, attack at the top; left side on the left. (No sweeper: not in current FM.)
-const PITCH = [
-  [null, 'stc', null],
-  ['aml', 'amc', 'amr'],
-  ['ml', 'mc', 'mr'],
-  ['wbl', 'dm', 'wbr'],
-  ['dl', 'dc', 'dr'],
-  [null, 'gk', null],
-];
-
-// Familiarity colour bands (famBand) are shared from data/positions.js.
-
 function familiaritySection(p) {
-  // Values come straight from the extract's `positions` block (sw is kept in
-  // the data but not drawn). Missing values stay "—", never 0 or 1.
-  const fam = p.positions && typeof p.positions === 'object' ? p.positions : {};
-  const tile = (code) => {
-    if (!code) return h('span', { class: 'ptile ptile-blank' });
-    const v = intOrNull(fam[code]);
-    const band = famBand(v);
-    return h('span', { class: `ptile ${band ? band.cls : 'fnone'}`, title: `${formatPositions([code])}: ${v ?? '—'}` },
-      h('span', { class: 'ptile-code' }, formatPositions([code])),
-      h('span', { class: 'ptile-val' }, orDash(v)));
-  };
-  return h('section', { class: 'psection' },
-    h('h3', {}, 'Position familiarity'),
-    h('div', { class: 'pitch' }, PITCH.map((row) => h('div', { class: 'pitch-row' }, row.map(tile)))),
-  );
+  return h('section', { class: 'psection' }, h('h3', {}, 'Position familiarity'), FamiliarityPitch(p));
 }
 
 function hiddenSection(p, chg) {
@@ -361,10 +337,10 @@ export async function PlayerView({ pid, query }) {
       headEl,
       actionRow(p, devHref),
       details(p, model, current, backHere),
+      familiaritySection(p),
       RadarSection(p, playerKeyOf(p)),
       attributesSection(p, chg),
       traitsSection(p),
-      familiaritySection(p),
       hiddenSection(p, chg),
     ),
   };
