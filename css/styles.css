@@ -533,6 +533,8 @@ a.prow:active { background: var(--surface-2); }
 .sheet-note { margin: 0; font-size: 13px; color: var(--muted); }
 .sheet-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
 body.sheet-open { overflow: hidden; }
+/* Keyboard open: the backdrop is fitted to the space above it (sheet.js). */
+.sheet-backdrop.kb-open { padding-top: 8px; padding-bottom: 8px; }
 
 .ack {
   display: flex;
@@ -1326,21 +1328,23 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 /* Player header stays under the page header while scrolling the attributes. */
 .cmp-head {
   position: sticky; top: var(--header-h); z-index: 4;
-  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: start; gap: 8px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-rows: repeat(4, auto);
+  align-items: start; gap: 2px 8px;
   margin: 0 calc(-1 * var(--gutter)); padding: 10px var(--gutter);
   background: var(--bg); border-bottom: 1px solid var(--border);
 }
-.cmp-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.cmp-left { align-items: flex-start; text-align: left; }
-.cmp-right { align-items: flex-end; text-align: right; }
-.cmp-empty-col { align-self: center; }
-.cmp-right.cmp-empty-col { align-items: flex-end; }
+/* Each column shares the header's rows (name, position · age, CA/PA, actions),
+   so a name that wraps keeps the lines below level on both sides. */
+.cmp-col { display: grid; grid-row: 1 / span 4; grid-template-rows: subgrid; grid-template-columns: minmax(0, 1fr); align-items: start; min-width: 0; }
+.cmp-left { grid-column: 1; justify-items: start; text-align: left; }
+.cmp-right { grid-column: -2; justify-items: end; text-align: right; }
+.cmp-empty-col .cmp-select { grid-row: 1 / -1; align-self: center; }
 .cmp-select { width: 100%; min-height: 44px; padding: 0 8px; font-size: 14px; gap: 5px; white-space: nowrap; justify-content: center; }
-.cmp-empty-col { align-self: stretch !important; }
-.cmp-head:has(.cmp-empty-col) .cmp-vs { display: none; }
-.cmp-head:has(.cmp-empty-col) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .cmp-select .icon { flex: none; width: 16px; height: 16px; color: var(--accent); }
 .cmp-select .icon svg { width: 100%; height: 100%; display: block; }
+.cmp-vs { grid-column: 2; grid-row: 1 / span 4; align-self: center; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.cmp-head:has(.cmp-empty-col) .cmp-vs { display: none; }
+.cmp-head:has(.cmp-empty-col) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .cmp-name {
   max-width: 100%; color: var(--text); text-decoration: none; font-size: 16px; font-weight: 750; line-height: 1.2;
   overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto;
@@ -1348,13 +1352,24 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 }
 .cmp-meta { font-size: 12px; color: var(--muted); }
 .cmp-old { color: #e0a43c; font-weight: 600; }
+.cmp-capa { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cmp-capa b { color: var(--text); font-weight: 800; }
+.cmp-capa b.pa { color: var(--accent); }
+.cmp-capa-sep { margin: 0 5px; }
+.cmp-actions { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+.cmp-right .cmp-actions { flex-direction: row-reverse; }
 .cmp-change {
-  margin-top: 2px; min-height: 30px; padding: 0 10px; border-radius: 999px;
+  min-height: 30px; padding: 0 10px; border-radius: 999px;
   border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2);
-  font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer;
+  font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; white-space: nowrap;
 }
-.cmp-change:active { background: var(--surface); }
-.cmp-vs { align-self: center; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.cmp-remove {
+  display: grid; place-items: center; flex: none; width: 30px; height: 30px; padding: 0; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); cursor: pointer;
+}
+.cmp-change:active, .cmp-remove:active { background: var(--surface); }
+.cmp-remove .icon { width: 14px; height: 14px; }
+.cmp-remove .icon svg { width: 100%; height: 100%; display: block; }
 .cmp-empty { margin-top: 12px; }
 
 .cmp-table { display: flex; flex-direction: column; gap: 10px; }
@@ -1377,7 +1392,7 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .cmp-attr:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* Player picker */
-.sheet-picker .cp-top { position: sticky; top: -18px; z-index: 2; margin: 0 -18px; padding: 6px 18px 8px; background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
+.sheet-picker .cp-top { position: sticky; top: -10px; z-index: 2; margin: 0 -18px; padding: 6px 18px 8px; background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
 .cp-scope { margin: 0; font-size: 13px; }
 .cp-scope strong { color: var(--text); font-weight: 700; }
 .cp-nav { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
