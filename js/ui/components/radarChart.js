@@ -122,3 +122,79 @@ export function RadarChart(o) {
 
   return { el: h('div', { class: 'radar-wrap' }, svg), setActive };
 }
+
+/**
+ * Two players on one radar (Comparison tab). Fixed 1–20 scale, quiet grid, no
+ * score bands. Each series keeps its column's style: left = solid line,
+ * right = dashed line. Missing values are gaps: a full shape is drawn only when
+ * every axis has a value, otherwise only neighbouring known points are joined.
+ * A player with fewer than 3 values gets no shape and a note instead.
+ *
+ * @param {object} o
+ *   labels    [string]                                   axis names, clockwise from the top
+ *   series    [{ side: 'left'|'right', name, values: [number|null], display: [string|null] }]
+ *   ariaLabel string
+ */
+export function RadarCompareChart(o) {
+  const n = o.labels.length;
+  const W = 400, H = 316, cx = W / 2, cy = 158, R = 100, LR = R + 20;
+  const ang = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / n;
+  const pt = (i, v) => [cx + Math.cos(ang(i)) * (R * v) / RADAR_SCALE.max, cy + Math.sin(ang(i)) * (R * v) / RADAR_SCALE.max];
+  const PADX = 20, PADY = 6;
+  const svg = s('svg', { class: 'radar radar-cmp', viewBox: `${-PADX} ${-PADY} ${W + 2 * PADX} ${H + 2 * PADY}`, 'aria-hidden': 'true' });
+
+  for (const ring of RADAR_SCALE.rings) {
+    svg.append(s('polygon', { class: 'radar-ring', points: o.labels.map((_, i) => pt(i, ring).join(',')).join(' ') }));
+  }
+  o.labels.forEach((_, i) => { const [x, y] = pt(i, RADAR_SCALE.max); svg.append(s('line', { class: 'radar-spoke', x1: cx, y1: cy, x2: x, y2: y })); });
+
+  const notes = [];
+  for (const se of o.series) {
+    const known = se.values.filter((v) => v !== null).length;
+    if (known < 3) {
+      notes.push(`Not enough values to draw ${se.name}’s shape (${known} of ${n} axes have values).`);
+      continue;
+    }
+    const pts = se.values.map((v, i) => (v === null ? null : pt(i, v)));
+    const g = s('g', { class: `rc-series rc-${se.side}`, 'data-side': se.side });
+    if (known === n) {
+      g.append(s('polygon', { class: 'rc-area', points: pts.map((p) => p.join(',')).join(' ') }));
+    } else {
+      for (let i = 0; i < n; i++) {
+        const a = pts[i], b = pts[(i + 1) % n];
+        if (a && b) g.append(s('line', { class: 'rc-edge', x1: a[0], y1: a[1], x2: b[0], y2: b[1] }));
+      }
+    }
+    pts.forEach((p) => p && g.append(s('circle', { class: 'rc-dot', cx: p[0], cy: p[1], r: 3.2 })));
+    svg.append(g);
+  }
+
+  // Labels: axis name, then each player's value in their column's colour.
+  o.labels.forEach((label, i) => {
+    const c = Math.cos(ang(i)), sn = Math.sin(ang(i));
+    const x = cx + c * LR, y = cy + sn * LR;
+    const anchor = Math.abs(c) < 0.25 ? 'middle' : c > 0 ? 'start' : 'end';
+    const lines = wrapLabel(label);
+    const total = lines.length + 1, lh = 14;
+    const top = sn < -0.5 ? y - (total - 1) * lh : sn > 0.5 ? y + 6 : y - ((total - 1) * lh) / 2;
+    const g = s('g', { class: 'radar-label' });
+    lines.forEach((ln, k) => g.append(s('text', { x, y: top + k * lh, 'text-anchor': anchor, class: 'radar-name' }, ln)));
+    const vals = s('text', { x, y: top + lines.length * lh, 'text-anchor': anchor, class: 'rc-vals' });
+    o.series.forEach((se, k) => {
+      if (k) vals.append(s('tspan', { class: 'rc-sep' }, ' · '));
+      vals.append(s('tspan', { class: `rc-val rc-${se.side}` }, se.display[i] ?? '—'));
+    });
+    g.append(vals);
+    svg.append(g);
+  });
+
+  const sample = (side) => s('svg', { class: 'rc-sample', viewBox: '0 0 26 8', 'aria-hidden': 'true' },
+    s('line', { class: `rc-sample-line rc-${side}`, x1: 1, y1: 4, x2: 25, y2: 4 }));
+  const legend = h('div', { class: 'rc-legend' }, o.series.map((se) =>
+    h('span', { class: `rc-key rc-key-${se.side}` }, sample(se.side), h('span', { class: 'rc-key-name' }, se.name))));
+  const sr = h('ul', { class: 'sr-only' }, o.labels.map((label, i) =>
+    h('li', {}, `${label}: ${o.series.map((se) => `${se.name} ${se.display[i] ?? 'unavailable'}`).join(', ')}`)));
+
+  return h('div', { class: 'radar-wrap rc-wrap', role: 'group', 'aria-label': o.ariaLabel || 'Radar comparison' },
+    svg, legend, ...notes.map((t) => h('p', { class: 'rc-note' }, t)), sr);
+}
