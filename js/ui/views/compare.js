@@ -37,12 +37,21 @@ function playerHead(side, res, otherPid) {
   const name = profileNameOf(p);
   const pos = describePositions(p).natural;
   const age = intOrNull(p.age);
+  const ca = intOrNull(p.ability?.current);
+  const paRaw = intOrNull(p.ability?.potential);
+  const pa = paRaw !== null && paRaw > 0 ? paRaw : null; // ≤ 0 is an FM range code, not a PA
+  // Each line sits on a shared grid row, so both columns stay level when a name wraps.
   return h('div', { class: `cmp-col cmp-${side}` },
     h('a', { class: 'cmp-name', href: linkWithFrom(`/player/${encodeURIComponent(persistentId(p))}`, '/compare') }, name.main),
     res.current
       ? h('span', { class: 'cmp-meta' }, [pos, age !== null ? String(age) : null].filter(Boolean).join(' · ') || DASH)
       : h('span', { class: 'cmp-meta cmp-old' }, `Last recorded ${formatGameDate(res.model.gameDate)}`),
-    h('button', { type: 'button', class: 'cmp-change', 'aria-label': `Change ${side} player (${name.main})`, onclick: () => pick(side, otherPid) }, 'Change player'));
+    h('span', { class: 'cmp-capa', 'aria-label': `CA ${ca ?? 'unavailable'}, PA ${pa ?? 'unavailable'}` },
+      'CA ', h('b', {}, ca !== null && ca >= 0 ? String(ca) : DASH), h('span', { class: 'cmp-capa-sep', 'aria-hidden': 'true' }, '·'),
+      'PA ', h('b', { class: 'pa' }, pa !== null ? String(pa) : DASH)),
+    h('div', { class: 'cmp-actions' },
+      h('button', { type: 'button', class: 'cmp-change', 'aria-label': `Change ${side} player (${name.main})`, onclick: () => pick(side, otherPid) }, 'Change'),
+      h('button', { type: 'button', class: 'cmp-remove', 'aria-label': `Remove ${name.main} from the comparison`, title: 'Remove', onclick: () => setCompareSide(side, null) }, icon('close'))));
 }
 
 function valueCell(v, def, who) {
