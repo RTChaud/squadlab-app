@@ -10,6 +10,7 @@ import { SquadView } from './ui/views/squad.js';
 import { ShortlistsView } from './ui/views/shortlists.js';
 import { TagsView } from './ui/views/tags.js';
 import { LineupsView } from './ui/views/lineups.js';
+import { CompareView } from './ui/views/compare.js';
 import { LineupView } from './ui/views/lineup.js';
 import { LineupPickerView, pickerOpenedFrom } from './ui/views/lineupPicker.js';
 import { PlayerView } from './ui/views/player.js';
@@ -32,6 +33,7 @@ const VIEWS = {
   shortlists: (p) => ShortlistsView(p),
   tags: (p) => TagsView(p),
   lineups: () => LineupsView(),
+  compare: () => CompareView(),
   lineup: (p, q) => LineupView({ ...p, query: q }),
   lineupPick: (p) => LineupPickerView(p),
   player: (p, q) => PlayerView({ ...p, query: q }),
@@ -40,7 +42,7 @@ const VIEWS = {
 
 // Remember list scroll positions so Back from a profile returns to the same spot.
 const scrollMemory = new Map();
-const REMEMBER_SCROLL = new Set(['squadTeam', 'shortlists', 'tags']);
+const REMEMBER_SCROLL = new Set(['squadTeam', 'shortlists', 'tags', 'compare']);
 
 let renderToken = 0;
 let lastRoute = null;

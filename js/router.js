@@ -12,6 +12,7 @@ const ROUTES = [
   { pattern: /^\/shortlists\/?$/, name: 'shortlists' },
   { pattern: /^\/shortlists\/(.+)$/, name: 'shortlists', keys: ['listId'] },
   { pattern: /^\/lineups\/?$/, name: 'lineups' },
+  { pattern: /^\/compare\/?$/, name: 'compare' },
   { pattern: /^\/lineups\/([^/]+)\/pick\/([A-Z]+)\/?$/, name: 'lineupPick', keys: ['id', 'slot'] },
   { pattern: /^\/lineups\/([^/]+)\/?$/, name: 'lineup', keys: ['id'] },
   { pattern: /^\/tags\/?$/, name: 'tags' },

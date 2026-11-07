@@ -26,6 +26,7 @@ const state = {
   radar: Radar.emptyRadarPrefs(), // per-player radar choices for the active career
   changes: Changes.emptyChangePrefs(), // per-player 'Show changes' toggle + baseline
   lists: ListView.emptyListPrefs(),     // Squad/Shortlists table settings + saved views
+  compare: { left: null, right: null }, // Comparison selections (persistent player ids)
 };
 
 const listeners = new Set();
@@ -56,6 +57,7 @@ async function reload() {
   state.radar = career ? Radar.sanitizeRadarPrefs(await db.getSetting(radarKey(career), null)) : Radar.emptyRadarPrefs();
   state.changes = career ? Changes.sanitizeChangePrefs(await db.getSetting(changesKey(career), null)) : Changes.emptyChangePrefs();
   state.lists = career ? ListView.sanitizeListPrefs(await db.getSetting(listsKey(career), null)) : ListView.emptyListPrefs();
+  state.compare = sanitizeCompare(career ? await db.getSetting(compareKey(career), null) : null);
   state.prefs = new Map((await db.getAllSettings()).filter((x) => x.key.startsWith('pref:')).map((x) => [x.key.slice(5), x.value]));
   await ensureMetrics(metas);
   emit();
@@ -66,6 +68,7 @@ const lineupsKey = (career) => `lineups:${career.careerId}`;
 const radarKey = (career) => `radar:${career.careerId}`;
 const changesKey = (career) => `changes:${career.careerId}`;
 const listsKey = (career) => `lists:${career.careerId}`;
+const compareKey = (career) => `compare:${career.careerId}`;
 
 /**
  * Load (or create once) the career's lineups. The three defaults have fixed
@@ -450,3 +453,20 @@ export function deleteListView(id) {
 
 /** Metrics of every snapshot in the active career (for list development columns). */
 export const getCareerMetrics = () => careerMetrics();
+
+// ---- Comparison (two selected players, per career) --------------------------------
+
+const pidOrNull = (v) => (typeof v === 'string' && v ? v : null);
+function sanitizeCompare(raw) {
+  return { left: pidOrNull(raw?.left), right: pidOrNull(raw?.right) };
+}
+
+export const getCompare = () => state.compare;
+
+/** Set one side ('left' | 'right') to a persistent player id (or null); the other side is kept. */
+export async function setCompareSide(side, pid) {
+  if (!state.career || (side !== 'left' && side !== 'right')) return;
+  state.compare = sanitizeCompare({ ...state.compare, [side]: pid });
+  await db.setSetting(compareKey(state.career), state.compare);
+  emit();
+}
