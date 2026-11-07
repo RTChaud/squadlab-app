@@ -26,7 +26,7 @@ const state = {
   radar: Radar.emptyRadarPrefs(), // per-player radar choices for the active career
   changes: Changes.emptyChangePrefs(), // per-player 'Show changes' toggle + baseline
   lists: ListView.emptyListPrefs(),     // Squad/Shortlists table settings + saved views
-  compare: { left: null, right: null, mode: 'all', selected: [] }, // Comparison: players (persistent ids), Compare by mode, selected attributes
+  compare: { left: null, right: null, mode: 'all', selected: [], roles: {} }, // Comparison: players (persistent ids), Compare by mode, selected attributes, role per phase
 };
 
 const listeners = new Set();
@@ -373,6 +373,15 @@ export const deleteLineup = (id) => saveLineups(Lineups.deleteLineup(state.lineu
 
 export const getRadarPrefs = (key) => Radar.playerRadarPrefs(state.radar, key);
 
+/** Save one phase's { position, role } for a player's Position/role radar. */
+export async function saveRadarRole(key, phase, sel) {
+  if (!state.career || !key) return;
+  const current = Radar.playerRadarPrefs(state.radar, key);
+  const next = Radar.sanitizeRadarPrefs({ players: { ...state.radar.players, [key]: { ...current, roles: { ...current.roles, [phase]: sel } } } });
+  state.radar = next;
+  await db.setSetting(radarKey(state.career), next);
+}
+
 export async function saveRadarSelection(key, selected) {
   if (!state.career || !key) return;
   const current = Radar.playerRadarPrefs(state.radar, key);
@@ -465,6 +474,7 @@ function sanitizeCompare(raw) {
     right: pidOrNull(raw?.right),
     mode: COMPARE_MODES.includes(raw?.mode) ? raw.mode : 'all',
     selected,
+    roles: Object.fromEntries(Radar.ROLE_PHASES.map((ph) => [ph.id, Radar.sanitizeRoleSel(raw?.roles?.[ph.id])])),
   };
 }
 
