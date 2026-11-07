@@ -1233,10 +1233,6 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .tval.attr-val { display: inline-block; min-width: 26px; padding: 1px 3px; font-size: 13.5px; }
 
 .pos-sheet-sub { margin: -6px 0 0; }
-.pos-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.pos-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 6px 10px; border-radius: 8px; background: var(--surface-2); font-size: 14px; font-weight: 600; }
-.pos-item-label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; }
-.pos-nat { font-size: 11px; font-weight: 700; color: var(--accent); }
 
 @media (min-width: 620px) {
   .ptable { --tgap: 12px; --tpad: 16px; }
@@ -1298,18 +1294,17 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .tool-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .tool-row.center { justify-content: center; }
 .tool-btn-accent { border-color: var(--accent); color: var(--accent); }
-.view-modified { margin: 0; font-size: 13px; font-weight: 600; color: #e0a43c; }
 .col-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; }
 .col-row { display: flex; align-items: center; gap: 2px; min-height: 46px; padding: 0 4px 0 12px; border-bottom: 1px solid var(--border); }
 .col-row:last-child { border-bottom: 0; }
 .col-name { flex: 1; min-width: 0; font-size: 15px; }
-.icon-btn {
+.col-btn {
   display: grid; place-items: center; flex: none; width: 38px; height: 38px; border: 0; border-radius: 8px;
   background: none; color: var(--text-2); font: inherit; font-size: 18px; cursor: pointer;
 }
-.icon-btn:active { background: var(--surface-2); }
-.icon-btn:disabled { opacity: 0.25; cursor: default; }
-.icon-btn-spacer { flex: none; width: 38px; }
+.col-btn:active { background: var(--surface-2); }
+.col-btn:disabled { opacity: 0.25; cursor: default; }
+.col-btn-spacer { display: block; flex: none; width: 38px; height: 38px; }
 .col-restore { align-self: flex-start; padding: 0; }
 /* Long sheets (Filters, View): actions stay reachable at the bottom. */
 .sheet-tall .sheet-actions {
@@ -1321,3 +1316,8 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .opt-btn { width: 100%; justify-content: space-between; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
 .opt-btn[disabled] { opacity: 0.45; }
 .sheet:focus { outline: none; }
+
+/* Attribute chooser: search + A–Z / By category switch on one row. */
+.picker-top { display: flex; gap: 8px; align-items: center; }
+.picker-top .picker-search { flex: 1 1 auto; min-width: 0; }
+.picker-order { flex: none; min-height: 44px; min-width: 6.4rem; justify-content: center; }
