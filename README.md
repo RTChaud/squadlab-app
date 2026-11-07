@@ -34,14 +34,17 @@ js/data/db.js          IndexedDB (snapshots, snapshotIndex, settings, metrics; u
 js/data/importer.js    snapshot + backup parsing and validation
 js/data/snapshot.js    model building, team_slot squad linking, player summary values
 js/data/positions.js   FM-style position formatting
-js/data/attributes.js  attribute groups/labels, colour bands, traits, future role hooks
+js/data/attributes.js  attribute groups/labels, colour bands, value direction, traits, future role hooks
+js/data/attributeInfo.js  short attribute explanations + source (SI FM24 manual), bundled offline
+js/data/changes.js     "Show changes" preferences and change colouring rules
 js/data/players.js     persistent player identity (player_key), metrics, history
 js/data/nations.js     reads data/fm-nation-mapping.json to show nationalities
 js/data/flags.js       nation → flag emoji
 js/data/tags.js        player tags (app data, kept in backups)
 js/data/lineups.js     4-2-3-1 slot definitions, default/custom lineups, Squad slot ranks
+js/data/radar.js       radar overviews, selectable attributes, radar preferences
 js/ui/dom.js           DOM helper + icons
 js/ui/dataMenu.js      Data menu and import/export/reset flows
-js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js, tagSheet.js, promptSheet.js
+js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js, tagSheet.js, promptSheet.js, radarChart.js, radarSection.js
 js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js, lineups.js, lineup.js, lineupPicker.js
 ```
