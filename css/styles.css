@@ -1126,3 +1126,198 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+/* ---- Squad / Shortlists browser (search, filters, views, table) -------------------- */
+
+.browser { display: flex; flex-direction: column; gap: 10px; }
+.btools { display: flex; align-items: center; gap: 8px; }
+.bsearch { position: relative; flex: 1 1 auto; min-width: 0; }
+.bsearch-input {
+  width: 100%; height: 40px; padding: 0 36px 0 34px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  font: inherit; font-size: 16px; /* 16px stops iOS zooming on focus */
+  -webkit-appearance: none; appearance: none;
+}
+.bsearch-input::placeholder { color: var(--muted); }
+.bsearch-input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+.bsearch-input:focus { outline: none; border-color: var(--accent); }
+.bsearch-icon { position: absolute; left: 10px; top: 50%; width: 17px; height: 17px; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.bsearch-icon svg { width: 100%; height: 100%; display: block; }
+.bsearch-clear {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%;
+  background: none; color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer;
+}
+.bsearch-clear:active { background: var(--surface); color: var(--text); }
+.btools .tool-btn { flex: none; min-height: 40px; gap: 5px; padding: 0 9px; }
+.tool-btn .icon { width: 16px; height: 16px; color: var(--accent); }
+.tool-btn .icon svg { width: 100%; height: 100%; display: block; }
+.tool-btn .count-badge { min-width: 19px; height: 19px; font-size: 11px; padding: 0 5px; }
+.view-btn-name { max-width: 6.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mod-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+
+.bchips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.bchips[hidden] { display: none; }
+.fchip { min-height: 32px; font-size: 13px; padding-left: 10px; gap: 4px; }
+.fchip .chip-x { width: 26px; height: 26px; font-size: 18px; }
+.fchip-text { overflow-wrap: anywhere; }
+.xi-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.xi-dot.t1 { background: #8fdc9c; } .xi-dot.t2 { background: #f6b46a; } .xi-dot.t3 { background: #ef8f86; }
+
+.bmeta { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.bcount { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.bcount-n { font-size: 14px; font-weight: 650; color: var(--text-2); }
+.bcount-dev { font-size: 12px; color: var(--muted); }
+.bsort { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.bsort .select-sm { max-width: 11rem; }
+
+/* Table: rows are grids sharing one column template; Name is pinned. */
+/* overflow: clip rounds the corners without becoming a scroll container (keeps sticky headings). */
+.ptable { --tgap: 6px; --tpad: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: clip; }
+.thead {
+  position: sticky; top: var(--header-h); z-index: 3;
+  overflow-x: auto; scrollbar-width: none;
+  background: var(--surface-2); border-bottom: 1px solid var(--border);
+}
+.thead::-webkit-scrollbar { display: none; }
+.tscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.trow { --row-bg: var(--surface); display: grid; column-gap: var(--tgap); align-items: center; padding: 0 var(--tpad); }
+.thead .trow { --row-bg: var(--surface-2); }
+.tbody .trow { min-height: 52px; padding-top: 7px; padding-bottom: 7px; border-bottom: 1px solid var(--border); background: var(--row-bg); }
+.tbody .trow:last-child { border-bottom: 0; }
+.trow.link { cursor: pointer; }
+.trow.link:active { --row-bg: var(--surface-2); }
+@media (hover: hover) { .trow.link:hover { --row-bg: #23252b; } }
+/* The pinned Name cell also covers the gaps either side, so scrolled columns
+   pass underneath it cleanly. First column: it covers the row padding instead. */
+.name-cell {
+  position: sticky; left: 0; z-index: 1; background: var(--row-bg);
+  margin: -7px calc(-1 * var(--tgap)); padding: 7px var(--tgap); align-self: stretch; display: flex; align-items: center;
+}
+.name-cell:first-child { margin-left: calc(-1 * var(--tpad)); padding-left: var(--tpad); }
+/* Heading cell is a button (.th resets padding/background), so restate both. */
+.thead .th.name-cell { margin-top: 0; margin-bottom: 0; padding: 0 var(--tgap); background: var(--row-bg); }
+.thead .th.name-cell:first-child { padding-left: var(--tpad); }
+.scrolled-x .name-cell { box-shadow: 8px 0 8px -8px rgba(0, 0, 0, 0.7); }
+.th {
+  display: flex; align-items: center; gap: 2px; min-height: 38px; min-width: 0; padding: 0; border: 0; background: none;
+  font: inherit; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--muted); white-space: nowrap; cursor: pointer;
+}
+.th.num { justify-content: flex-end; }
+.th.active { color: var(--accent); }
+.th-text { overflow: hidden; text-overflow: ellipsis; }
+.tc { min-width: 0; }
+.tc.num { text-align: right; font-size: 14.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tc.num.pa { color: var(--accent); }
+.tc.num.muted-num { font-weight: 600; color: var(--text-2); }
+.tc.text { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.tc.clip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tc.dash, .tc .dash { color: var(--muted); font-weight: 500; }
+.tc.delta { font-size: 13.5px; }
+.xi-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.pname-link { display: flex; flex-direction: column; min-width: 0; color: inherit; text-decoration: none; }
+.pname-link .plast { overflow-wrap: break-word; }
+.pos-btn {
+  display: block;
+  width: calc(100% + 6px); min-height: 40px; margin: 0 -3px; padding: 2px 3px; border: 0; border-radius: 8px;
+  background: none; color: var(--text); font: inherit; font-size: 12px; font-weight: 600; line-height: 1.3; text-align: left; cursor: pointer;
+}
+.pos-btn:active { background: var(--surface-2); }
+.pos-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+/* Natural positions, then a compact "+N" for the rest (full list on tap). */
+.pos-nat-text { overflow-wrap: break-word; }
+.pos-more { margin-left: 4px; font-size: 11px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.nat-cell { display: flex; flex-wrap: wrap; gap: 2px; font-size: 18px; line-height: 1; }
+.tflag-text { font-size: 11px; font-weight: 700; color: var(--text-2); }
+.tval.attr-val { display: inline-block; min-width: 26px; padding: 1px 3px; font-size: 13.5px; }
+
+.pos-sheet-sub { margin: -6px 0 0; }
+.pos-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pos-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 6px 10px; border-radius: 8px; background: var(--surface-2); font-size: 14px; font-weight: 600; }
+.pos-item-label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; }
+.pos-nat { font-size: 11px; font-weight: 700; color: var(--accent); }
+
+@media (min-width: 620px) {
+  .ptable { --tgap: 12px; --tpad: 16px; }
+  .pos-btn { font-size: 13px; }
+}
+
+/* Filters and View sheets */
+.sheet-title-sm { font-size: 18px; margin-bottom: 8px; }
+.filter-form, .view-form { display: flex; flex-direction: column; gap: 18px; }
+.fsec { display: flex; flex-direction: column; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.fsec-title { margin: 0; padding: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.fsub { margin: 2px 0 0; font-size: 12px; font-weight: 650; color: var(--muted); }
+.fhint { margin: 0; font-size: 13px; color: var(--muted); }
+.ferror { margin: 0; font-size: 13px; font-weight: 600; color: var(--danger); }
+.ferror[hidden] { display: none; }
+.tchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tchip {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 12px;
+  border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2);
+  font: inherit; font-size: 14px; font-weight: 650; cursor: pointer;
+}
+.tchip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+.tchip.tier::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.tchip.tier.t1::before { background: #8fdc9c; } .tchip.tier.t2::before { background: #f6b46a; } .tchip.tier.t3::before { background: #ef8f86; }
+.tchip.tier.t0::before { background: none; box-shadow: inset 0 0 0 1.5px var(--muted); }
+.tchip.tier.t1.on { border-color: #8fdc9c; background: rgba(143, 220, 156, 0.12); }
+.tchip.tier.t2.on { border-color: #f6b46a; background: rgba(246, 180, 106, 0.12); }
+.tchip.tier.t3.on { border-color: #ef8f86; background: rgba(239, 143, 134, 0.12); }
+.tchip.tier.t0.on { border-color: var(--text-2); background: rgba(255, 255, 255, 0.06); }
+.fpitch { display: flex; flex-direction: column; gap: 6px; }
+.fpitch-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.fpitch .tchip { padding: 0 4px; font-size: 13px; border-radius: 10px; }
+.frow { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.frow > .select { flex: 1 1 auto; }
+.frow .select-sm { flex: 0 0 auto; max-width: none; }
+.frange { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; }
+.frange .ferror { grid-column: 1 / -1; }
+.frange-label { font-size: 14px; font-weight: 650; color: var(--text-2); }
+.finput {
+  width: 100%; min-width: 0; height: 40px; padding: 0 10px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; font-size: 16px;
+}
+.finput:focus { outline: none; border-color: var(--accent); }
+.seg { display: inline-flex; align-self: flex-start; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.seg-btn { min-height: 36px; padding: 0 14px; border: 0; background: none; color: var(--text-2); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+.seg-btn + .seg-btn { border-left: 1px solid var(--border); }
+.seg-btn.on { background: var(--accent-soft); color: var(--text); }
+.fconds { display: flex; flex-direction: column; gap: 10px; }
+.fcond { display: flex; flex-direction: column; gap: 4px; }
+.fcond-main { display: grid; grid-template-columns: minmax(0, 1fr) auto 3.2rem 30px; gap: 6px; align-items: center; }
+.fcond-attr {
+  min-height: 40px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text); font: inherit; font-size: 14px; font-weight: 650; text-align: left;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+}
+.fcond .select.select-sm.fcond-op { max-width: 7.2rem; min-height: 40px; }
+.fcond-val { padding: 0 6px; text-align: center; }
+.fadd { align-self: flex-start; }
+.tool-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tool-row.center { justify-content: center; }
+.tool-btn-accent { border-color: var(--accent); color: var(--accent); }
+.view-modified { margin: 0; font-size: 13px; font-weight: 600; color: #e0a43c; }
+.col-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; }
+.col-row { display: flex; align-items: center; gap: 2px; min-height: 46px; padding: 0 4px 0 12px; border-bottom: 1px solid var(--border); }
+.col-row:last-child { border-bottom: 0; }
+.col-name { flex: 1; min-width: 0; font-size: 15px; }
+.icon-btn {
+  display: grid; place-items: center; flex: none; width: 38px; height: 38px; border: 0; border-radius: 8px;
+  background: none; color: var(--text-2); font: inherit; font-size: 18px; cursor: pointer;
+}
+.icon-btn:active { background: var(--surface-2); }
+.icon-btn:disabled { opacity: 0.25; cursor: default; }
+.icon-btn-spacer { flex: none; width: 38px; }
+.col-restore { align-self: flex-start; padding: 0; }
+/* Long sheets (Filters, View): actions stay reachable at the bottom. */
+.sheet-tall .sheet-actions {
+  position: sticky; bottom: -18px; z-index: 2; flex-direction: row;
+  margin: 14px -18px -18px; padding: 12px 18px calc(18px);
+  background: var(--surface); border-top: 1px solid var(--border);
+}
+.sheet-tall .sheet-actions .btn { flex: 1 1 0; }
+.opt-btn { width: 100%; justify-content: space-between; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
+.opt-btn[disabled] { opacity: 0.45; }
+.sheet:focus { outline: none; }
