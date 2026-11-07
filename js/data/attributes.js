@@ -131,6 +131,23 @@ export const VALUE_DIRECTION = {
   loyalty: 'neutral',    // matters for retention, not performance
 };
 
+/** Tendencies describe behaviour, so higher is not necessarily better. */
+export const TENDENCY_KEYS = new Set(['eccentricity', 'punching', 'rushing_out']);
+
+const HIDDEN_KEYS = new Set([...HIDDEN_ATTRS, ...PERSONALITY_ATTRS].map((a) => a.key));
+
+/**
+ * Single source of truth for how an attribute's value is read:
+ * 'positive' (higher = better), 'negative' (higher = worse) or 'neutral'.
+ * Football attributes are positive except tendencies; hidden/personality
+ * values follow VALUE_DIRECTION, unlisted ones stay neutral.
+ */
+export function attributeDirection(key) {
+  if (TENDENCY_KEYS.has(key)) return 'neutral';
+  if (HIDDEN_KEYS.has(key)) return VALUE_DIRECTION[key] || 'neutral';
+  return 'positive';
+}
+
 export const intOrNull = (v) => (Number.isInteger(v) ? v : null);
 
 /**

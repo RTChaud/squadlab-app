@@ -7,6 +7,7 @@
 
 import {
   ATTRIBUTE_GROUPS, HIDDEN_ATTRS, PERSONALITY_ATTRS, VALUE_DIRECTION, ATTR_BY_KEY,
+  TENDENCY_KEYS, attributeDirection,
 } from './attributes.js';
 
 export const RADAR_SCALE = { min: 1, max: 20, rings: [5, 10, 15, 20] };
@@ -93,8 +94,7 @@ export const computeOverview = (p) => {
 export const MIN_SELECTED = 3;
 export const MAX_SELECTED = 8;
 
-/** Tendencies: describe behaviour, so higher is not necessarily better. */
-const TENDENCIES = new Set(['eccentricity', 'punching', 'rushing_out']);
+const TENDENCIES = TENDENCY_KEYS;
 
 export const SELECTABLE_GROUPS = [
   ...ATTRIBUTE_GROUPS.map((g) => ({ key: g.key, label: g.label, source: 'attributes', attrs: g.attrs })),
@@ -108,12 +108,7 @@ export const SELECTABLE = Object.fromEntries(SELECTABLE_GROUPS.flatMap((g) => g.
  * hidden/personality values follow VALUE_DIRECTION (unlisted = neutral);
  * normal football attributes are positive.
  */
-export function directionFor(key) {
-  if (TENDENCIES.has(key)) return 'neutral';
-  const def = SELECTABLE[key];
-  if (def && (def.group === 'hidden' || def.group === 'personality')) return VALUE_DIRECTION[key] || 'neutral';
-  return 'positive';
-}
+export const directionFor = attributeDirection;
 
 /** Caution text for attributes where higher isn't simply better, else null. */
 export function interpretationNote(key) {
