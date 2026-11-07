@@ -1376,20 +1376,38 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .cmp-list { list-style: none; margin: 0; padding: 0 4px 8px; }
 /* Left value | name | right value: equal narrow value columns, name gets the rest. */
 .cmp-row {
-  display: grid; grid-template-columns: 3rem minmax(0, 1fr) 3rem; align-items: center; column-gap: 6px;
-  min-height: 38px; padding: 2px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  display: grid; grid-template-columns: 3rem minmax(0, 1fr) 3rem; align-items: center; column-gap: 4px;
+  min-height: 38px; padding: 3px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); border-radius: 6px;
+  --lead: 62, 210, 112;
 }
 .cmp-row:last-child { border-bottom: 0; }
+/* Leading side: green tint from that edge fading out at the centre (1 / 2–3 / 4+ points). */
+.lead-s1 { --tint: 0.07; }
+.lead-s2 { --tint: 0.13; }
+.lead-s3 { --tint: 0.21; }
+.cmp-row.lead-left { background: linear-gradient(to right, rgba(var(--lead), var(--tint)) 0%, rgba(var(--lead), 0) 50%); }
+.cmp-row.lead-right { background: linear-gradient(to left, rgba(var(--lead), var(--tint)) 0%, rgba(var(--lead), 0) 50%); }
 .cmp-val { display: flex; justify-content: center; }
 .cmp-val .attr-val { min-width: 32px; }
 .cmp-na { color: var(--muted) !important; }
+/* Centre: gap label | name | gap label, with the bar on its own line beneath. */
+.cmp-mid { display: grid; grid-template-columns: 1.7rem minmax(0, 1fr) 1.7rem; align-items: center; min-width: 0; }
+.cmp-gap { font-size: 11.5px; font-weight: 800; color: rgb(var(--lead)); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cmp-gap-left { justify-self: start; }
+.cmp-gap-right { justify-self: end; }
 .cmp-attr {
-  align-self: stretch; margin: 0; padding: 4px 0; border: 0; background: none; border-radius: 4px;
+  align-self: stretch; min-width: 0; margin: 0; padding: 4px 0; border: 0; background: none; border-radius: 4px;
   font: inherit; font-size: 14px; line-height: 1.25; color: var(--text-2); text-align: center; cursor: pointer;
   overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; -webkit-tap-highlight-color: transparent;
 }
 .cmp-attr:active { color: var(--text); }
 .cmp-attr:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Bar: starts at the centre, each point = 1/8 of that side (full at 8+). */
+.cmp-bar { grid-column: 1 / -1; position: relative; height: 4px; margin: 1px 0 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.06); }
+.cmp-bar::after { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; margin-left: -0.5px; background: rgba(255, 255, 255, 0.28); }
+.cmp-bar-fill { position: absolute; top: 0; bottom: 0; width: calc(var(--w) * 50%); background: rgb(var(--lead)); }
+.lead-left .cmp-bar-fill { right: 50%; border-radius: 2px 0 0 2px; }
+.lead-right .cmp-bar-fill { left: 50%; border-radius: 0 2px 2px 0; }
 
 /* Player picker */
 .sheet-picker .cp-top { position: sticky; top: -10px; z-index: 2; margin: 0 -18px; padding: 6px 18px 8px; background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
