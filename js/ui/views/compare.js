@@ -1,4 +1,7 @@
-// Comparison: two players side by side (attributes only for now).
+// Comparison: two players side by side (attributes only for now). With one
+// player selected, their column is filled and the other waits for a selection.
+// Each row shades the leading side and shows the gap as a bar (same scale on
+// every row, full at 8 points).
 // Rows: left value | shared attribute name | right value. Groups follow the
 // player profile (order, grouping, colour rules) and open/close together.
 // Selections are remembered per career; values are each player's latest
@@ -54,19 +57,44 @@ function playerHead(side, res, otherPid) {
       h('button', { type: 'button', class: 'cmp-remove', 'aria-label': `Remove ${name.main} from the comparison`, title: 'Remove', onclick: () => setCompareSide(side, null) }, icon('close'))));
 }
 
-function valueCell(v, def, who) {
-  if (v === null) return h('span', { class: 'cmp-val' }, h('span', { class: 'attr-val none cmp-na', 'aria-label': `${def.label} unavailable for ${who}` }, DASH));
+function valueCell(v, def, res) {
+  if (!res) return h('span', { class: 'cmp-val' }); // no player in this column yet
+  if (v === null) return h('span', { class: 'cmp-val' }, h('span', { class: 'attr-val none cmp-na', 'aria-label': `${def.label} unavailable for ${res.name}` }, DASH));
   const band = attrBand(v, attributeDirection(def.key));
-  return h('span', { class: 'cmp-val' }, h('span', { class: `attr-val ${band || 'none'}`, 'aria-label': `${def.label} ${v} for ${who}` }, String(v)));
+  return h('span', { class: 'cmp-val' }, h('span', { class: `attr-val ${band || 'none'}`, 'aria-label': `${def.label} ${v} for ${res.name}` }, String(v)));
+}
+
+const BAR_POINTS = 8; // every point adds the same length; 8+ fills the side
+
+/**
+ * Who leads on an attribute, using the profile's direction rules: higher wins,
+ * lower wins for lower-is-better values, and tendencies, ties or missing values
+ * have no leader.
+ */
+function leadOf(key, l, r) {
+  if (l === null || r === null || l === r) return null;
+  const dir = attributeDirection(key);
+  if (dir === 'neutral') return null;
+  const leftLeads = dir === 'negative' ? l < r : l > r;
+  return { side: leftLeads ? 'left' : 'right', gap: Math.abs(l - r) };
 }
 
 function row(def, block, L, R) {
-  const get = (res) => intOrNull(res.player[block]?.[def.key]);
+  const get = (res) => (res ? intOrNull(res.player[block]?.[def.key]) : null);
+  const l = get(L), r = get(R);
+  const lead = L && R ? leadOf(def.key, l, r) : null;
   const btn = h('button', {
     type: 'button', class: 'cmp-attr', 'aria-haspopup': 'dialog',
     onclick: () => openAttributeInfo(def, btn),
-  }, def.label);
-  return h('li', { class: 'cmp-row' }, valueCell(get(L), def, L.name), btn, valueCell(get(R), def, R.name));
+  }, def.label, lead ? h('span', { class: 'sr-only' }, `, ${(lead.side === 'left' ? L : R).name} leads by ${lead.gap}`) : null);
+  const gapLabel = (side) => h('span', { class: `cmp-gap cmp-gap-${side}`, 'aria-hidden': 'true' },
+    lead && lead.side === side && lead.gap >= 2 ? `+${lead.gap}` : '');
+  const strength = !lead ? 0 : lead.gap >= 4 ? 3 : lead.gap >= 2 ? 2 : 1;
+  const mid = h('div', { class: 'cmp-mid' }, gapLabel('left'), btn, gapLabel('right'),
+    lead ? h('span', { class: 'cmp-bar', 'aria-hidden': 'true' },
+      h('span', { class: 'cmp-bar-fill', style: `--w:${Math.min(lead.gap, BAR_POINTS) / BAR_POINTS}` })) : null);
+  return h('li', { class: `cmp-row${lead ? ` lead-${lead.side} lead-s${strength}` : ''}`, 'data-key': def.key },
+    valueCell(l, def, L), mid, valueCell(r, def, R));
 }
 
 function group(key, title, open, body) {
@@ -91,19 +119,18 @@ export async function CompareView() {
     playerHead('right', R, sel.left));
 
   let content;
-  if (!L || !R) {
+  const present = [L, R].filter(Boolean);
+  if (!present.length) {
     content = h('div', { class: 'empty cmp-empty' },
-      h('p', { class: 'empty-title' }, !L && !R ? 'Select two players to compare' : 'Select a second player'),
-      h('p', { class: 'empty-text' }, !L && !R
-        ? 'Choose a player for each column from your squads or shortlists to see their attributes side by side.'
-        : 'Their attributes will appear side by side here.'));
+      h('p', { class: 'empty-title' }, 'Select two players to compare'),
+      h('p', { class: 'empty-text' }, 'Choose a player for each column from your squads or shortlists to see their attributes side by side.'));
   } else {
-    // Profile order: goalkeeping first when both are goalkeepers.
-    const bothGK = isNaturalGoalkeeper(L.player) && isNaturalGoalkeeper(R.player);
-    const anyGK = isNaturalGoalkeeper(L.player) || isNaturalGoalkeeper(R.player);
-    const order = bothGK ? ['goalkeeping', 'mental', 'physical', 'technical'] : ['technical', 'mental', 'physical', 'goalkeeping'];
+    // Profile order: goalkeeping first when every selected player is a goalkeeper.
+    const allGK = present.every((x) => isNaturalGoalkeeper(x.player));
+    const anyGK = present.some((x) => isNaturalGoalkeeper(x.player));
+    const order = allGK ? ['goalkeeping', 'mental', 'physical', 'technical'] : ['technical', 'mental', 'physical', 'goalkeeping'];
     const groups = order.map((k) => ATTRIBUTE_GROUPS.find((g) => g.key === k)).map((g) => {
-      const open = g.key === 'goalkeeping' ? anyGK : !(g.key === 'technical' && bothGK);
+      const open = g.key === 'goalkeeping' ? anyGK : !(g.key === 'technical' && allGK);
       return group(g.key, g.label, open, [h('ul', { class: 'cmp-list' }, g.attrs.map((a) => row(a, 'attributes', L, R)))]);
     });
     groups.push(group('hidden', 'Hidden attributes & personality', true, [
@@ -112,7 +139,8 @@ export async function CompareView() {
       h('p', { class: 'sub-head' }, 'Personality values'),
       h('ul', { class: 'cmp-list' }, PERSONALITY_ATTRS.map((a) => row(a, 'personality', L, R))),
     ]));
-    content = h('section', { class: 'cmp-table', 'aria-label': `Attributes: ${L.name} (left) and ${R.name} (right)` }, groups);
+    const label = L && R ? `Attributes: ${L.name} (left) and ${R.name} (right)` : `Attributes: ${present[0].name} (${L ? 'left' : 'right'})`;
+    content = h('section', { class: 'cmp-table', 'aria-label': label }, groups);
   }
 
   return {
