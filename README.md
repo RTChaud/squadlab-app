@@ -28,7 +28,7 @@ data/fm-nation-mapping.json   nation ID → name map from the save (replace when
 css/styles.css
 icons/logo.png
 js/app.js              shell, import flow, view dispatch
-js/router.js           hash routes (add profile/compare/history/XI routes here)
+js/router.js           hash routes
 js/store.js            active career, snapshot history, backup/restore/reset
 js/data/db.js          IndexedDB (snapshots, snapshotIndex, settings, metrics; upgrades keep data)
 js/data/importer.js    snapshot + backup parsing and validation
@@ -47,6 +47,7 @@ js/data/listView.js    Squad/Shortlists columns, filters, sorting, change column
 js/ui/dom.js           DOM helper + icons
 js/ui/dataMenu.js      Data menu and import/export/reset flows
 js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js, tagSheet.js, promptSheet.js, radarChart.js, radarSection.js,
-                       playerBrowser.js, playerTable.js, filterSheet.js, viewSheet.js, attributePicker.js, familiarityPitch.js
-js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js, lineups.js, lineup.js, lineupPicker.js
+                       playerBrowser.js, playerTable.js, filterSheet.js, viewSheet.js, attributePicker.js, familiarityPitch.js,
+                       attributeInfoSheet.js, playerPicker.js
+js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js, lineups.js, lineup.js, lineupPicker.js, compare.js
 ```
