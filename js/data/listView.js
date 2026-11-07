@@ -90,6 +90,7 @@ export function columnDef(id) {
 export const DEFAULT_COLUMNS = {
   squad: ['xi', 'name', 'pos', 'age', 'ca', 'pa'],
   shortlists: ['name', 'pos', 'age', 'ca', 'pa'],
+  tags: ['name', 'pos', 'age', 'ca', 'pa'],
 };
 export const SECTIONS = Object.keys(DEFAULT_COLUMNS);
 
