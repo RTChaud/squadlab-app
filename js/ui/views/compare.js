@@ -79,7 +79,15 @@ function leadOf(key, l, r) {
   return { side: leftLeads ? 'left' : 'right', gap: Math.abs(l - r) };
 }
 
-function row(def, block, L, R) {
+/** Bar under the name: starts at the centre, one eighth of that side per point. */
+const barEl = (lead) => h('span', { class: 'cmp-bar', 'aria-hidden': 'true' },
+  h('span', { class: 'cmp-bar-fill', style: `--w:${Math.min(lead.gap, BAR_POINTS) / BAR_POINTS}` }));
+const gapEl = (lead, side) => h('span', { class: `cmp-gap cmp-gap-${side}`, 'aria-hidden': 'true' },
+  lead && lead.side === side ? `+${lead.gap}` : '');
+const leadClass = (lead) => (lead ? ` lead-${lead.side} lead-s${lead.gap >= 4 ? 3 : lead.gap >= 2 ? 2 : 1}` : '');
+
+/** `acc.net` collects the signed leads (left positive) for the group's summary. */
+function row(def, block, L, R, acc) {
   const get = (res) => (res ? intOrNull(res.player[block]?.[def.key]) : null);
   const l = get(L), r = get(R);
   const lead = L && R ? leadOf(def.key, l, r) : null;
@@ -87,14 +95,22 @@ function row(def, block, L, R) {
     type: 'button', class: 'cmp-attr', 'aria-haspopup': 'dialog',
     onclick: () => openAttributeInfo(def, btn),
   }, def.label, lead ? h('span', { class: 'sr-only' }, `, ${(lead.side === 'left' ? L : R).name} leads by ${lead.gap}`) : null);
-  const gapLabel = (side) => h('span', { class: `cmp-gap cmp-gap-${side}`, 'aria-hidden': 'true' },
-    lead && lead.side === side && lead.gap >= 2 ? `+${lead.gap}` : '');
-  const strength = !lead ? 0 : lead.gap >= 4 ? 3 : lead.gap >= 2 ? 2 : 1;
-  const mid = h('div', { class: 'cmp-mid' }, gapLabel('left'), btn, gapLabel('right'),
-    lead ? h('span', { class: 'cmp-bar', 'aria-hidden': 'true' },
-      h('span', { class: 'cmp-bar-fill', style: `--w:${Math.min(lead.gap, BAR_POINTS) / BAR_POINTS}` })) : null);
-  return h('li', { class: `cmp-row${lead ? ` lead-${lead.side} lead-s${strength}` : ''}`, 'data-key': def.key },
+  if (lead && acc) acc.net += lead.side === 'left' ? lead.gap : -lead.gap;
+  const mid = h('div', { class: 'cmp-mid' }, gapEl(lead, 'left'), btn, gapEl(lead, 'right'), lead ? barEl(lead) : null);
+  return h('li', { class: `cmp-row${leadClass(lead)}`, 'data-key': def.key },
     valueCell(l, def, L), mid, valueCell(r, def, R));
+}
+
+/** Net of the group's leads, e.g. +3 and +2 left with +4 right → +1 left. */
+function summaryRow(acc, title, L, R) {
+  const lead = acc.net === 0 ? null : { side: acc.net > 0 ? 'left' : 'right', gap: Math.abs(acc.net) };
+  const said = lead ? `${(lead.side === 'left' ? L : R).name} leads by ${lead.gap} overall in ${title}` : `Level overall in ${title}`;
+  return h('ul', { class: 'cmp-list cmp-sum-list' },
+    h('li', { class: `cmp-row cmp-sum${leadClass(lead)}`, 'aria-label': said },
+      h('span', { class: 'cmp-val' }),
+      h('div', { class: 'cmp-mid', 'aria-hidden': 'true' }, gapEl(lead, 'left'),
+        h('span', { class: 'cmp-sum-label' }, lead ? 'Overall' : 'Overall · level'), gapEl(lead, 'right'), lead ? barEl(lead) : null),
+      h('span', { class: 'cmp-val' })));
 }
 
 function group(key, title, open, body) {
@@ -129,16 +145,22 @@ export async function CompareView() {
     const allGK = present.every((x) => isNaturalGoalkeeper(x.player));
     const anyGK = present.some((x) => isNaturalGoalkeeper(x.player));
     const order = allGK ? ['goalkeeping', 'mental', 'physical', 'technical'] : ['technical', 'mental', 'physical', 'goalkeeping'];
+    const both = !!(L && R);
     const groups = order.map((k) => ATTRIBUTE_GROUPS.find((g) => g.key === k)).map((g) => {
       const open = g.key === 'goalkeeping' ? anyGK : !(g.key === 'technical' && allGK);
-      return group(g.key, g.label, open, [h('ul', { class: 'cmp-list' }, g.attrs.map((a) => row(a, 'attributes', L, R)))]);
+      const acc = { net: 0 };
+      const list = h('ul', { class: 'cmp-list' }, g.attrs.map((a) => row(a, 'attributes', L, R, acc)));
+      return group(g.key, g.label, open, [list, both ? summaryRow(acc, g.label, L, R) : null]);
     });
-    groups.push(group('hidden', 'Hidden attributes & personality', true, [
+    const acc = { net: 0 };
+    const hiddenTitle = 'Hidden attributes & personality';
+    const hiddenBody = [
       h('p', { class: 'sub-head' }, 'Hidden attributes'),
-      h('ul', { class: 'cmp-list' }, HIDDEN_ATTRS.map((a) => row(a, 'attributes', L, R))),
+      h('ul', { class: 'cmp-list' }, HIDDEN_ATTRS.map((a) => row(a, 'attributes', L, R, acc))),
       h('p', { class: 'sub-head' }, 'Personality values'),
-      h('ul', { class: 'cmp-list' }, PERSONALITY_ATTRS.map((a) => row(a, 'personality', L, R))),
-    ]));
+      h('ul', { class: 'cmp-list' }, PERSONALITY_ATTRS.map((a) => row(a, 'personality', L, R, acc))),
+    ];
+    groups.push(group('hidden', hiddenTitle, true, [...hiddenBody, both ? summaryRow(acc, hiddenTitle, L, R) : null]));
     const label = L && R ? `Attributes: ${L.name} (left) and ${R.name} (right)` : `Attributes: ${present[0].name} (${L ? 'left' : 'right'})`;
     content = h('section', { class: 'cmp-table', 'aria-label': label }, groups);
   }
