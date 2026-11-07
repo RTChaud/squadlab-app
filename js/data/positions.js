@@ -62,3 +62,19 @@ export function describePositions(player) {
     sortKey: ranks.length ? Math.min(...ranks) : 999,
   };
 }
+
+// ---- Familiarity (the extract's `positions` block, 1–20) -----------------------------
+
+/** Familiarity codes the app shows, back to front (SW is no longer used). */
+export const PITCH_CODES = ['gk', 'dr', 'dc', 'dl', 'wbr', 'wbl', 'dm', 'mr', 'mc', 'ml', 'amr', 'amc', 'aml', 'stc'];
+
+/** Familiarity colour bands (.f1–.f6), shared by the profile pitch and lists. */
+export const FAM_BANDS = [
+  { cls: 'f1', min: 1, max: 1 },
+  { cls: 'f2', min: 2, max: 5 },
+  { cls: 'f3', min: 6, max: 9 },
+  { cls: 'f4', min: 10, max: 14 },
+  { cls: 'f5', min: 15, max: 17 },
+  { cls: 'f6', min: 18, max: 20 },
+];
+export const famBand = (v) => (Number.isInteger(v) ? FAM_BANDS.find((b) => v >= b.min && v <= b.max) || null : null);

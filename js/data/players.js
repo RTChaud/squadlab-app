@@ -5,7 +5,7 @@
 // never used to match, and `uid` is only used inside one snapshot (squad and
 // shortlist membership lists refer to it).
 
-import { FOOTBALL_ATTRS, intOrNull } from './attributes.js';
+import { FOOTBALL_ATTRS, HIDDEN_ATTRS, PERSONALITY_ATTRS, intOrNull } from './attributes.js';
 
 /** Persistent key for a player record, or null when it cannot be trusted. */
 export function playerKey(p, careerId) {
@@ -32,6 +32,9 @@ export function findInSnapshot(data, key) {
 // Derived from the stored snapshots (never the source of truth), so it can be
 // rebuilt at any time and is not part of the backup.
 
+/** Bump when buildMetrics changes; stored metrics with another version are rebuilt. */
+export const METRICS_VERSION = 2;
+
 export function buildMetrics(record) {
   const { data } = record;
   const players = [];
@@ -40,6 +43,9 @@ export function buildMetrics(record) {
     if (!key) continue;
     const attrs = {};
     for (const a of FOOTBALL_ATTRS) attrs[a.key] = intOrNull(p.attributes?.[a.key]);
+    // v2: hidden attributes and personality too (list development columns).
+    for (const a of HIDDEN_ATTRS) attrs[a.key] = intOrNull(p.attributes?.[a.key]);
+    for (const a of PERSONALITY_ATTRS) attrs[a.key] = intOrNull(p.personality?.[a.key]);
     players.push({
       key,
       uid: p.uid,
@@ -49,7 +55,7 @@ export function buildMetrics(record) {
       attrs,
     });
   }
-  return { id: record.id, careerId: record.careerId, gameDate: record.gameDate, players };
+  return { id: record.id, careerId: record.careerId, gameDate: record.gameDate, v: METRICS_VERSION, players };
 }
 
 /**
@@ -96,8 +102,25 @@ export function compactNameOf(p) {
   return last || first || txt(p.name) || '—';
 }
 
-/** Accent-insensitive search text for a player. */
+/** Lower-case, accent-free text for searching ("Benítez" → "benitez"). */
+export const normalizeSearch = (text) => String(text ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/** Accent-insensitive search text for a player (display, common and full names). */
 export function searchTextOf(p) {
-  return [p.common_name, p.first_name, p.last_name, p.name].filter((x) => typeof x === 'string')
-    .join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return normalizeSearch([p.common_name, p.first_name, p.last_name, p.name, p.full_name].filter((x) => typeof x === 'string').join(' '));
+}
+
+/**
+ * Name as the profile shows it: the recorded common/display name when FM has
+ * one (e.g. "Endrick"), else first + last. `full` is the longer name to show
+ * underneath when it differs. Underlying fields are never changed.
+ */
+export function profileNameOf(p) {
+  const first = txt(p.first_name), last = txt(p.last_name), common = txt(p.common_name);
+  const full = [first, last].filter(Boolean).join(' ');
+  return {
+    main: common || full || txt(p.name) || '—',
+    full: common && full && common !== full ? full : null,
+    common, first, last,
+  };
 }
