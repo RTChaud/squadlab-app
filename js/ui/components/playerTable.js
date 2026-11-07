@@ -8,8 +8,8 @@
 
 import { h, DASH } from '../dom.js';
 import { openSheet } from './sheet.js';
+import { FamiliarityPitch } from './familiarityPitch.js';
 import { attrBand, attributeDirection } from '../../data/attributes.js';
-import { formatPositions, famBand, PITCH_CODES } from '../../data/positions.js';
 import { DEFAULT_LINEUPS } from '../../data/lineups.js';
 import { columnDef, attrValue, devChange, NAME_MIN_REM, NAME_WIDE_REM, NAME_FIT_REM, ATTR_CHOICE } from '../../data/listView.js';
 import { linkWithFrom } from '../../router.js';
@@ -20,22 +20,12 @@ const TIER_NAME = Object.fromEntries(DEFAULT_LINEUPS.map((d) => [d.tier, d.name]
 const keepTogether = (text) => text.replace(/ \(/g, ' (');
 const num = (v, cls = '') => h('div', { class: `tc num ${cls}${v === null ? ' dash' : ''}` }, v === null ? DASH : String(v));
 
+/** Same pitch diagram as the profile, in a sheet (never navigates). */
 function openPositions(row) {
-  const list = PITCH_CODES
-    .map((code) => ({ code, label: formatPositions([code]), v: row.fam[code], natural: row.naturalCodes.has(code) }))
-    .sort((a, b) => (b.v ?? -1) - (a.v ?? -1) || PITCH_CODES.indexOf(a.code) - PITCH_CODES.indexOf(b.code));
   openSheet({
     title: row.name.main,
     titleClass: 'sheet-title-sm',
-    content: [
-      h('p', { class: 'muted small pos-sheet-sub' }, 'Position familiarity'),
-      h('ul', { class: 'pos-list' }, list.map((x) => {
-        const band = famBand(x.v);
-        return h('li', { class: 'pos-item' },
-          h('span', { class: 'pos-item-label' }, x.label, x.natural ? h('span', { class: 'pos-nat' }, 'Natural') : null),
-          h('span', { class: `fam-chip ${band ? band.cls : ''}` }, x.v ?? DASH));
-      })),
-    ],
+    content: [h('p', { class: 'muted small pos-sheet-sub' }, 'Position familiarity'), FamiliarityPitch(row.p)],
     actions: [{ label: 'Close', kind: 'secondary', onClick: (close) => close() }],
   });
 }

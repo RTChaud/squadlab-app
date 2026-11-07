@@ -41,7 +41,6 @@ export function openViewSheet(api) {
     const btn = (label, onclick, cls = 'tool-btn') => h('button', { type: 'button', class: cls, onclick }, label);
     return sec('Saved views',
       h('div', { class: 'frow' }, select),
-      st.modified ? h('p', { class: 'view-modified', role: 'status' }, `Changed since “${active ? active.name : 'Default'}” was applied — not saved.`) : null,
       h('div', { class: 'tool-row' },
         active && st.modified ? btn('Save changes', async () => { await api.saveChanges(); render(); }, 'tool-btn tool-btn-accent') : null,
         btn('Save as new view…', async () => { await askName('Save view', '', (n) => api.saveAs(n)); render(); }),
@@ -60,11 +59,11 @@ export function openViewSheet(api) {
     const rows = cols.map((id, i) => {
       const c = columnDef(id);
       return h('li', { class: 'col-row' },
-        h('span', { class: 'col-name' }, c.label, c.locked ? h('span', { class: 'muted small' }, ' · always shown') : null),
-        h('button', { type: 'button', class: 'icon-btn', 'aria-label': `Move ${c.label} earlier`, disabled: i === 0, onclick: () => move(i, -1) }, '↑'),
-        h('button', { type: 'button', class: 'icon-btn', 'aria-label': `Move ${c.label} later`, disabled: i === cols.length - 1, onclick: () => move(i, 1) }, '↓'),
-        c.locked ? h('span', { class: 'icon-btn-spacer' })
-          : h('button', { type: 'button', class: 'icon-btn', 'aria-label': `Hide ${c.label}`, onclick: () => set(cols.filter((x) => x !== id)) }, '×'));
+        h('span', { class: 'col-name' }, c.label),
+        h('button', { type: 'button', class: 'col-btn', 'aria-label': `Move ${c.label} earlier`, disabled: i === 0, onclick: () => move(i, -1) }, '↑'),
+        h('button', { type: 'button', class: 'col-btn', 'aria-label': `Move ${c.label} later`, disabled: i === cols.length - 1, onclick: () => move(i, 1) }, '↓'),
+        c.locked ? h('span', { class: 'col-btn-spacer' })
+          : h('button', { type: 'button', class: 'col-btn', 'aria-label': `Hide ${c.label}`, onclick: () => set(cols.filter((x) => x !== id)) }, '×'));
     });
     const unused = [...INFO_COLUMNS, columnDef('d:ca')].filter((c) => !cols.includes(c.id));
     const addSel = h('select', {
