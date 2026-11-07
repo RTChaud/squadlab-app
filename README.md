@@ -43,8 +43,10 @@ js/data/flags.js       nation → flag emoji
 js/data/tags.js        player tags (app data, kept in backups)
 js/data/lineups.js     4-2-3-1 slot definitions, default/custom lineups, Squad slot ranks
 js/data/radar.js       radar overviews, selectable attributes, radar preferences
+js/data/listView.js    Squad/Shortlists columns, filters, sorting, change columns, saved views
 js/ui/dom.js           DOM helper + icons
 js/ui/dataMenu.js      Data menu and import/export/reset flows
-js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js, tagSheet.js, promptSheet.js, radarChart.js, radarSection.js
+js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js, tagSheet.js, promptSheet.js, radarChart.js, radarSection.js,
+                       playerBrowser.js, playerTable.js, filterSheet.js, viewSheet.js, attributePicker.js
 js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js, lineups.js, lineup.js, lineupPicker.js
 ```
