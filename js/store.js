@@ -26,7 +26,7 @@ const state = {
   radar: Radar.emptyRadarPrefs(), // per-player radar choices for the active career
   changes: Changes.emptyChangePrefs(), // per-player 'Show changes' toggle + baseline
   lists: ListView.emptyListPrefs(),     // Squad/Shortlists table settings + saved views
-  compare: { left: null, right: null }, // Comparison selections (persistent player ids)
+  compare: { left: null, right: null, mode: 'all', selected: [] }, // Comparison: players (persistent ids), Compare by mode, selected attributes
 };
 
 const listeners = new Set();
@@ -457,8 +457,15 @@ export const getCareerMetrics = () => careerMetrics();
 // ---- Comparison (two selected players, per career) --------------------------------
 
 const pidOrNull = (v) => (typeof v === 'string' && v ? v : null);
+const COMPARE_MODES = ['all', 'selected', 'role'];
 function sanitizeCompare(raw) {
-  return { left: pidOrNull(raw?.left), right: pidOrNull(raw?.right) };
+  const selected = [...new Set((Array.isArray(raw?.selected) ? raw.selected : []).filter((k) => Radar.SELECTABLE[k]))].slice(0, Radar.MAX_SELECTED);
+  return {
+    left: pidOrNull(raw?.left),
+    right: pidOrNull(raw?.right),
+    mode: COMPARE_MODES.includes(raw?.mode) ? raw.mode : 'all',
+    selected,
+  };
 }
 
 export const getCompare = () => state.compare;
@@ -469,4 +476,15 @@ export async function setCompareSide(side, pid) {
   state.compare = sanitizeCompare({ ...state.compare, [side]: pid });
   await db.setSetting(compareKey(state.career), state.compare);
   emit();
+}
+
+/**
+ * Save the Compare by mode and/or selected attributes. No re-render: the
+ * Comparison view updates its radar and table itself, so the open picker and
+ * its search stay as they are.
+ */
+export async function setCompareView(patch) {
+  if (!state.career) return;
+  state.compare = sanitizeCompare({ ...state.compare, ...patch });
+  await db.setSetting(compareKey(state.career), state.compare);
 }
