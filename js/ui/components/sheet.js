@@ -4,6 +4,7 @@ import { h } from '../dom.js';
 import { BackupExporter } from './backupExport.js';
 
 let openCount = 0;
+const stack = []; // open sheets, newest last — Escape closes only the top one
 
 /**
  * @param {object} o
@@ -15,12 +16,16 @@ export function openSheet(o) {
   const close = () => {
     if (closed) return;
     closed = true;
+    const i = stack.indexOf(close);
+    if (i !== -1) stack.splice(i, 1);
     backdrop.remove();
     document.removeEventListener('keydown', onKey);
     if (--openCount === 0) document.body.classList.remove('sheet-open');
     o.onClose?.();
   };
-  const onKey = (e) => { if (e.key === 'Escape' && o.dismissible !== false) close(); };
+  const onKey = (e) => {
+    if (e.key === 'Escape' && o.dismissible !== false && stack[stack.length - 1] === close) { e.stopImmediatePropagation(); close(); }
+  };
 
   const actionsEl = h('div', { class: 'sheet-actions' });
   const setActions = (actions = []) => {
@@ -50,7 +55,11 @@ export function openSheet(o) {
   document.body.append(backdrop);
   document.body.classList.add('sheet-open');
   openCount++;
+  stack.push(close);
   document.addEventListener('keydown', onKey);
+  // Move focus into the sheet so keys (e.g. Escape) don't act on the page behind.
+  sheet.setAttribute('tabindex', '-1');
+  sheet.focus({ preventScroll: true });
   return { close, el: sheet, setActions, actionsEl };
 }
 

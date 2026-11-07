@@ -1,4 +1,4 @@
-// Shared player list used by Squad, Shortlists and Tags.
+// Simple player list used by Tags (Squad and Shortlists use playerBrowser.js).
 // Takes player records (one underlying object per player) and renders
 // Name / Position / Age / CA / PA. Missing values show "—".
 //
@@ -12,6 +12,7 @@ import { playerSummary } from '../../data/snapshot.js';
 import { linkWithFrom } from '../../router.js';
 import { squadSlotsFor, playerKeyOf } from '../../store.js';
 import { hierarchyRank, DEFAULT_LINEUPS } from '../../data/lineups.js';
+import { profileNameOf } from '../../data/players.js';
 
 const TIER_NAME = Object.fromEntries(DEFAULT_LINEUPS.map((d) => [d.tier, d.name]));
 
@@ -33,7 +34,7 @@ const collator = new Intl.Collator('en-GB', { sensitivity: 'base' });
 function compare(a, b, key) {
   switch (key) {
     case 'name':
-      return collator.compare(a.lastName || '', b.lastName || '') ||
+      return collator.compare(a.name.common || a.lastName || '', b.name.common || b.lastName || '') ||
              collator.compare(a.firstName || '', b.firstName || '');
     case 'pos':
       return a.positions.sortKey - b.positions.sortKey;
@@ -74,8 +75,9 @@ function rowEl(r, from, withXI) {
   const inner = [
     withXI ? xiCell(r) : null,
     h('div', { class: 'pname' },
-      h('span', { class: 'pfirst' }, orDash(r.firstName)),
-      h('span', { class: 'plast' }, orDash(r.lastName)),
+      // Same name rule as the profile: a recorded common name (e.g. "Endrick") on its own.
+      r.name.common || !r.name.last ? h('span', { class: 'plast' }, r.name.main)
+        : [h('span', { class: 'pfirst' }, orDash(r.name.first)), h('span', { class: 'plast' }, r.name.last)],
       r.note ? h('span', { class: 'pnote' }, r.note) : null,
     ),
     h('div', { class: 'ppos' },
@@ -105,6 +107,7 @@ export function PlayerList(players, opts = {}) {
     const slots = opts.lineupSlots ? squadSlotsFor(playerKeyOf(p)) : [];
     return {
       ...playerSummary(p),
+      name: profileNameOf(p),
       note: opts.rowNote ? opts.rowNote(p) : null,
       slots,
       slotRank: hierarchyRank(slots),
