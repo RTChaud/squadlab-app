@@ -27,6 +27,10 @@ import { openPlayerPicker } from '../components/playerPicker.js';
 import { openAttributeInfo } from '../components/attributeInfoSheet.js';
 import { RadarCompareChart } from '../components/radarChart.js';
 import { RadarAttributePicker } from '../components/radarAttributePicker.js';
+import { RoleSelectors, rolePrompt, famChip, openRoleInfo } from '../components/roleControls.js';
+import {
+  PHASES, loadRoleCatalogue, validateSelection, positionByCode, familiarityAt, roleScore, roleValue, fmtScore,
+} from '../../data/roles.js';
 import { linkWithFrom } from '../../router.js';
 
 const SIDES = ['left', 'right'];
@@ -203,6 +207,93 @@ function radarContent(mode, keys, L, R, present, switchToSelected) {
   return { subtitle: 'Selected attributes', body: [RadarCompareChart({ labels: keys.map((k) => SELECTABLE[k].label.replace(/\s*\(Tendency\)$/, '')), series, ariaLabel: `Selected attributes: ${series.map((x) => x.name).join(' and ')}` })] };
 }
 
+// ---- Position / role ------------------------------------------------------------------
+// Each phase has one position + role, applied to both players. The role's
+// attributes drive that phase's radar, table and net total; familiarity and the
+// Role attributes /100 score are shown per player, separately.
+
+/** Score row: verdict only when both players have a score (full precision). */
+function scoreRow(L, R, sL, sR) {
+  const both = !!(L && R);
+  const decided = both && sL.value !== null && sR.value !== null;
+  const diff = decided ? sL.value - sR.value : 0;
+  const lead = decided && diff !== 0 ? { side: diff > 0 ? 'left' : 'right', gap: Math.abs(diff) } : null;
+  const cell = (res, s) => h('span', { class: 'cmp-val' }, res
+    ? h('span', { class: `role-cmp-score${s.value === null ? ' none' : ''}` }, s.value === null ? DASH : fmtScore(s.value))
+    : null);
+  const verdict = !both ? null : !decided ? 'undecided' : lead ? null : 'level';
+  const gap = (side) => h('span', { class: `cmp-gap cmp-gap-${side}`, 'aria-hidden': 'true' }, lead && lead.side === side ? `+${fmtScore(lead.gap)}` : '');
+  const said = !both ? `Role attributes out of 100: ${(L || R).name} ${(L ? sL : sR).value === null ? 'unavailable' : fmtScore((L ? sL : sR).value)}`
+    : `Role attributes out of 100: ${L.name} ${sL.value === null ? 'unavailable' : fmtScore(sL.value)}, ${R.name} ${sR.value === null ? 'unavailable' : fmtScore(sR.value)}${lead ? `; ${(lead.side === 'left' ? L : R).name} leads by ${fmtScore(lead.gap)}` : decided ? '; level' : '; verdict undecided'}`;
+  return h('li', { class: `cmp-row role-score-row${lead ? ` lead-${lead.side} lead-s2` : ''}`, 'aria-label': said },
+    cell(L, sL),
+    h('div', { class: 'cmp-mid', 'aria-hidden': 'true' }, gap('left'),
+      h('span', { class: 'role-row-label' }, 'Role attributes', h('span', { class: 'role-row-sub' }, verdict === 'undecided' ? 'out of 100 · undecided' : verdict === 'level' ? 'out of 100 · level' : 'out of 100')),
+      gap('right')),
+    cell(R, sR));
+}
+
+function famRow(L, R, code, short) {
+  const cell = (res) => h('span', { class: 'cmp-val' }, res ? famChip(familiarityAt(res.player, code)) : null);
+  return h('li', { class: 'cmp-row role-fam-row', 'aria-label': `Familiarity at ${short}: ${[L, R].filter(Boolean).map((x) => `${x.name} ${familiarityAt(x.player, code) ?? 'unavailable'}`).join(', ')}` },
+    cell(L), h('div', { class: 'cmp-mid', 'aria-hidden': 'true' }, h('span'), h('span', { class: 'role-row-label' }, 'Familiarity', h('span', { class: 'role-row-sub' }, short)), h('span')), cell(R));
+}
+
+function rolePhase(cat, phase, L, R, present) {
+  const v = validateSelection(cat, phase.id, getCompare().roles?.[phase.id]);
+  let sel = { position: v.position, role: v.role };
+  let cleared = v.cleared;
+  if (cleared) setCompareView({ roles: { ...getCompare().roles, [phase.id]: sel } });
+  const el = h('section', { class: 'cmp-phase', 'data-phase': phase.id });
+
+  function draw() {
+    const selectors = RoleSelectors({
+      cat, phase: phase.id, sel,
+      onChange: (next, { clearedRole }) => {
+        sel = next;
+        cleared = clearedRole ? { reason: 'role', roleName: clearedRole.name } : null;
+        setCompareView({ roles: { ...getCompare().roles, [phase.id]: sel } });
+        draw();
+      },
+    });
+    const role = sel.role ? cat.roles.get(sel.role) : null;
+    el.replaceChildren(h('h3', { class: 'cmp-phase-title' }, phase.label), selectors,
+      ...(role ? phaseBody(cat, role, phase, L, R, present) : [rolePrompt(cat, phase.label, sel, cleared)]).filter(Boolean));
+  }
+  draw();
+  return el;
+}
+
+function phaseBody(cat, role, phase, L, R) {
+  const pos = positionByCode(cat, role.position);
+  const sL = L ? roleScore(role, L.player) : null;
+  const sR = R ? roleScore(role, R.player) : null;
+  const summary = h('ul', { class: 'cmp-list role-cmp-summary' }, famRow(L, R, role.position, pos.short), scoreRow(L, R, sL, sR));
+
+  // Radar: the role's attributes, same order for both players.
+  const sides = [['left', L], ['right', R]].filter(([, res]) => res);
+  const series = sides.map(([side, res]) => {
+    const values = role.attrs.map((a) => roleValue(res.player, a));
+    return { side, name: res.name, values, display: values.map((x) => (x === null ? null : String(x))) };
+  });
+  const radar = RadarCompareChart({ labels: role.attrs.map((a) => a.label), series, ariaLabel: `${phase.label}, ${role.name}: ${series.map((x) => x.name).join(' and ')}` });
+  const radarBox = group(`role-radar:${phase.id}`, 'Radar', true, [h('div', { class: 'cmp-radar-body' }, radar)]);
+  radarBox.classList.add('cmp-radar');
+  radarBox.querySelector('summary > span').append(h('span', { class: 'cmp-radar-sub' }, role.name));
+
+  // Table: only this role's attributes; tendencies stay neutral (no lead, not in the net).
+  const acc = { net: 0 };
+  const title = `${phase.label}: ${role.name}`;
+  const rows = role.attrs.map((a) => row({ key: a.key, label: a.label }, a.block, L, R, acc));
+  const table = group(`role-table:${phase.id}`, role.name, true, [
+    h('ul', { class: 'cmp-list' }, rows),
+    L && R ? summaryRow(acc, title, L, R) : null,
+  ]);
+  const notes = [sL, sR].filter(Boolean).flatMap((s) => s.excluded);
+  return [summary, radarBox, h('section', { class: 'cmp-table', 'aria-label': `${title} attributes` }, table),
+    notes.length ? h('p', { class: 'muted small role-cmp-note' }, `${[...new Set(notes)].join(', ')}: tendency, shown but not scored.`) : null];
+}
+
 export async function CompareView() {
   const sel = getCompare();
   const [L, R] = await Promise.all(SIDES.map(async (s) => {
@@ -234,6 +325,7 @@ export async function CompareView() {
   // Mode and selected attributes are kept in the store (not re-rendered by it),
   // so picking an attribute updates the radar and table here, in place.
   let mode = sel.mode;
+  const cat = await loadRoleCatalogue();
   let keys = [...sel.selected];
   const pickerSlot = h('div', { class: 'cmp-picker' });
   const content = h('div', { class: 'cmp-content' });
@@ -242,10 +334,15 @@ export async function CompareView() {
     class: 'select select-sm cmp-mode', id: 'cmp-mode',
     onchange: (e) => setMode(e.target.value),
   }, MODES.map((m) => h('option', { value: m.id, selected: m.id === mode }, m.label)));
-  const controls = h('div', { class: 'cmp-controls' }, h('label', { class: 'cmp-mode-label', for: 'cmp-mode' }, 'Compare by'), modeSelect);
+  const roleInfoBtn = h('button', {
+    type: 'button', class: 'info-btn', 'aria-label': 'About Role attributes /100 and the role catalogue',
+    onclick: () => openRoleInfo(cat),
+  }, 'i');
+  const controls = h('div', { class: 'cmp-controls' }, h('label', { class: 'cmp-mode-label', for: 'cmp-mode' }, 'Compare by'), modeSelect, roleInfoBtn);
 
   function setMode(next) {
     mode = next;
+    roleInfoBtn.hidden = mode !== 'role';
     modeSelect.value = next;
     setCompareView({ mode });
     drawPicker();
@@ -261,7 +358,9 @@ export async function CompareView() {
 
   function drawContent() {
     if (mode === 'role') {
-      content.replaceChildren(h('div', { class: 'empty radar-empty' }, h('p', { class: 'empty-title' }, 'Role comparison coming soon')));
+      content.replaceChildren(...(cat.error
+        ? [h('div', { class: 'empty radar-empty' }, h('p', { class: 'empty-title' }, cat.error))]
+        : PHASES.map((ph) => rolePhase(cat, ph, L, R, present))));
       return;
     }
     if (mode === 'selected' && !keys.length) {
@@ -279,6 +378,7 @@ export async function CompareView() {
     content.replaceChildren(radarBox, h('section', { class: 'cmp-table', 'aria-label': label }, tables));
   }
 
+  roleInfoBtn.hidden = mode !== 'role';
   drawPicker();
   drawContent();
   return page(controls, pickerSlot, content);
