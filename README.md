@@ -25,6 +25,7 @@ To test locally, run `python3 -m http.server` in the folder and open `http://loc
 ```
 index.html, manifest.webmanifest
 data/fm-nation-mapping.json   nation ID → name map from the save (replace when regenerated)
+data/fm27-role-catalogue.json provisional position/role catalogue (replace with a revised file; same format)
 css/styles.css
 icons/logo.png
 js/app.js              shell, import flow, view dispatch
@@ -34,7 +35,7 @@ js/data/db.js          IndexedDB (snapshots, snapshotIndex, settings, metrics; u
 js/data/importer.js    snapshot + backup parsing and validation
 js/data/snapshot.js    model building, team_slot squad linking, player summary values
 js/data/positions.js   FM-style position formatting
-js/data/attributes.js  attribute groups/labels, colour bands, value direction, traits, future role hooks
+js/data/attributes.js  attribute groups/labels, colour bands, value direction, traits
 js/data/attributeInfo.js  short attribute explanations + source (SI FM24 manual), bundled offline
 js/data/changes.js     "Show changes" preferences and change colouring rules
 js/data/players.js     persistent player identity (player_key), metrics, history
@@ -43,11 +44,12 @@ js/data/flags.js       nation → flag emoji
 js/data/tags.js        player tags (app data, kept in backups)
 js/data/lineups.js     4-2-3-1 slot definitions, default/custom lineups, Squad slot ranks
 js/data/radar.js       radar overviews, selectable attributes, radar preferences
+js/data/roles.js       role catalogue loading/validation, position + attribute mapping, Role attributes /100 score
 js/data/listView.js    Squad/Shortlists columns, filters, sorting, change columns, saved views
 js/ui/dom.js           DOM helper + icons
 js/ui/dataMenu.js      Data menu and import/export/reset flows
 js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js, tagSheet.js, promptSheet.js, radarChart.js, radarSection.js,
                        playerBrowser.js, playerTable.js, filterSheet.js, viewSheet.js, attributePicker.js, familiarityPitch.js,
-                       attributeInfoSheet.js, playerPicker.js, radarAttributePicker.js
+                       attributeInfoSheet.js, playerPicker.js, radarAttributePicker.js, roleControls.js
 js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js, lineups.js, lineup.js, lineupPicker.js, compare.js
 ```
