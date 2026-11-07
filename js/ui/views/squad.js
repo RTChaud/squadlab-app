@@ -1,12 +1,12 @@
 // Squad screen: one dropdown (First Team, Reserve Team, Youth Team, Out on
 // Loan, All — in that fixed order) and the selected group's players, using the
-// same player list as the shortlists.
+// same browser (search, filters, views) as the shortlists.
 // Route: #/squad (First Team) or #/squad/<first|reserve|youth|loan|all>
 
 import { h, icon } from '../dom.js';
 import { getModel } from '../../store.js';
 import { resolveTeams } from '../../data/snapshot.js';
-import { PlayerList } from '../components/playerList.js';
+import { PlayerBrowser } from '../components/playerBrowser.js';
 
 function issueBox(issues) {
   return h('div', { class: 'issue', role: 'alert' },
@@ -19,7 +19,7 @@ function issueBox(issues) {
   );
 }
 
-export function SquadView({ slotKey } = {}) {
+export async function SquadView({ slotKey } = {}) {
   const model = getModel();
   const teams = resolveTeams(model); // already in TEAM_SLOTS order
   // "All": everyone in the four groups above, once each.
@@ -48,7 +48,10 @@ export function SquadView({ slotKey } = {}) {
         select,
       ),
       t.issues.length ? issueBox(t.issues) : null,
-      t.fatal ? null : PlayerList(t.players, { emptyTitle: 'No players in this squad', from: `/squad/${t.key}`, lineupSlots: true }),
+      t.fatal ? null : await PlayerBrowser({
+        section: 'squad', source: t.key, sourceName: t.label, players: t.players,
+        from: `/squad/${t.key}`, emptyTitle: 'No players in this squad',
+      }),
     ),
   };
 }

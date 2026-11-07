@@ -1,10 +1,10 @@
 import { h } from '../dom.js';
 import { getModel, getLastShortlist, setLastShortlist } from '../../store.js';
-import { PlayerList } from '../components/playerList.js';
+import { PlayerBrowser } from '../components/playerBrowser.js';
 
 /**
  * One dropdown populated from the extract's shortlists; the selected list
- * renders with the same PlayerList component the squads use.
+ * renders with the same PlayerBrowser (search, filters, views) the squads use.
  * Route: #/shortlists or #/shortlists/<encoded id>
  */
 export async function ShortlistsView({ listId }) {
@@ -50,10 +50,11 @@ export async function ShortlistsView({ listId }) {
         h('label', { class: 'field-label', for: 'shortlist-select' }, 'Shortlist'),
         select,
       ),
-      PlayerList(players, {
+      await PlayerBrowser({
+        section: 'shortlists', source: current.id, sourceName: `“${current.name}”`, players,
+        from: `/shortlists/${encodeURIComponent(current.id)}`,
         emptyTitle: 'This shortlist is empty',
         emptyText: `“${current.name}” has no players in this extract.`,
-        from: `/shortlists/${encodeURIComponent(current.id)}`,
       }),
     ),
   };

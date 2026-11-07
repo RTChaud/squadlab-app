@@ -10,8 +10,8 @@ import { openSheet } from '../components/sheet.js';
 import { RadarSection } from '../components/radarSection.js';
 import { isNaturalGoalkeeper } from '../../data/radar.js';
 import { formatGameDate, resolveTeams } from '../../data/snapshot.js';
-import { describePositions, formatPositions } from '../../data/positions.js';
-import { persistentId } from '../../data/players.js';
+import { describePositions, formatPositions, famBand } from '../../data/positions.js';
+import { persistentId, profileNameOf } from '../../data/players.js';
 import { resolveNation, loadNations } from '../../data/nations.js';
 import {
   ATTRIBUTE_GROUPS, HIDDEN_ATTRS, PERSONALITY_ATTRS,
@@ -24,12 +24,8 @@ import { backTarget, linkWithFrom } from '../../router.js';
 
 const str = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
 
-function displayName(p) {
-  const first = str(p.first_name), last = str(p.last_name), common = str(p.common_name);
-  const full = [first, last].filter(Boolean).join(' ');
-  // FM shows the common name (e.g. "Endrick") when one exists.
-  return { main: common || full || str(p.name) || DASH, full: common && full && common !== full ? full : null };
-}
+// Shared with the Squad/Shortlists tables: the common name (e.g. "Endrick") when FM has one.
+const displayName = (p) => profileNameOf(p);
 
 function footText(p) {
   const l = intOrNull(p.left_foot), r = intOrNull(p.right_foot);
@@ -275,17 +271,7 @@ const PITCH = [
   [null, 'gk', null],
 ];
 
-// SquadLab display bands for position familiarity (1–20). These are only a
-// colour aid for reading the numbers — not FM's own familiarity categories.
-const FAM_BANDS = [
-  { cls: 'f1', min: 1, max: 1, label: '1' },
-  { cls: 'f2', min: 2, max: 5, label: '2–5' },
-  { cls: 'f3', min: 6, max: 9, label: '6–9' },
-  { cls: 'f4', min: 10, max: 14, label: '10–14' },
-  { cls: 'f5', min: 15, max: 17, label: '15–17' },
-  { cls: 'f6', min: 18, max: 20, label: '18–20' },
-];
-const famBand = (v) => (Number.isInteger(v) ? FAM_BANDS.find((b) => v >= b.min && v <= b.max) || null : null);
+// Familiarity colour bands (famBand) are shared from data/positions.js.
 
 function familiaritySection(p) {
   // Values come straight from the extract's `positions` block (sw is kept in
