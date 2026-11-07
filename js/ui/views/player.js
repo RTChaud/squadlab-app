@@ -184,7 +184,7 @@ function attrRow(def, v, chg, baseV, isKey = false) {
 
 /** Short explanation sheet for one attribute (bundled text, works offline). */
 function openAttributeInfo(def, opener) {
-  const { text, source } = attributeInfo(def.key);
+  const { text } = attributeInfo(def.key);
   openSheet({
     title: def.label.replace(/\s*\(Tendency\)$/, ''),
     titleClass: 'attr-info-title',
@@ -192,9 +192,6 @@ function openAttributeInfo(def, opener) {
       text
         ? h('p', { class: 'attr-info-text' }, text)
         : h('p', { class: 'attr-info-text muted' }, 'Verified explanation not yet available.'),
-      source ? h('p', { class: 'attr-info-source' },
-        `Summarised from the ${source.edition} manual (older edition; FM27 may differ). `,
-        h('a', { href: source.url, target: '_blank', rel: 'noopener noreferrer' }, 'Source')) : null,
     ],
     actions: [{ label: 'Close', kind: 'secondary', onClick: (close) => close() }],
     onClose: () => opener?.focus?.(),
@@ -222,10 +219,8 @@ function changesControls(chg) {
   }, h('span', { class: 'chg-switch', 'aria-hidden': 'true' }), 'Show changes');
 
   let bar = null;
-  if (chg.show && !chg.dates.length) {
-    bar = h('p', { class: 'chg-bar muted small', role: 'note' },
-      'Only one observation of this player so far — changes appear once another snapshot includes them.');
-  } else if (chg.show) {
+  // Only one observation: nothing to compare yet, so no baseline picker.
+  if (chg.show && chg.dates.length) {
     const [earliest, ...later] = chg.dates;
     const pinned = chg.pref.baseline && chg.dates.includes(chg.pref.baseline) ? chg.pref.baseline : '';
     const opts = [
