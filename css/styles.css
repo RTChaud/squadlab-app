@@ -1408,6 +1408,11 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .cmp-bar-fill { position: absolute; top: 0; bottom: 0; width: calc(var(--w) * 50%); background: rgb(var(--lead)); }
 .lead-left .cmp-bar-fill { right: 50%; border-radius: 2px 0 0 2px; }
 .lead-right .cmp-bar-fill { left: 50%; border-radius: 0 2px 2px 0; }
+/* Group summary: net of the leads above. */
+.cmp-sum-list { padding-top: 0; }
+.cmp-sum { border-top: 1px solid var(--border); border-bottom: 0; border-radius: 0 0 6px 6px; }
+.cmp-sum-label { padding: 6px 0 4px; text-align: center; font-size: 12px; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
+.cmp-sum:not([class*="lead-"]) .cmp-sum-label { color: var(--muted); }
 
 /* Player picker */
 .sheet-picker .cp-top { position: sticky; top: -10px; z-index: 2; margin: 0 -18px; padding: 6px 18px 8px; background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
