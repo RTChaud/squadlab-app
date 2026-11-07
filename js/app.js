@@ -32,7 +32,7 @@ const VIEWS = {
   shortlists: (p) => ShortlistsView(p),
   tags: (p) => TagsView(p),
   lineups: () => LineupsView(),
-  lineup: (p) => LineupView(p),
+  lineup: (p, q) => LineupView({ ...p, query: q }),
   lineupPick: (p) => LineupPickerView(p),
   player: (p, q) => PlayerView({ ...p, query: q }),
   development: (p, q) => DevelopmentView({ ...p, query: q }),
@@ -84,7 +84,28 @@ async function render() {
     const remembered = REMEMBER_SCROLL.has(route.name) ? scrollMemory.get(route.full) : null;
     window.scrollTo(0, remembered ?? 0);
   }
+  watchRevealTitle(vm.revealTitle || null);
   lastRoute = route;
+}
+
+// Compact header on pages whose own card shows the name (the player profile):
+// the header shows just the date, and the name slides in once the card's
+// name has scrolled under the header. Fixed height, so nothing jumps.
+let revealObserver = null;
+function watchRevealTitle(target) {
+  revealObserver?.disconnect();
+  revealObserver = null;
+  els.title.classList.toggle('reveal', !!target);
+  const setShown = (shown) => els.title.classList.toggle('show-name', shown);
+  if (!target) { setShown(false); return; }
+  const headerH = () => els.header.getBoundingClientRect().height;
+  // Correct state straight away (e.g. a re-render while scrolled down).
+  setShown(target.getBoundingClientRect().bottom <= headerH());
+  if (!('IntersectionObserver' in window)) { setShown(true); return; }
+  revealObserver = new IntersectionObserver(([e]) => {
+    setShown(!e.isIntersecting && e.boundingClientRect.top < headerH());
+  }, { rootMargin: `-${Math.round(headerH())}px 0px 0px 0px` });
+  revealObserver.observe(target);
 }
 
 // Keep sticky elements (list column headings) just below the real header height,

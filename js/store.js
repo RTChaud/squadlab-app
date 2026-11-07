@@ -11,6 +11,7 @@ import { buildMetrics, keyFor, findInSnapshot, playerHistory, playerKey } from '
 import * as Tags from './data/tags.js';
 import * as Lineups from './data/lineups.js';
 import * as Radar from './data/radar.js';
+import * as Changes from './data/changes.js';
 
 const state = {
   career: null,   // { careerId, createdAt }
@@ -22,6 +23,7 @@ const state = {
   slotIndex: new Map(),     // derived: playerKey → Squad slot entries (default lineups only)
   prefs: new Map(),         // cached "pref:*" settings, readable synchronously
   radar: Radar.emptyRadarPrefs(), // per-player radar choices for the active career
+  changes: Changes.emptyChangePrefs(), // per-player 'Show changes' toggle + baseline
 };
 
 const listeners = new Set();
@@ -50,6 +52,7 @@ async function reload() {
   state.tags = career ? Tags.sanitizeTags(await db.getSetting(tagsKey(career), null)) : Tags.emptyTags();
   await loadLineups(career);
   state.radar = career ? Radar.sanitizeRadarPrefs(await db.getSetting(radarKey(career), null)) : Radar.emptyRadarPrefs();
+  state.changes = career ? Changes.sanitizeChangePrefs(await db.getSetting(changesKey(career), null)) : Changes.emptyChangePrefs();
   state.prefs = new Map((await db.getAllSettings()).filter((x) => x.key.startsWith('pref:')).map((x) => [x.key.slice(5), x.value]));
   await ensureMetrics(metas);
   emit();
@@ -58,6 +61,7 @@ async function reload() {
 const tagsKey = (career) => `tags:${career.careerId}`;
 const lineupsKey = (career) => `lineups:${career.careerId}`;
 const radarKey = (career) => `radar:${career.careerId}`;
+const changesKey = (career) => `changes:${career.careerId}`;
 
 /**
  * Load (or create once) the career's lineups. The three defaults have fixed
@@ -365,4 +369,30 @@ export async function saveRadarSelection(key, selected) {
   const next = Radar.sanitizeRadarPrefs({ players: { ...state.radar.players, [key]: { ...current, selected } } });
   state.radar = next;
   await db.setSetting(radarKey(state.career), next);
+}
+
+// ---- Attribute changes (per player, per career) ------------------------------------
+
+export const getChangePrefs = (key) => Changes.changePrefsFor(state.changes, key);
+
+/** Update a player's toggle/baseline and re-render (the page shows new values). */
+export async function setChangePrefs(key, patch) {
+  if (!state.career || !key) return;
+  const current = Changes.changePrefsFor(state.changes, key);
+  const next = Changes.sanitizeChangePrefs({ players: { ...state.changes.players, [key]: { ...current, ...patch } } });
+  state.changes = next;
+  await db.setSetting(changesKey(state.career), next);
+  emit();
+}
+
+/** Dates (ascending) of this player's observations before `beforeDate`. */
+export async function earlierObservations(pid, beforeDate) {
+  return (await getPlayerHistory(pid)).filter((x) => x.present && x.gameDate < beforeDate).map((x) => x.gameDate);
+}
+
+/** The player's full record in the snapshot of a given in-game date (or null). */
+export async function getPlayerAt(pid, gameDate) {
+  if (!state.career) return null;
+  const rec = await db.getSnapshot(db.snapshotId(state.career.careerId, gameDate));
+  return rec ? findInSnapshot(rec.data, keyFor(state.career.careerId, pid)) : null;
 }
