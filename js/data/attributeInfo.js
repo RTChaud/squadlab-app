@@ -6,8 +6,8 @@
 // descriptions. Bundled with the app, so they work offline.
 //
 // Hidden attributes and personality values are not described in the official
-// manual, so they have no text here and show "Verified explanation not yet
-// available" rather than community theories.
+// manual. Their entries are short summaries of community guides (Passion4FM,
+// sortitoutsi, FM Scout); each one records its source in HIDDEN_INFO_SOURCES.
 //
 // Keys are the app's attribute identifiers (see attributes.js). These explain
 // single attributes; the radar's grouped calculations are explained separately.
@@ -78,8 +78,66 @@ export const ATTRIBUTE_INFO = {
   throwing: 'Using quick, accurate throws to start attacks, often counter-attacks.',
 };
 
-/** { text|null, source } for an attribute key. null text = not verified. */
+// ---- Hidden attributes & personality values (community guide summaries) -----------
+// Keys: hidden attributes live in the player's `attributes` block, personality
+// values in `personality` (see HIDDEN_ATTRS / PERSONALITY_ATTRS); the keys do not
+// overlap, so one lookup serves both.
+
+const PASSION4FM = {
+  title: 'Football Manager guide to hidden attributes',
+  publisher: 'Passion4FM',
+  kind: 'community guide summary',
+  url: 'https://www.passion4fm.com/football-manager-guide-to-hidden-attributes/',
+  retrieved: '2026-11-07',
+};
+const PERSONALITY_GUIDES = [
+  {
+    title: 'FM26 hidden attributes explained',
+    publisher: 'sortitoutsi',
+    kind: 'community guide summary',
+    url: 'https://sortitoutsi.net/content/74854/fm26-hidden-attributes-explained',
+    retrieved: '2026-11-07',
+  },
+  {
+    title: 'A guide to player personalities in Football Manager',
+    publisher: 'FM Scout',
+    kind: 'community guide summary',
+    url: 'https://www.fmscout.com/a-guide-to-player-personalities-football-manager.html',
+    retrieved: '2026-11-07',
+  },
+];
+
+export const HIDDEN_INFO = {
+  // Hidden attributes
+  consistency: 'How reliably the player performs near their usual level from match to match.',
+  dirtiness: 'How inclined the player is to bend the rules during a match.',
+  important_matches: 'How well the player tends to perform in high-stakes fixtures.',
+  injury_proneness: 'How susceptible the player is to picking up injuries.',
+  versatility: 'How readily the player learns to play in an unfamiliar position.',
+  // Personality values
+  adaptability: 'How easily the player settles into a new club, country or environment.',
+  ambition: 'How strongly the player wants to advance their career and achieve success.',
+  controversy: 'How likely the player is to draw attention through outspoken or contentious behaviour.',
+  loyalty: 'How attached the player is to their current club.',
+  pressure: 'How well the player handles demanding situations and expectations.',
+  professionalism: 'How seriously the player approaches training and their responsibilities as a footballer.',
+  sportsmanship: 'How inclined the player is to act fairly and respect the spirit of the game.',
+  temperament: 'How well the player keeps their cool when frustrated or provoked.',
+};
+
+/** Source(s) per entry: Passion4FM for the hidden attributes and Adaptability. */
+export const HIDDEN_INFO_SOURCES = Object.fromEntries(Object.keys(HIDDEN_INFO).map((k) => [k,
+  ['consistency', 'dirtiness', 'important_matches', 'injury_proneness', 'versatility', 'adaptability'].includes(k)
+    ? [PASSION4FM] : PERSONALITY_GUIDES]));
+
+const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+
+/**
+ * { text|null, source } for an attribute key. `source` is one source object
+ * for manual-based entries, or a list of community guides. null text = none yet.
+ */
 export function attributeInfo(key) {
-  const text = Object.prototype.hasOwnProperty.call(ATTRIBUTE_INFO, key) ? ATTRIBUTE_INFO[key] : null;
-  return { text, source: text ? ATTRIBUTE_INFO_SOURCE : null };
+  if (has(ATTRIBUTE_INFO, key)) return { text: ATTRIBUTE_INFO[key], source: ATTRIBUTE_INFO_SOURCE };
+  if (has(HIDDEN_INFO, key)) return { text: HIDDEN_INFO[key], source: HIDDEN_INFO_SOURCES[key] };
+  return { text: null, source: null };
 }
