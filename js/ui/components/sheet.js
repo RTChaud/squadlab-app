@@ -6,6 +6,28 @@ import { BackupExporter } from './backupExport.js';
 let openCount = 0;
 const stack = []; // open sheets, newest last — Escape closes only the top one
 
+// iOS keeps fixed elements sized to the whole screen when the keyboard opens,
+// so a sheet would slide under the keyboard and its top off-screen. While a
+// sheet is open, fit the backdrop to the visible area (the visual viewport).
+function fitToViewport() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const keyboard = window.innerHeight - vv.height > 120;
+  for (const b of document.querySelectorAll('.sheet-backdrop')) {
+    b.style.top = `${vv.offsetTop}px`;
+    b.style.height = `${vv.height}px`;
+    b.style.bottom = 'auto';
+    b.classList.toggle('kb-open', keyboard);
+  }
+}
+function watchViewport(on) {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const fn = on ? 'addEventListener' : 'removeEventListener';
+  vv[fn]('resize', fitToViewport);
+  vv[fn]('scroll', fitToViewport);
+}
+
 /**
  * @param {object} o
  *   title, titleClass, content (Node|Node[]), actions [{label, kind, onClick, disabled}],
@@ -20,7 +42,7 @@ export function openSheet(o) {
     if (i !== -1) stack.splice(i, 1);
     backdrop.remove();
     document.removeEventListener('keydown', onKey);
-    if (--openCount === 0) document.body.classList.remove('sheet-open');
+    if (--openCount === 0) { document.body.classList.remove('sheet-open'); watchViewport(false); }
     o.onClose?.();
   };
   const onKey = (e) => {
@@ -54,7 +76,8 @@ export function openSheet(o) {
 
   document.body.append(backdrop);
   document.body.classList.add('sheet-open');
-  openCount++;
+  if (openCount++ === 0) watchViewport(true);
+  fitToViewport();
   stack.push(close);
   document.addEventListener('keydown', onKey);
   // Move focus into the sheet so keys (e.g. Escape) don't act on the page behind.
