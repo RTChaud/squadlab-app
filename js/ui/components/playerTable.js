@@ -40,6 +40,7 @@ function cell(row, col, ctx) {
       const n = row.name;
       const label = n.common || !n.last ? [h('span', { class: 'plast' }, n.main)]
         : [h('span', { class: 'pfirst' }, n.first || ''), h('span', { class: 'plast' }, n.last)];
+      if (row.note) label.push(h('span', { class: 'pname-note' }, row.note));
       return h('div', { class: 'tc name-cell' },
         row.pid ? h('a', { class: 'pname-link', href: ctx.href(row) }, label) : h('span', { class: 'pname-link' }, label));
     }

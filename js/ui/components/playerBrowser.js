@@ -1,8 +1,8 @@
-// Shared Squad / Shortlists browser: Search, Filters and View around the
-// player table. Both screens pass in their selected source's players; this
+// Shared Squad / Shortlists / Tags browser: Search, Filters and View around the
+// player table. Each screen passes in its selected source's players; this
 // component never adds players from elsewhere.
 //
-// Remembered per section (Squad, Shortlists): the configuration (filters,
+// Remembered per section (Squad, Shortlists, Tags): the configuration (filters,
 // columns, sort, change baseline) and active saved view — stored with the
 // career, so it is in backups. Search text and horizontal scroll are kept for
 // the session so Back from a profile restores them; vertical scroll is
@@ -28,9 +28,10 @@ const session = {}; // section → { search, scrollX, source }
 
 /**
  * @param {object} o
- *   section 'squad' | 'shortlists', source (stable id of the selected squad/list),
- *   sourceName, players (current members, latest snapshot), from (route to return to),
- *   emptyTitle, emptyText
+ *   section 'squad' | 'shortlists' | 'tags', source (stable id of the selected squad/list/tag),
+ *   sourceName, players (members; latest snapshot unless listed in `older`),
+ *   older (Map player → game date, for members only found in an earlier snapshot),
+ *   from (route to return to), emptyTitle, emptyText
  */
 export async function PlayerBrowser(o) {
   const model = getModel();
@@ -43,17 +44,23 @@ export async function PlayerBrowser(o) {
   ses.source = o.source;
 
   // ---- Rows (built once per render) -------------------------------------------------
+  const older = o.older || new Map();
   const teamByUid = new Map();
   for (const t of resolveTeams(model)) for (const p of t.players) if (!teamByUid.has(p.uid)) teamByUid.set(p.uid, { key: t.key, label: t.label, short: t.short });
   const rowCtx = {
     keyOf: playerKeyOf,
     slotsOf: squadSlotsFor,
     tagsOf: (key) => (key ? tagsForPlayer(key) : []),
-    teamOf: (p) => teamByUid.get(p.uid) || null,
+    // Squad membership comes from the latest snapshot, so older records have none.
+    teamOf: (p) => (older.has(p) ? null : teamByUid.get(p.uid) || null),
     nationsOf: (p) => [p.nation_id, ...(Array.isArray(p.second_nation_ids) ? p.second_nation_ids : [])]
       .filter(Number.isInteger).map((id) => resolveNation(id, careerId)).filter(Boolean),
   };
-  const allRows = o.players.map((p) => buildRow(p, rowCtx));
+  const allRows = o.players.map((p) => {
+    const row = buildRow(p, rowCtx);
+    if (older.has(p)) row.note = `Last recorded ${fmt(older.get(p))}`;
+    return row;
+  });
 
   // ---- State helpers ---------------------------------------------------------------------
   const current = () => getListSection(o.section);

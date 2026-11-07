@@ -1,4 +1,4 @@
-// View menu for the Squad and Shortlists tables: saved views, columns and the
+// View menu for the Squad, Shortlists and Tags tables: saved views, columns and the
 // development baseline. Column and baseline changes apply straight away; a
 // saved view is only overwritten by "Save changes".
 
@@ -46,7 +46,7 @@ export function openViewSheet(api) {
         btn('Save as new view…', async () => { await askName('Save view', '', (n) => api.saveAs(n)); render(); }),
         active ? btn('Rename…', async () => { await askName('Rename view', active.name, (n) => api.rename(active.id, n)); render(); }) : null,
         active ? btn('Delete…', async () => {
-          const ok = await confirmSheet({ title: `Delete “${active.name}”?`, message: 'The saved view is removed for Squad and Shortlists. Your players and other data are not affected.', confirmLabel: 'Delete view', danger: true });
+          const ok = await confirmSheet({ title: `Delete “${active.name}”?`, message: 'The saved view is removed for Squad, Shortlists and Tags. Your players and other data are not affected.', confirmLabel: 'Delete view', danger: true });
           if (ok) { await api.remove(active.id); render(); }
         }) : null,
         st.viewId !== DEFAULT_VIEW_ID || st.modified ? btn('Back to Default', () => { api.applyView(DEFAULT_VIEW_ID); render(); }) : null));
