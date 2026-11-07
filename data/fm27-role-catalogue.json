@@ -1,0 +1,1120 @@
+{
+  "schema_version": 1,
+  "catalogue_version": "wonderkidfinder-2026-11-07",
+  "status": "provisional",
+  "source": {
+    "publisher": "Wonderkid Finder",
+    "url": "https://wonderkidfinder.com/fm27/roles/",
+    "retrieved_on": "2026-11-07",
+    "notes": "The source uses FM26 role names and editorial key attributes. FM27 in-game role availability and attribute mappings require verification. Shared flank groups are copied to each side, and the source ST group uses the app position code STC."
+  },
+  "counts": {
+    "source_position_groups": 10,
+    "source_role_rows": 68,
+    "source_phase_entries": {
+      "in_possession": 42,
+      "out_of_possession": 36
+    },
+    "individual_positions": 14,
+    "individual_position_phase_entries": {
+      "in_possession": 56,
+      "out_of_possession": 49
+    }
+  },
+  "attribute_labels": {
+    "crossing": "Crossing",
+    "decisions": "Decisions",
+    "dribbling": "Dribbling",
+    "finishing": "Finishing",
+    "first_touch": "First Touch",
+    "handling": "Handling",
+    "heading": "Heading",
+    "kicking": "Kicking",
+    "marking": "Marking",
+    "off_the_ball": "Off the Ball",
+    "one_on_ones": "One on Ones",
+    "pace": "Pace",
+    "passing": "Passing",
+    "positioning": "Positioning",
+    "reflexes": "Reflexes",
+    "rushing_out": "Rushing Out",
+    "stamina": "Stamina",
+    "strength": "Strength",
+    "tackling": "Tackling",
+    "vision": "Vision",
+    "work_rate": "Work Rate"
+  },
+  "positions": [
+    {
+      "position_code": "GK",
+      "label": "Goalkeeper",
+      "source_position_group": "GK",
+      "in_possession": [
+        {
+          "id": "gk:in_possession:goalkeeper",
+          "name": "Goalkeeper",
+          "key_attributes": [
+            "handling",
+            "reflexes",
+            "positioning"
+          ]
+        },
+        {
+          "id": "gk:in_possession:ball_playing_goalkeeper",
+          "name": "Ball-Playing Goalkeeper",
+          "key_attributes": [
+            "passing",
+            "kicking",
+            "decisions"
+          ]
+        },
+        {
+          "id": "gk:in_possession:no_nonsense_goalkeeper",
+          "name": "No-Nonsense Goalkeeper",
+          "key_attributes": [
+            "kicking",
+            "handling",
+            "reflexes"
+          ]
+        }
+      ],
+      "out_of_possession": [
+        {
+          "id": "gk:out_of_possession:goalkeeper",
+          "name": "Goalkeeper",
+          "key_attributes": [
+            "handling",
+            "reflexes",
+            "positioning"
+          ]
+        },
+        {
+          "id": "gk:out_of_possession:sweeper_keeper",
+          "name": "Sweeper Keeper",
+          "key_attributes": [
+            "rushing_out",
+            "one_on_ones",
+            "decisions"
+          ]
+        },
+        {
+          "id": "gk:out_of_possession:line_holding_keeper",
+          "name": "Line-Holding Keeper",
+          "key_attributes": [
+            "reflexes",
+            "positioning",
+            "handling"
+          ]
+        }
+      ]
+    },
+    {
+      "position_code": "DC",
+      "label": "Centre-back",
+      "source_position_group": "DC",
+      "in_possession": [
+        {
+          "id": "dc:in_possession:centre_back",
+          "name": "Centre-Back",
+          "key_attributes": [
+            "marking",
+            "tackling",
+            "positioning"
+          ]
+        },
+        {
+          "id": "dc:in_possession:ball_playing_centre_back",
+          "name": "Ball-Playing Centre-Back",
+          "key_attributes": [
+            "passing",
+            "vision",
+            "decisions"
+          ]
+        },
+        {
+          "id": "dc:in_possession:no_nonsense_centre_back",
+          "name": "No-Nonsense Centre-Back",
+          "key_attributes": [
+            "heading",
+            "strength",
+            "tackling"
+          ]
+        },
+        {
+          "id": "dc:in_possession:advanced_centre_back",
+          "name": "Advanced Centre-Back",
+          "key_attributes": [
+            "passing",
+            "dribbling",
+            "decisions"
+          ]
+        },
+        {
+          "id": "dc:in_possession:wide_centre_back",
+          "name": "Wide Centre-Back",
+          "key_attributes": [
+            "pace",
+            "passing",
+            "positioning"
+          ]
+        },
+        {
+          "id": "dc:in_possession:overlapping_centre_back",
+          "name": "Overlapping Centre-Back",
+          "key_attributes": [
+            "pace",
+            "stamina",
+            "crossing"
+          ]
+        }
+      ],
+      "out_of_possession": [
+        {
+          "id": "dc:out_of_possession:centre_back",
+          "name": "Centre-Back",
+          "key_attributes": [
+            "marking",
+            "tackling",
+            "positioning"
+          ]
+        },
+        {
+          "id": "dc:out_of_possession:stopping_centre_back",
+          "name": "Stopping Centre-Back",
+          "key_attributes": [
+            "tackling",
+            "strength",
+            "decisions"
+          ]
+        },
+        {
+          "id": "dc:out_of_possession:covering_centre_back",
+          "name": "Covering Centre-Back",
+          "key_attributes": [
+            "pace",
+            "positioning",
+            "decisions"
+          ]
+        }
+      ]
+    },
+    {
+      "position_code": "DL",
+      "label": "Left full-back",
+      "source_position_group": "DL/DR",
+      "in_possession": [
+        {
+          "id": "dl:in_possession:full_back",
+          "name": "Full-Back",
+          "key_attributes": [
+            "tackling",
+            "marking",
+            "positioning"
+          ]
+        },
+        {
+          "id": "dl:in_possession:inside_full_back",
+          "name": "Inside Full-Back",
+          "key_attributes": [
+            "passing",
+            "positioning",
+            "decisions"
+          ]
+        }
+      ],
+      "out_of_possession": [
+        {
+          "id": "dl:out_of_possession:full_back",
+          "name": "Full-Back",
+          "key_attributes": [
+            "tackling",
+            "marking",
+            "positioning"
+          ]
+        },
+        {
+          "id": "dl:out_of_possession:pressing_full_back",
+          "name": "Pressing Full-Back",
+          "key_attributes": [
+            "work_rate",
+            "stamina",
+            "tackling"
+          ]
+        },
+        {
+          "id": "dl:out_of_possession:holding_full_back",
+          "name": "Holding Full-Back",
+          "key_attributes": [
+            "positioning",
+            "marking",
+            "decisions"
+          ]
+        }
+      ]
+    },
+    {
+      "position_code": "DR",
+      "label": "Right full-back",
+      "source_position_group": "DL/DR",
+      "in_possession": [
+        {
+          "id": "dr:in_possession:full_back",
+          "name": "Full-Back",
+          "key_attributes": [
+            "tackling",
+            "marking",
+            "positioning"
+          ]
+        },
+        {
+          "id": "dr:in_possession:inside_full_back",
+          "name": "Inside Full-Back",
+          "key_attributes": [
+            "passing",
+            "positioning",
+            "decisions"
+          ]
+        }
+      ],
+      "out_of_possession": [
+        {
+          "id": "dr:out_of_possession:full_back",
+          "name": "Full-Back",
+          "key_attributes": [
+            "tackling",
+            "marking",
+            "positioning"
+          ]
+        },
+        {
+          "id": "dr:out_of_possession:pressing_full_back",
+          "name": "Pressing Full-Back",
+          "key_attributes": [
+            "work_rate",
+            "stamina",
+            "tackling"
+          ]
+        },
+        {
+          "id": "dr:out_of_possession:holding_full_back",
+          "name": "Holding Full-Back",
+          "key_attributes": [
+            "positioning",
+            "marking",
+            "decisions"
+          ]
+        }
+      ]
+    },
+    {
+      "position_code": "WBL",
+      "label": "Left wing-back",
+      "source_position_group": "WBL/WBR",
+      "in_possession": [
+        {
+          "id": "wbl:in_possession:wing_back",
+          "name": "Wing-Back",
+          "key_attributes": [
+            "stamina",
+            "work_rate",
+            "crossing"
+          ]
+        },
+        {
+          "id": "wbl:in_possession:advanced_wing_back",
+          "name": "Advanced Wing-Back",
+          "key_attributes": [
+            "crossing",
+            "pace",
+            "stamina"
+          ]
+        },
+        {
+          "id": "wbl:in_possession:inside_wing_back",
+          "name": "Inside Wing-Back",
+          "key_attributes": [
+            "passing",
+            "decisions",
+            "stamina"
+          ]
+        },
+        {
+          "id": "wbl:in_possession:playmaking_wing_back",
+          "name": "Playmaking Wing-Back",
+          "key_attributes": [
+            "passing",
+            "vision",
+            "first_touch"
+          ]
+        }
+      ],
+      "out_of_possession": [
+        {
+          "id": "wbl:out_of_possession:wing_back",
+          "name": "Wing-Back",
+          "key_attributes": [
+            "stamina",
+            "work_rate",
+            "crossing"
+          ]
+        },
+        {
+          "id": "wbl:out_of_possession:holding_wing_back",
+          "name": "Holding Wing-Back",
+          "key_attributes": [
+            "positioning",
+            "marking",
+            "tackling"
+          ]
+        },
+        {
+          "id": "wbl:out_of_possession:pressing_wing_back",
+          "name": "Pressing Wing-Back",
+          "key_attributes": [
+            "work_rate",
+            "stamina",
+            "pace"
+          ]
+        }
+      ]
+    },
+    {
+      "position_code": "WBR",
+      "label": "Right wing-back",
+      "source_position_group": "WBL/WBR",
+      "in_possession": [
+        {
+          "id": "wbr:in_possession:wing_back",
+          "name": "Wing-Back",
+          "key_attributes": [
+            "stamina",
+            "work_rate",
+            "crossing"
+          ]
+        },
+        {
+          "id": "wbr:in_possession:advanced_wing_back",
+          "name": "Advanced Wing-Back",
+          "key_attributes": [
+            "crossing",
+            "pace",
+            "stamina"
+          ]
+        },
+        {
+          "id": "wbr:in_possession:inside_wing_back",
+          "name": "Inside Wing-Back",
+          "key_attributes": [
+            "passing",
+            "decisions",
+            "stamina"
+          ]
+        },
+        {
+          "id": "wbr:in_possession:playmaking_wing_back",
+          "name": "Playmaking Wing-Back",
+          "key_attributes": [
+            "passing",
+            "vision",
+            "first_touch"
+          ]
+        }
+      ],
+      "out_of_possession": [
+        {
+          "id": "wbr:out_of_possession:wing_back",
+          "name": "Wing-Back",
+          "key_attributes": [
+            "stamina",
+            "work_rate",
+            "crossing"
+          ]
+        },
+        {
+          "id": "wbr:out_of_possession:holding_wing_back",
+          "name": "Holding Wing-Back",
+          "key_attributes": [
+            "positioning",
+            "marking",
+            "tackling"
+          ]
+        },
+        {
+          "id": "wbr:out_of_possession:pressing_wing_back",
+          "name": "Pressing Wing-Back",
+          "key_attributes": [
+            "work_rate",
+            "stamina",
+            "pace"
+          ]
+        }
+      ]
+    },
+    {
+      "position_code": "DM",
+      "label": "Defensive midfielder",
+      "source_position_group": "DM",
+      "in_possession": [
+        {
+          "id": "dm:in_possession:defensive_midfielder",
+          "name": "Defensive Midfielder",
+          "key_attributes": [
+            "tackling",
+            "positioning",
+            "decisions"
+          ]
+        },
+        {
+          "id": "dm:in_possession:deep_lying_playmaker",
+          "name": "Deep-Lying Playmaker",
+          "key_attributes": [
+            "passing",
+            "vision",
+            "decisions"
+          ]
+        },
+        {
+          "id": "dm:in_possession:half_back",
+          "name": "Half-Back",
+          "key_attributes": [
+            "positioning",
+            "passing",
+            "decisions"
+          ]
+        }
+      ],
+      "out_of_possession": [
+        {
+          "id": "dm:out_of_possession:defensive_midfielder",
+          "name": "Defensive Midfielder",
+          "key_attributes": [
+            "tackling",
+            "positioning",
+            "decisions"
+          ]
+        },
+        {
+          "id": "dm:out_of_possession:dropping_defensive_midfielder",
+          "name": "Dropping Defensive Midfielder",
+          "key_attributes": [
+            "positioning",
+            "marking",
+            "tackling"
+          ]
+        },
+        {
+          "id": "dm:out_of_possession:screening_defensive_midfielder",
+          "name": "Screening Defensive Midfielder",
+          "key_attributes": [
+            "positioning",
+            "decisions",
+            "marking"
+          ]
+        },
+        {
+          "id": "dm:out_of_possession:pressing_defensive_midfielder",
+          "name": "Pressing Defensive Midfielder",
+          "key_attributes": [
+            "work_rate",
+            "tackling",
+            "stamina"
+          ]
+        },
+        {
+          "id": "dm:out_of_possession:wide_covering_defensive_midfielder",
+          "name": "Wide-Covering Defensive Midfielder",
+          "key_attributes": [
+            "stamina",
+            "work_rate",
+            "positioning"
+          ]
+        }
+      ]
+    },
+    {
+      "position_code": "MC",
+      "label": "Central midfielder",
+      "source_position_group": "MC",
+      "in_possession": [
+        {
+          "id": "mc:in_possession:central_midfielder",
+          "name": "Central Midfielder",
+          "key_attributes": [
+            "passing",
+            "decisions",
+            "work_rate"
+          ]
+        },
+        {
+          "id": "mc:in_possession:midfield_playmaker",
+          "name": "Midfield Playmaker",
+          "key_attributes": [
+            "passing",
+            "vision",
+            "first_touch"
+          ]
+        },
+        {
+          "id": "mc:in_possession:box_to_box_midfielder",
+          "name": "Box-to-Box Midfielder",
+          "key_attributes": [
+            "stamina",
+            "work_rate",
+            "off_the_ball"
+          ]
+        },
+        {
+          "id": "mc:in_possession:box_to_box_playmaker",
+          "name": "Box-to-Box Playmaker",
+          "key_attributes": [
+            "passing",
+            "stamina",
+            "vision"
+          ]
+        },
+        {
+          "id": "mc:in_possession:channel_midfielder",
+          "name": "Channel Midfielder",
+          "key_attributes": [
+            "off_the_ball",
+            "dribbling",
+            "pace"
+          ]
+        }
+      ],
+      "out_of_possession": [
+        {
+          "id": "mc:out_of_possession:central_midfielder",
+          "name": "Central Midfielder",
+          "key_attributes": [
+            "passing",
+            "decisions",
+            "work_rate"
+          ]
+        },
+        {
+          "id": "mc:out_of_possession:pressing_central_midfielder",
+          "name": "Pressing Central Midfielder",
+          "key_attributes": [
+            "work_rate",
+            "stamina",
+            "tackling"
+          ]
+        },
+        {
+          "id": "mc:out_of_possession:screening_central_midfielder",
+          "name": "Screening Central Midfielder",
+          "key_attributes": [
+            "positioning",
+            "decisions",
+            "marking"
+          ]
+        },
+        {
+          "id": "mc:out_of_possession:wide_covering_central_midfielder",
+          "name": "Wide-Covering Central Midfielder",
+          "key_attributes": [
+            "stamina",
+            "work_rate",
+            "positioning"
+          ]
+        }
+      ]
+    },
+    {
+      "position_code": "ML",
+      "label": "Left wide midfielder",
+      "source_position_group": "ML/MR",
+      "in_possession": [
+        {
+          "id": "ml:in_possession:wide_midfielder",
+          "name": "Wide Midfielder",
+          "key_attributes": [
+            "work_rate",
+            "crossing",
+            "stamina"
+          ]
+        },
+        {
+          "id": "ml:in_possession:wide_central_midfielder",
+          "name": "Wide Central Midfielder",
+          "key_attributes": [
+            "passing",
+            "decisions",
+            "first_touch"
+          ]
+        }
+      ],
+      "out_of_possession": [
+        {
+          "id": "ml:out_of_possession:wide_midfielder",
+          "name": "Wide Midfielder",
+          "key_attributes": [
+            "work_rate",
+            "crossing",
+            "stamina"
+          ]
+        },
+        {
+          "id": "ml:out_of_possession:tracking_wide_midfielder",
+          "name": "Tracking Wide Midfielder",
+          "key_attributes": [
+            "work_rate",
+            "stamina",
+            "marking"
+          ]
+        },
+        {
+          "id": "ml:out_of_possession:wide_outlet_midfielder",
+          "name": "Wide Outlet Midfielder",
+          "key_attributes": [
+            "pace",
+            "off_the_ball",
+            "first_touch"
+          ]
+        }
+      ]
+    },
+    {
+      "position_code": "MR",
+      "label": "Right wide midfielder",
+      "source_position_group": "ML/MR",
+      "in_possession": [
+        {
+          "id": "mr:in_possession:wide_midfielder",
+          "name": "Wide Midfielder",
+          "key_attributes": [
+            "work_rate",
+            "crossing",
+            "stamina"
+          ]
+        },
+        {
+          "id": "mr:in_possession:wide_central_midfielder",
+          "name": "Wide Central Midfielder",
+          "key_attributes": [
+            "passing",
+            "decisions",
+            "first_touch"
+          ]
+        }
+      ],
+      "out_of_possession": [
+        {
+          "id": "mr:out_of_possession:wide_midfielder",
+          "name": "Wide Midfielder",
+          "key_attributes": [
+            "work_rate",
+            "crossing",
+            "stamina"
+          ]
+        },
+        {
+          "id": "mr:out_of_possession:tracking_wide_midfielder",
+          "name": "Tracking Wide Midfielder",
+          "key_attributes": [
+            "work_rate",
+            "stamina",
+            "marking"
+          ]
+        },
+        {
+          "id": "mr:out_of_possession:wide_outlet_midfielder",
+          "name": "Wide Outlet Midfielder",
+          "key_attributes": [
+            "pace",
+            "off_the_ball",
+            "first_touch"
+          ]
+        }
+      ]
+    },
+    {
+      "position_code": "AMC",
+      "label": "Central attacking midfielder",
+      "source_position_group": "AMC",
+      "in_possession": [
+        {
+          "id": "amc:in_possession:attacking_midfielder",
+          "name": "Attacking Midfielder",
+          "key_attributes": [
+            "passing",
+            "off_the_ball",
+            "first_touch"
+          ]
+        },
+        {
+          "id": "amc:in_possession:advanced_playmaker",
+          "name": "Advanced Playmaker",
+          "key_attributes": [
+            "vision",
+            "passing",
+            "first_touch"
+          ]
+        },
+        {
+          "id": "amc:in_possession:free_role",
+          "name": "Free Role",
+          "key_attributes": [
+            "vision",
+            "dribbling",
+            "off_the_ball"
+          ]
+        }
+      ],
+      "out_of_possession": [
+        {
+          "id": "amc:out_of_possession:attacking_midfielder",
+          "name": "Attacking Midfielder",
+          "key_attributes": [
+            "passing",
+            "off_the_ball",
+            "first_touch"
+          ]
+        },
+        {
+          "id": "amc:out_of_possession:tracking_attacking_midfielder",
+          "name": "Tracking Attacking Midfielder",
+          "key_attributes": [
+            "work_rate",
+            "stamina",
+            "marking"
+          ]
+        },
+        {
+          "id": "amc:out_of_possession:central_outlet_attacking_midfielder",
+          "name": "Central Outlet Attacking Midfielder",
+          "key_attributes": [
+            "off_the_ball",
+            "first_touch",
+            "pace"
+          ]
+        },
+        {
+          "id": "amc:out_of_possession:splitting_outlet_attacking_midfielder",
+          "name": "Splitting Outlet Attacking Midfielder",
+          "key_attributes": [
+            "off_the_ball",
+            "pace",
+            "first_touch"
+          ]
+        }
+      ]
+    },
+    {
+      "position_code": "AML",
+      "label": "Left winger",
+      "source_position_group": "AML/AMR",
+      "in_possession": [
+        {
+          "id": "aml:in_possession:winger",
+          "name": "Winger",
+          "key_attributes": [
+            "crossing",
+            "dribbling",
+            "pace"
+          ]
+        },
+        {
+          "id": "aml:in_possession:inside_winger",
+          "name": "Inside Winger",
+          "key_attributes": [
+            "dribbling",
+            "passing",
+            "off_the_ball"
+          ]
+        },
+        {
+          "id": "aml:in_possession:half_space_winger",
+          "name": "Half-Space Winger",
+          "key_attributes": [
+            "passing",
+            "off_the_ball",
+            "first_touch"
+          ]
+        },
+        {
+          "id": "aml:in_possession:wide_playmaker",
+          "name": "Wide Playmaker",
+          "key_attributes": [
+            "passing",
+            "vision",
+            "first_touch"
+          ]
+        },
+        {
+          "id": "aml:in_possession:wide_forward",
+          "name": "Wide Forward",
+          "key_attributes": [
+            "finishing",
+            "off_the_ball",
+            "pace"
+          ]
+        },
+        {
+          "id": "aml:in_possession:inside_forward",
+          "name": "Inside Forward",
+          "key_attributes": [
+            "finishing",
+            "dribbling",
+            "off_the_ball"
+          ]
+        }
+      ],
+      "out_of_possession": [
+        {
+          "id": "aml:out_of_possession:winger",
+          "name": "Winger",
+          "key_attributes": [
+            "crossing",
+            "dribbling",
+            "pace"
+          ]
+        },
+        {
+          "id": "aml:out_of_possession:tracking_winger",
+          "name": "Tracking Winger",
+          "key_attributes": [
+            "work_rate",
+            "stamina",
+            "marking"
+          ]
+        },
+        {
+          "id": "aml:out_of_possession:wide_outlet_winger",
+          "name": "Wide Outlet Winger",
+          "key_attributes": [
+            "pace",
+            "off_the_ball",
+            "first_touch"
+          ]
+        },
+        {
+          "id": "aml:out_of_possession:inverting_outlet_winger",
+          "name": "Inverting Outlet Winger",
+          "key_attributes": [
+            "pace",
+            "off_the_ball",
+            "finishing"
+          ]
+        }
+      ]
+    },
+    {
+      "position_code": "AMR",
+      "label": "Right winger",
+      "source_position_group": "AML/AMR",
+      "in_possession": [
+        {
+          "id": "amr:in_possession:winger",
+          "name": "Winger",
+          "key_attributes": [
+            "crossing",
+            "dribbling",
+            "pace"
+          ]
+        },
+        {
+          "id": "amr:in_possession:inside_winger",
+          "name": "Inside Winger",
+          "key_attributes": [
+            "dribbling",
+            "passing",
+            "off_the_ball"
+          ]
+        },
+        {
+          "id": "amr:in_possession:half_space_winger",
+          "name": "Half-Space Winger",
+          "key_attributes": [
+            "passing",
+            "off_the_ball",
+            "first_touch"
+          ]
+        },
+        {
+          "id": "amr:in_possession:wide_playmaker",
+          "name": "Wide Playmaker",
+          "key_attributes": [
+            "passing",
+            "vision",
+            "first_touch"
+          ]
+        },
+        {
+          "id": "amr:in_possession:wide_forward",
+          "name": "Wide Forward",
+          "key_attributes": [
+            "finishing",
+            "off_the_ball",
+            "pace"
+          ]
+        },
+        {
+          "id": "amr:in_possession:inside_forward",
+          "name": "Inside Forward",
+          "key_attributes": [
+            "finishing",
+            "dribbling",
+            "off_the_ball"
+          ]
+        }
+      ],
+      "out_of_possession": [
+        {
+          "id": "amr:out_of_possession:winger",
+          "name": "Winger",
+          "key_attributes": [
+            "crossing",
+            "dribbling",
+            "pace"
+          ]
+        },
+        {
+          "id": "amr:out_of_possession:tracking_winger",
+          "name": "Tracking Winger",
+          "key_attributes": [
+            "work_rate",
+            "stamina",
+            "marking"
+          ]
+        },
+        {
+          "id": "amr:out_of_possession:wide_outlet_winger",
+          "name": "Wide Outlet Winger",
+          "key_attributes": [
+            "pace",
+            "off_the_ball",
+            "first_touch"
+          ]
+        },
+        {
+          "id": "amr:out_of_possession:inverting_outlet_winger",
+          "name": "Inverting Outlet Winger",
+          "key_attributes": [
+            "pace",
+            "off_the_ball",
+            "finishing"
+          ]
+        }
+      ]
+    },
+    {
+      "position_code": "STC",
+      "label": "Striker",
+      "source_position_group": "ST",
+      "in_possession": [
+        {
+          "id": "stc:in_possession:centre_forward",
+          "name": "Centre Forward",
+          "key_attributes": [
+            "finishing",
+            "off_the_ball",
+            "first_touch"
+          ]
+        },
+        {
+          "id": "stc:in_possession:target_forward",
+          "name": "Target Forward",
+          "key_attributes": [
+            "heading",
+            "strength",
+            "first_touch"
+          ]
+        },
+        {
+          "id": "stc:in_possession:poacher",
+          "name": "Poacher",
+          "key_attributes": [
+            "finishing",
+            "off_the_ball",
+            "pace"
+          ]
+        },
+        {
+          "id": "stc:in_possession:deep_lying_forward",
+          "name": "Deep-Lying Forward",
+          "key_attributes": [
+            "first_touch",
+            "passing",
+            "strength"
+          ]
+        },
+        {
+          "id": "stc:in_possession:false_nine",
+          "name": "False Nine",
+          "key_attributes": [
+            "passing",
+            "vision",
+            "first_touch"
+          ]
+        },
+        {
+          "id": "stc:in_possession:channel_forward",
+          "name": "Channel Forward",
+          "key_attributes": [
+            "pace",
+            "off_the_ball",
+            "work_rate"
+          ]
+        },
+        {
+          "id": "stc:in_possession:second_striker",
+          "name": "Second Striker",
+          "key_attributes": [
+            "off_the_ball",
+            "finishing",
+            "first_touch"
+          ]
+        },
+        {
+          "id": "stc:in_possession:half_space_forward",
+          "name": "Half-Space Forward",
+          "key_attributes": [
+            "off_the_ball",
+            "passing",
+            "dribbling"
+          ]
+        }
+      ],
+      "out_of_possession": [
+        {
+          "id": "stc:out_of_possession:centre_forward",
+          "name": "Centre Forward",
+          "key_attributes": [
+            "finishing",
+            "off_the_ball",
+            "first_touch"
+          ]
+        },
+        {
+          "id": "stc:out_of_possession:tracking_centre_forward",
+          "name": "Tracking Centre Forward",
+          "key_attributes": [
+            "work_rate",
+            "stamina",
+            "marking"
+          ]
+        },
+        {
+          "id": "stc:out_of_possession:central_outlet_centre_forward",
+          "name": "Central Outlet Centre Forward",
+          "key_attributes": [
+            "off_the_ball",
+            "strength",
+            "first_touch"
+          ]
+        },
+        {
+          "id": "stc:out_of_possession:splitting_outlet_centre_forward",
+          "name": "Splitting Outlet Centre Forward",
+          "key_attributes": [
+            "pace",
+            "off_the_ball",
+            "finishing"
+          ]
+        }
+      ]
+    }
+  ]
+}
