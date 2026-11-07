@@ -110,6 +110,14 @@ export function searchTextOf(p) {
   return normalizeSearch([p.common_name, p.first_name, p.last_name, p.name, p.full_name].filter((x) => typeof x === 'string').join(' '));
 }
 
+/** Every word of the query appears in the player's names (accent- and case-insensitive). */
+export function matchesNameQuery(p, query) {
+  const tokens = normalizeSearch(query).split(/\s+/).filter(Boolean);
+  if (!tokens.length) return true;
+  const text = searchTextOf(p);
+  return tokens.every((t) => text.includes(t));
+}
+
 /**
  * Name as the profile shows it: the recorded common/display name when FM has
  * one (e.g. "Endrick"), else first + last. `full` is the longer name to show
