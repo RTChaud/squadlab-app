@@ -6,7 +6,7 @@ import {
   getChangePrefs, setChangePrefs, earlierObservations, getPlayerAt,
 } from '../../store.js';
 import { openTagSheet } from '../components/tagSheet.js';
-import { openSheet } from '../components/sheet.js';
+import { openAttributeInfo } from '../components/attributeInfoSheet.js';
 import { FamiliarityPitch } from '../components/familiarityPitch.js';
 import { RadarSection } from '../components/radarSection.js';
 import { isNaturalGoalkeeper } from '../../data/radar.js';
@@ -18,7 +18,6 @@ import {
   ATTRIBUTE_GROUPS, HIDDEN_ATTRS, PERSONALITY_ATTRS,
   attrBand, attributeDirection, describeTraits, intOrNull,
 } from '../../data/attributes.js';
-import { attributeInfo } from '../../data/attributeInfo.js';
 import { describeChange, resolveBaseline } from '../../data/changes.js';
 import { DEFAULT_LINEUPS } from '../../data/lineups.js';
 import { backTarget, linkWithFrom } from '../../router.js';
@@ -177,22 +176,6 @@ function attrRow(def, v, chg, baseV, isKey = false) {
     btn,
     chg.active ? deltaEl(describeChange(v, baseV, direction), `${def.label} change`) : null,
     h('span', { class: `attr-val ${band || 'none'}` }, orDash(v)));
-}
-
-/** Short explanation sheet for one attribute (bundled text, works offline). */
-function openAttributeInfo(def, opener) {
-  const { text } = attributeInfo(def.key);
-  openSheet({
-    title: def.label.replace(/\s*\(Tendency\)$/, ''),
-    titleClass: 'attr-info-title',
-    content: [
-      text
-        ? h('p', { class: 'attr-info-text' }, text)
-        : h('p', { class: 'attr-info-text muted' }, 'Verified explanation not yet available.'),
-    ],
-    actions: [{ label: 'Close', kind: 'secondary', onClick: (close) => close() }],
-    onClose: () => opener?.focus?.(),
-  });
 }
 
 /**

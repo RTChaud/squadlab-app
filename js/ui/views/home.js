@@ -1,5 +1,5 @@
 import { h, icon } from '../dom.js';
-import { getModel, getHistory, listTags, listLineups } from '../../store.js';
+import { getModel, getHistory, listTags, listLineups, getCompare } from '../../store.js';
 import { formatGameDate, resolveTeams } from '../../data/snapshot.js';
 
 function welcome(onImport, onRestore) {
@@ -71,6 +71,10 @@ export function HomeView({ onImport, onRestore }) {
         widget({
           href: '#/lineups', iconName: 'pitch', title: 'Lineups',
           meta: `${lineupCount} lineups · First, Backup & Future XI`,
+        }),
+        widget({
+          href: '#/compare', iconName: 'compare', title: 'Comparison',
+          meta: getCompare().left || getCompare().right ? 'Continue your comparison' : 'Compare two players side by side',
         }),
       ),
     ),
