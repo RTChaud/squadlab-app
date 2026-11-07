@@ -1,8 +1,12 @@
 // Shared player profile — opened from any squad or shortlist.
 
 import { h, icon, orDash, DASH } from '../dom.js';
-import { getPlayerProfile, tagsForPlayer, playerKeyOf } from '../../store.js';
+import {
+  getPlayerProfile, tagsForPlayer, playerKeyOf, squadSlotsFor,
+  getChangePrefs, setChangePrefs, earlierObservations, getPlayerAt,
+} from '../../store.js';
 import { openTagSheet } from '../components/tagSheet.js';
+import { openSheet } from '../components/sheet.js';
 import { RadarSection } from '../components/radarSection.js';
 import { isNaturalGoalkeeper } from '../../data/radar.js';
 import { formatGameDate, resolveTeams } from '../../data/snapshot.js';
@@ -10,9 +14,12 @@ import { describePositions, formatPositions } from '../../data/positions.js';
 import { persistentId } from '../../data/players.js';
 import { resolveNation, loadNations } from '../../data/nations.js';
 import {
-  ATTRIBUTE_GROUPS, HIDDEN_ATTRS, PERSONALITY_ATTRS, VALUE_DIRECTION,
-  attrBand, describeTraits, intOrNull,
+  ATTRIBUTE_GROUPS, HIDDEN_ATTRS, PERSONALITY_ATTRS,
+  attrBand, attributeDirection, describeTraits, intOrNull,
 } from '../../data/attributes.js';
+import { attributeInfo } from '../../data/attributeInfo.js';
+import { describeChange, resolveBaseline } from '../../data/changes.js';
+import { DEFAULT_LINEUPS } from '../../data/lineups.js';
 import { backTarget, linkWithFrom } from '../../router.js';
 
 const str = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
@@ -77,13 +84,28 @@ function clubAndSquad(p, model) {
 
 // ---- Sections ----------------------------------------------------------------------
 
-function header(p, model) {
+const caOf = (p) => intOrNull(p?.ability?.current);
+const paOf = (p) => {
+  const v = intOrNull(p?.ability?.potential);
+  return v !== null && v > 0 ? v : null;
+};
+
+/**
+ * Small change indicator. `what` names the value for screen readers.
+ * PA is always neutral: it shows what was recorded, not training progress.
+ */
+function deltaEl(c, what, cls = 'attr-delta') {
+  return h('span', { class: `${cls} d-${c.tone}`, 'aria-label': `${what}: ${c.label}`, title: c.label }, c.text);
+}
+
+function header(p, model, chg) {
   const name = displayName(p);
   const pos = describePositions(p);
-  const ca = intOrNull(p.ability?.current);
-  const paRaw = intOrNull(p.ability?.potential);
-  const pa = paRaw !== null && paRaw > 0 ? paRaw : null;
+  const ca = caOf(p);
+  const pa = paOf(p);
   const age = intOrNull(p.age);
+  const caChg = chg.active ? describeChange(ca, caOf(chg.base), 'positive') : null;
+  const paChg = chg.active ? describeChange(pa, paOf(chg.base), 'neutral') : null;
 
   return h('div', { class: 'profile-head' },
     h('div', { class: 'profile-id' },
@@ -96,13 +118,36 @@ function header(p, model) {
         pos.accomplished ? h('span', { class: 'muted' }, ` · ${pos.accomplished}`) : null),
     ),
     h('div', { class: 'badges' },
-      h('div', { class: 'badge' }, h('span', { class: 'badge-label' }, 'CA'), h('span', { class: 'badge-value' }, orDash(ca))),
-      h('div', { class: 'badge badge-pa' }, h('span', { class: 'badge-label' }, 'PA'), h('span', { class: 'badge-value' }, orDash(pa))),
+      h('div', { class: 'badge' }, h('span', { class: 'badge-label' }, 'CA'), h('span', { class: 'badge-value' }, orDash(ca)),
+        caChg ? deltaEl(caChg, 'CA change', 'badge-delta') : null),
+      h('div', { class: 'badge badge-pa' }, h('span', { class: 'badge-label' }, 'PA'), h('span', { class: 'badge-value' }, orDash(pa)),
+        paChg ? deltaEl({ ...paChg, label: paChg.diff === null ? paChg.label : `recorded PA ${paChg.label}` }, 'Recorded PA change', 'badge-delta') : null),
     ),
   );
 }
 
-function details(p, model, current) {
+/**
+ * Squad slot: read straight from the three default lineups (custom lineups
+ * don't count). Grouped by lineup with a visible word, chips link to the lineup.
+ */
+function squadSlotValue(p, backHere) {
+  const slots = squadSlotsFor(playerKeyOf(p)); // already in lineup priority, then slot order
+  if (!slots.length) return h('span', { class: 'slot-none' }, 'Not assigned');
+  return h('span', { class: 'slot-groups' }, DEFAULT_LINEUPS.map((l) => {
+    const mine = slots.filter((s) => s.tier === l.tier);
+    if (!mine.length) return null;
+    const word = l.name.replace(/\s*XI$/, '');
+    return h('span', { class: `slot-group t${l.tier}` },
+      h('span', { class: 'slot-tier', 'aria-hidden': 'true' }, word),
+      mine.map((s) => h('a', {
+        class: `slot-chip t${l.tier}`,
+        href: linkWithFrom(`/lineups/${encodeURIComponent(l.id)}`, backHere),
+        'aria-label': `${l.name}: ${s.slot}. Open lineup`,
+      }, s.slot)));
+  }));
+}
+
+function details(p, model, current, backHere) {
   const { clubText, squadText } = clubAndSquad(p, model);
   const nat = nationalityValue(p, model.careerId);
   const row = (k, v, note, extra) => h('div', { class: 'detail' },
@@ -114,8 +159,7 @@ function details(p, model, current) {
     row('Foot', footText(p)),
     row('Height', Number.isInteger(p.height_cm) ? `${p.height_cm} cm` : DASH),
     row('Nationality', nat.value, nat.note, nat.extra),
-    // Reserved slot (kept empty for now) so the grid stays 2 × 3; to be used later.
-    h('div', { class: 'detail detail-reserved', 'aria-hidden': 'true' }),
+    row('Squad slot', squadSlotValue(p, backHere)),
   );
 }
 
@@ -124,35 +168,92 @@ function details(p, model, current) {
  * before the name is reserved for future role key attributes (orange); it is
  * empty for now.
  */
-function attrRow(labelText, v, direction, isKey = false) {
+function attrRow(def, v, chg, baseV, isKey = false) {
+  const direction = attributeDirection(def.key);
   const band = attrBand(v, direction);
+  const btn = h('button', {
+    type: 'button', class: 'attr-name', 'aria-haspopup': 'dialog',
+    onclick: () => openAttributeInfo(def, btn),
+  }, def.label);
   return h('li', { class: `attr${isKey ? ' key-attr' : ''}` },
     h('span', { class: 'attr-mark', 'aria-hidden': 'true' }),
-    h('span', { class: 'attr-name' }, labelText),
+    btn,
+    chg.active ? deltaEl(describeChange(v, baseV, direction), `${def.label} change`) : null,
     h('span', { class: `attr-val ${band || 'none'}` }, orDash(v)));
+}
+
+/** Short explanation sheet for one attribute (bundled text, works offline). */
+function openAttributeInfo(def, opener) {
+  const { text, source } = attributeInfo(def.key);
+  openSheet({
+    title: def.label.replace(/\s*\(Tendency\)$/, ''),
+    titleClass: 'attr-info-title',
+    content: [
+      text
+        ? h('p', { class: 'attr-info-text' }, text)
+        : h('p', { class: 'attr-info-text muted' }, 'Verified explanation not yet available.'),
+      source ? h('p', { class: 'attr-info-source' },
+        `Summarised from the ${source.edition} manual (older edition; FM27 may differ). `,
+        h('a', { href: source.url, target: '_blank', rel: 'noopener noreferrer' }, 'Source')) : null,
+    ],
+    actions: [{ label: 'Close', kind: 'secondary', onClick: (close) => close() }],
+    onClose: () => opener?.focus?.(),
+  });
 }
 
 /**
  * @param highlightKeys  future: role key attributes (orange outline, separate
  *                       from the value colours). Empty for now.
  */
-function attributeGroup(group, p, open, highlightKeys = new Set()) {
-  const rows = group.attrs.map((a) => {
-    return attrRow(a.label, intOrNull(p.attributes?.[a.key]), 'positive', highlightKeys.has(a.key));
-  });
+function attributeGroup(group, p, chg, open, highlightKeys = new Set()) {
+  const rows = group.attrs.map((a) => attrRow(a, intOrNull(p.attributes?.[a.key]), chg,
+    intOrNull(chg.base?.attributes?.[a.key]), highlightKeys.has(a.key)));
   return h('details', { class: 'group', open },
     h('summary', {}, h('span', {}, group.label), h('span', { class: 'group-count' }, group.attrs.length)),
     h('ul', { class: 'attr-list' }, rows));
 }
 
-function attributesSection(p) {
+/** "Show changes" toggle + baseline picker (per player, remembered). */
+function changesControls(chg) {
+  const toggle = h('button', {
+    type: 'button', class: `chg-toggle${chg.show ? ' on' : ''}`, 'aria-pressed': String(chg.show),
+    disabled: !chg.key,
+    onclick: () => setChangePrefs(chg.key, { show: !chg.show }),
+  }, h('span', { class: 'chg-switch', 'aria-hidden': 'true' }), 'Show changes');
+
+  let bar = null;
+  if (chg.show && !chg.dates.length) {
+    bar = h('p', { class: 'chg-bar muted small', role: 'note' },
+      'Only one observation of this player so far — changes appear once another snapshot includes them.');
+  } else if (chg.show) {
+    const [earliest, ...later] = chg.dates;
+    const pinned = chg.pref.baseline && chg.dates.includes(chg.pref.baseline) ? chg.pref.baseline : '';
+    const opts = [
+      h('option', { value: '', selected: pinned === '' }, `Earliest · ${formatGameDate(earliest)}`),
+      ...(pinned === earliest ? [earliest] : []).concat(later).map((d) =>
+        h('option', { value: d, selected: pinned === d }, formatGameDate(d))),
+    ];
+    bar = h('div', { class: 'chg-bar' },
+      h('label', { class: 'muted small', for: 'chg-baseline' }, 'Since'),
+      h('select', {
+        id: 'chg-baseline', class: 'select select-sm chg-select',
+        onchange: (e) => setChangePrefs(chg.key, { baseline: e.target.value || null }),
+      }, opts),
+      h('span', { class: 'muted small chg-to' }, `→ ${formatGameDate(chg.currentDate)}`));
+  }
+  return { toggle, bar };
+}
+
+function attributesSection(p, chg) {
   const isGK = isNaturalGoalkeeper(p);
   // Goalkeepers: goalkeeping first and open, outfield technical folded away.
   const order = isGK ? ['goalkeeping', 'mental', 'physical', 'technical'] : ['technical', 'mental', 'physical', 'goalkeeping'];
   const groups = order.map((k) => ATTRIBUTE_GROUPS.find((g) => g.key === k));
-  return h('section', { class: 'psection' },
-    h('h3', {}, 'Attributes'),
-    groups.map((g) => attributeGroup(g, p, isGK ? g.key !== 'technical' : g.key !== 'goalkeeping')),
+  const { toggle, bar } = changesControls(chg);
+  return h('section', { class: `psection${chg.active ? ' show-changes' : ''}` },
+    h('div', { class: 'psection-head attr-head' }, h('h3', {}, 'Attributes'), toggle),
+    bar,
+    groups.map((g) => attributeGroup(g, p, chg, isGK ? g.key !== 'technical' : g.key !== 'goalkeeping')),
   );
 }
 
@@ -209,15 +310,15 @@ function familiaritySection(p) {
   );
 }
 
-function hiddenSection(p) {
-  const list = (defs, source) => h('ul', { class: 'attr-list neutral' },
-    defs.map((a) => attrRow(a.label, intOrNull(source?.[a.key]), VALUE_DIRECTION[a.key] || 'neutral')));
+function hiddenSection(p, chg) {
+  const list = (defs, block) => h('ul', { class: `attr-list neutral${chg.active ? ' show-changes' : ''}` },
+    defs.map((a) => attrRow(a, intOrNull(p[block]?.[a.key]), chg, intOrNull(chg.base?.[block]?.[a.key]))));
   return h('details', { class: 'group hidden-group', open: true },
     h('summary', {}, h('span', {}, 'Hidden attributes & personality'), h('span', { class: 'group-count' }, HIDDEN_ATTRS.length + PERSONALITY_ATTRS.length)),
     h('p', { class: 'sub-head' }, 'Hidden attributes'),
-    list(HIDDEN_ATTRS, p.attributes),
+    list(HIDDEN_ATTRS, 'attributes'),
     h('p', { class: 'sub-head' }, 'Personality values'),
-    list(PERSONALITY_ATTRS, p.personality),
+    list(PERSONALITY_ATTRS, 'personality'),
   );
 }
 
@@ -249,25 +350,41 @@ export async function PlayerView({ pid, query }) {
   }
   const { player: p, model, current, latestDate } = res;
   const here = `/player/${encodeURIComponent(persistentId(p))}`;
-  const devHref = linkWithFrom(`${here}/development`, `${here}?${query.toString()}`);
+  const backHere = `${here}?${query.toString()}`;
+  const devHref = linkWithFrom(`${here}/development`, backHere);
+
+  // Changes: compare the displayed snapshot with an earlier observation of
+  // this player (default: their earliest, which follows later older imports).
+  const key = playerKeyOf(p);
+  const pref = key ? getChangePrefs(key) : { show: false, baseline: null };
+  const chg = { key, pref, show: pref.show, dates: [], base: null, active: false, currentDate: model.gameDate };
+  if (chg.show) {
+    chg.dates = await earlierObservations(pid, model.gameDate);
+    const baseDate = resolveBaseline(chg.dates, pref.baseline);
+    chg.base = baseDate ? await getPlayerAt(pid, baseDate) : null;
+    chg.active = !!chg.base;
+  }
+  const headEl = header(p, model, chg);
 
   return {
     title: displayName(p).main,
     subtitle: current ? formatGameDate(model.gameDate) : `Last recorded ${formatGameDate(model.gameDate)}`,
+    // Compact header: the name appears there only once the card's name has scrolled away.
+    revealTitle: headEl.querySelector('.profile-name'),
     back,
     body: h('div', { class: 'stack profile' },
       current ? null : h('div', { class: 'history-banner', role: 'note' },
         icon('restore', 'history-icon'),
         h('p', {}, h('strong', {}, `Not in the latest snapshot (${formatGameDate(latestDate)}).`),
           ` Showing their last recorded data, from ${formatGameDate(model.gameDate)}.`)),
-      header(p, model),
+      headEl,
       actionRow(p, devHref),
-      details(p, model, current),
+      details(p, model, current, backHere),
       RadarSection(p, playerKeyOf(p)),
-      attributesSection(p),
+      attributesSection(p, chg),
       traitsSection(p),
       familiaritySection(p),
-      hiddenSection(p),
+      hiddenSection(p, chg),
     ),
   };
 }

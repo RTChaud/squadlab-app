@@ -16,7 +16,7 @@ import { intOrNull } from '../../data/attributes.js';
 import { openSheet, confirmSheet } from '../components/sheet.js';
 import { promptSheet } from '../components/promptSheet.js';
 import { toast } from '../components/feedback.js';
-import { linkWithFrom } from '../../router.js';
+import { linkWithFrom, backTarget } from '../../router.js';
 
 /** Visual rows, attack at the top. Rendering only — not the sort order. */
 const PITCH_ROWS_4231 = [
@@ -29,7 +29,9 @@ const PITCH_ROWS_4231 = [
 
 const pickHref = (lineupId, slot) => `#/lineups/${encodeURIComponent(lineupId)}/pick/${slot}`;
 
-export async function LineupView({ id }) {
+export async function LineupView({ id, query }) {
+  // Opened from a player's Squad slot chip: Back returns to that player.
+  const back = query ? backTarget(query, '#/lineups') : '#/lineups';
   const lineup = getLineup(id);
   if (!lineup) {
     return { title: 'Lineup', back: '#/lineups', body: h('div', { class: 'empty' }, h('p', { class: 'empty-title' }, 'Lineup not found')) };
@@ -111,7 +113,7 @@ export async function LineupView({ id }) {
   return {
     title: lineup.name,
     subtitle: `4-2-3-1 · ${filledCount} of 11 filled`,
-    back: '#/lineups',
+    back,
     body: h('div', { class: 'stack lineup' },
       h('div', { class: 'lineup-bar' },
         h('span', { class: 'muted small' }, filledCount ? 'Tap a player for options.' : 'Tap a position to add a player.'),
