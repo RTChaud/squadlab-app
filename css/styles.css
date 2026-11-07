@@ -703,7 +703,8 @@ body.sheet-open { overflow: hidden; }
 .chg-toggle.on .chg-switch { background: var(--accent); box-shadow: none; }
 .chg-toggle.on .chg-switch::after { transform: translateX(14px); background: #17120c; }
 .chg-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; }
-.chg-bar .chg-select { flex: 0 1 auto; width: auto; max-width: 100%; }
+/* Higher specificity than .select.select-sm (190px cap), so the full date fits. */
+.chg-bar .select.chg-select { flex: 0 0 auto; width: auto; min-width: 13rem; max-width: 100%; }
 /* Changes on: tighten the row a little so names keep their room. */
 .show-changes .attr-list, .attr-list.show-changes { column-gap: 8px; padding-left: 4px; padding-right: 4px; }
 .show-changes .attr, .attr-list.show-changes .attr { gap: 4px; padding: 0 4px; }
