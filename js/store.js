@@ -7,11 +7,12 @@ import {
   BACKUP_FORMAT, BACKUP_VERSION,
 } from './data/importer.js';
 import { makeSnapshotRecord, buildModel } from './data/snapshot.js';
-import { buildMetrics, keyFor, findInSnapshot, playerHistory, playerKey } from './data/players.js';
+import { buildMetrics, keyFor, findInSnapshot, playerHistory, playerKey, METRICS_VERSION } from './data/players.js';
 import * as Tags from './data/tags.js';
 import * as Lineups from './data/lineups.js';
 import * as Radar from './data/radar.js';
 import * as Changes from './data/changes.js';
+import * as ListView from './data/listView.js';
 
 const state = {
   career: null,   // { careerId, createdAt }
@@ -24,6 +25,7 @@ const state = {
   prefs: new Map(),         // cached "pref:*" settings, readable synchronously
   radar: Radar.emptyRadarPrefs(), // per-player radar choices for the active career
   changes: Changes.emptyChangePrefs(), // per-player 'Show changes' toggle + baseline
+  lists: ListView.emptyListPrefs(),     // Squad/Shortlists table settings + saved views
 };
 
 const listeners = new Set();
@@ -53,6 +55,7 @@ async function reload() {
   await loadLineups(career);
   state.radar = career ? Radar.sanitizeRadarPrefs(await db.getSetting(radarKey(career), null)) : Radar.emptyRadarPrefs();
   state.changes = career ? Changes.sanitizeChangePrefs(await db.getSetting(changesKey(career), null)) : Changes.emptyChangePrefs();
+  state.lists = career ? ListView.sanitizeListPrefs(await db.getSetting(listsKey(career), null)) : ListView.emptyListPrefs();
   state.prefs = new Map((await db.getAllSettings()).filter((x) => x.key.startsWith('pref:')).map((x) => [x.key.slice(5), x.value]));
   await ensureMetrics(metas);
   emit();
@@ -62,6 +65,7 @@ const tagsKey = (career) => `tags:${career.careerId}`;
 const lineupsKey = (career) => `lineups:${career.careerId}`;
 const radarKey = (career) => `radar:${career.careerId}`;
 const changesKey = (career) => `changes:${career.careerId}`;
+const listsKey = (career) => `lists:${career.careerId}`;
 
 /**
  * Load (or create once) the career's lineups. The three defaults have fixed
@@ -81,10 +85,13 @@ async function loadLineups(career) {
  * before this version), and drop metrics whose snapshot no longer exists.
  */
 async function ensureMetrics(metas) {
-  const have = new Set(await db.listMetricIds());
+  // Metrics built by an older version are rebuilt (e.g. v2 adds hidden/personality).
+  const stored = await db.listMetrics();
+  const have = new Set(stored.map((m) => m.id));
+  const current = new Set(stored.filter((m) => m.v === METRICS_VERSION).map((m) => m.id));
   const want = new Set(metas.map((m) => m.id));
   for (const m of metas) {
-    if (have.has(m.id)) continue;
+    if (current.has(m.id)) continue;
     const rec = await db.getSnapshot(m.id);
     if (rec) await db.putMetrics(buildMetrics(rec));
   }
@@ -396,3 +403,50 @@ export async function getPlayerAt(pid, gameDate) {
   const rec = await db.getSnapshot(db.snapshotId(state.career.careerId, gameDate));
   return rec ? findInSnapshot(rec.data, keyFor(state.career.careerId, pid)) : null;
 }
+
+// ---- Squad / Shortlists table settings and saved views (per career) ----------------
+// Saved without emitting: the list screens update themselves, so typing or
+// toggling never rebuilds the page (and keeps focus and scroll).
+
+export const getListPrefs = () => state.lists;
+export const getListSection = (section) => state.lists.sections[section] || { viewId: ListView.DEFAULT_VIEW_ID, config: ListView.defaultConfig(section) };
+
+async function saveLists(next) {
+  state.lists = ListView.sanitizeListPrefs(next);
+  if (state.career) await db.setSetting(listsKey(state.career), state.lists);
+  return state.lists;
+}
+
+export function setListSection(section, patch) {
+  const cur = getListSection(section);
+  return saveLists({ ...state.lists, sections: { ...state.lists.sections, [section]: { ...cur, ...patch } } });
+}
+
+export async function createListView(name, config) {
+  const err = ListView.viewNameError(state.lists, name);
+  if (err) throw new Error(err);
+  const now = new Date().toISOString();
+  const view = { id: ListView.newViewId(), name: ListView.normalizeViewName(name), config, createdAt: now, updatedAt: now };
+  await saveLists({ ...state.lists, views: [...state.lists.views, view] });
+  return view;
+}
+
+export function updateListView(id, config) {
+  return saveLists({ ...state.lists, views: state.lists.views.map((v) => (v.id === id ? { ...v, config, updatedAt: new Date().toISOString() } : v)) });
+}
+
+export function renameListView(id, name) {
+  const err = ListView.viewNameError(state.lists, name, id);
+  if (err) throw new Error(err);
+  return saveLists({ ...state.lists, views: state.lists.views.map((v) => (v.id === id ? { ...v, name: ListView.normalizeViewName(name) } : v)) });
+}
+
+/** Delete a saved view; sections using it fall back to Default (keeping their settings). */
+export function deleteListView(id) {
+  const sections = Object.fromEntries(Object.entries(state.lists.sections).map(([k, st]) =>
+    [k, st.viewId === id ? { ...st, viewId: ListView.DEFAULT_VIEW_ID } : st]));
+  return saveLists({ views: state.lists.views.filter((v) => v.id !== id), sections });
+}
+
+/** Metrics of every snapshot in the active career (for list development columns). */
+export const getCareerMetrics = () => careerMetrics();
