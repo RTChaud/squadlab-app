@@ -129,23 +129,25 @@ export function computeSelected(p, keys) {
   });
 }
 
-// ---- Position/role profiles (future) ---------------------------------------------
-// Not implemented yet: the UI shows "Role profiles coming soon." When role
-// definitions are agreed they go here (never in the chart code), e.g.
-//   { id, phase: 'inPossession'|'outOfPossession', position, role,
-//     primary: [attrKeys], supporting: [attrKeys] }
-// Each phase gets its own position + role selectors and its own radar, with
-// positional familiarity alongside; any position/role can be explored.
+// ---- Position/role profiles ------------------------------------------------------
+// Role definitions come from the bundled role catalogue (see roles.js). Each
+// phase stores its own { position (app code), role (catalogue role id) };
+// selections are checked against the active catalogue when they are used.
 export const ROLE_PHASES = [
-  { id: 'inPossession', label: 'In Possession' },
-  { id: 'outOfPossession', label: 'Out of Possession' },
+  { id: 'in_possession', label: 'In Possession' },
+  { id: 'out_of_possession', label: 'Out of Possession' },
 ];
-export const ROLE_PROFILES = [];
 
 // ---- Per-player preferences ---------------------------------------------------------
 // Stored per career (settings key "radar:<careerId>"), keyed by player key.
 
 export const emptyRadarPrefs = () => ({ players: {} });
+
+/** One phase's saved role selection (shape only; catalogue validity is checked on use). */
+export const sanitizeRoleSel = (r) => ({
+  position: typeof r?.position === 'string' && r.position ? r.position : null,
+  role: typeof r?.role === 'string' && r.role ? r.role : null,
+});
 
 export function sanitizeRadarPrefs(raw) {
   const out = emptyRadarPrefs();
@@ -156,7 +158,7 @@ export function sanitizeRadarPrefs(raw) {
     const roles = {};
     for (const ph of ROLE_PHASES) {
       const r = v.roles?.[ph.id];
-      roles[ph.id] = { position: typeof r?.position === 'string' ? r.position : null, role: typeof r?.role === 'string' ? r.role : null };
+      roles[ph.id] = sanitizeRoleSel(r);
     }
     out.players[key] = { selected: attrs, roles };
   }
