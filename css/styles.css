@@ -255,24 +255,99 @@ svg { display: block; width: 100%; height: 100%; }
 .welcome .btn-text { margin-top: 8px; }
 .privacy { color: var(--muted); font-size: 13px; max-width: 320px; margin: 16px 0 0; }
 
-/* ---- Snapshot card -------------------------------------------------------- */
+/* ---- Home ----------------------------------------------------------------- */
 
-.snapshot {
+/* Home sits closer to the status bar than other pages (still clear of the safe area). */
+html.on-home { --header-gap: 2px; }
+@media (display-mode: standalone) { html.on-home { --header-gap: 10px; } }
+html.standalone.on-home { --header-gap: 10px; }
+html.on-home .view { padding-top: 12px; }
+
+.home { display: flex; flex-direction: column; gap: 22px; }
+
+.save-strip {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px;
-  border-radius: var(--radius);
-  background: linear-gradient(135deg, rgba(247, 134, 30, 0.16), rgba(247, 134, 30, 0.04) 60%), var(--surface);
-  border: 1px solid rgba(247, 134, 30, 0.28);
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(247, 134, 30, 0.14), rgba(247, 134, 30, 0.03) 65%), var(--surface);
+  border: 1px solid rgba(247, 134, 30, 0.24);
 }
-.snapshot-main { display: flex; flex-direction: column; min-width: 0; }
-.snapshot-club { font-size: 20px; font-weight: 750; letter-spacing: -0.01em; }
-.snapshot-manager { color: var(--text-2); font-size: 14px; }
-.snapshot-date { display: flex; flex-direction: column; align-items: flex-end; flex: none; }
-.snapshot-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
-.snapshot-value { font-size: 17px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.save-club { min-width: 0; font-size: 16px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.save-date { flex: none; font-size: 15px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Launcher: three equal columns, square icons with the name below. */
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  row-gap: 18px;
+  column-gap: 8px;
+  max-width: 420px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+.app-cell { display: flex; justify-content: center; min-width: 0; }
+.app-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 0;
+  border-radius: 16px;
+  -webkit-touch-callout: none;
+}
+.app-icon {
+  display: grid;
+  place-items: center;
+  width: min(84px, 100%);
+  aspect-ratio: 1;
+  padding: 23%;
+  border-radius: 23%;
+  background: linear-gradient(160deg, #2c2f37, var(--surface) 70%);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 4px 12px rgba(0, 0, 0, 0.28);
+  transition: transform 0.12s, background 0.12s;
+}
+.app-label {
+  max-width: 100%;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-tile:active .app-icon { transform: scale(0.94); background: var(--surface-2); }
+@media (hover: hover) {
+  .app-tile:hover .app-icon { border-color: rgba(247, 134, 30, 0.5); }
+}
+
+/* Placeholder screen (Tactic) */
+.soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 40px 16px;
+  text-align: center;
+}
+.soon-icon {
+  width: 72px;
+  height: 72px;
+  padding: 17px;
+  border-radius: 23%;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.soon-title { margin: 0; font-size: 20px; font-weight: 700; }
 
 /* ---- Widgets --------------------------------------------------------------- */
 
