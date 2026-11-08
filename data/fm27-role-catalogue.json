@@ -57,7 +57,8 @@
             "handling",
             "reflexes",
             "positioning"
-          ]
+          ],
+          "description": "Protects the goal and favours straightforward distribution."
         },
         {
           "id": "gk:in_possession:ball_playing_goalkeeper",
@@ -66,7 +67,8 @@
             "passing",
             "kicking",
             "decisions"
-          ]
+          ],
+          "description": "Offers a passing option behind the defenders during build-up."
         },
         {
           "id": "gk:in_possession:no_nonsense_goalkeeper",
@@ -75,7 +77,8 @@
             "kicking",
             "handling",
             "reflexes"
-          ]
+          ],
+          "description": "Relieves pressure by playing long and keeping distribution simple."
         }
       ],
       "out_of_possession": [
@@ -86,7 +89,8 @@
             "handling",
             "reflexes",
             "positioning"
-          ]
+          ],
+          "description": "Protects the goal and favours straightforward distribution."
         },
         {
           "id": "gk:out_of_possession:sweeper_keeper",
@@ -95,7 +99,8 @@
             "rushing_out",
             "one_on_ones",
             "decisions"
-          ]
+          ],
+          "description": "Leaves the goal to intercept balls played behind the defence."
         },
         {
           "id": "gk:out_of_possession:line_holding_keeper",
@@ -104,7 +109,8 @@
             "reflexes",
             "positioning",
             "handling"
-          ]
+          ],
+          "description": "Defends from a deeper starting position close to goal."
         }
       ]
     },
@@ -120,7 +126,8 @@
             "marking",
             "tackling",
             "positioning"
-          ]
+          ],
+          "description": "Protects central space, contests aerial balls and maintains the defensive line."
         },
         {
           "id": "dc:in_possession:ball_playing_centre_back",
@@ -129,7 +136,8 @@
             "passing",
             "vision",
             "decisions"
-          ]
+          ],
+          "description": "Looks for progressive passes through or beyond the opposition press."
         },
         {
           "id": "dc:in_possession:no_nonsense_centre_back",
@@ -138,7 +146,8 @@
             "heading",
             "strength",
             "tackling"
-          ]
+          ],
+          "description": "Prioritises clearing danger and takes few risks on the ball."
         },
         {
           "id": "dc:in_possession:advanced_centre_back",
@@ -147,7 +156,8 @@
             "passing",
             "dribbling",
             "decisions"
-          ]
+          ],
+          "description": "Steps out of defence to help progress play through midfield."
         },
         {
           "id": "dc:in_possession:wide_centre_back",
@@ -156,7 +166,8 @@
             "pace",
             "passing",
             "positioning"
-          ]
+          ],
+          "description": "Moves towards the flank from a back three to support possession."
         },
         {
           "id": "dc:in_possession:overlapping_centre_back",
@@ -165,7 +176,8 @@
             "pace",
             "stamina",
             "crossing"
-          ]
+          ],
+          "description": "Advances outside the wide teammate to support attacks down the flank."
         }
       ],
       "out_of_possession": [
@@ -176,7 +188,8 @@
             "marking",
             "tackling",
             "positioning"
-          ]
+          ],
+          "description": "Protects central space, contests aerial balls and maintains the defensive line."
         },
         {
           "id": "dc:out_of_possession:stopping_centre_back",
@@ -185,7 +198,8 @@
             "tackling",
             "strength",
             "decisions"
-          ]
+          ],
+          "description": "Steps out of the line to challenge a forward early."
         },
         {
           "id": "dc:out_of_possession:covering_centre_back",
@@ -194,7 +208,8 @@
             "pace",
             "positioning",
             "decisions"
-          ]
+          ],
+          "description": "Drops behind a defensive partner to cover runs and through balls."
         }
       ]
     },
@@ -210,7 +225,8 @@
             "tackling",
             "marking",
             "positioning"
-          ]
+          ],
+          "description": "Protects the flank and offers support down the touchline."
         },
         {
           "id": "dl:in_possession:inside_full_back",
@@ -219,7 +235,8 @@
             "passing",
             "positioning",
             "decisions"
-          ]
+          ],
+          "description": "Moves inside from the flank to support central build-up."
         }
       ],
       "out_of_possession": [
@@ -230,7 +247,8 @@
             "tackling",
             "marking",
             "positioning"
-          ]
+          ],
+          "description": "Protects the flank and offers support down the touchline."
         },
         {
           "id": "dl:out_of_possession:pressing_full_back",
@@ -239,7 +257,8 @@
             "work_rate",
             "stamina",
             "tackling"
-          ]
+          ],
+          "description": "Steps forward to put immediate pressure on the opposition’s wide player."
         },
         {
           "id": "dl:out_of_possession:holding_full_back",
@@ -248,7 +267,8 @@
             "positioning",
             "marking",
             "decisions"
-          ]
+          ],
+          "description": "Maintains the defensive line and protects space behind the press."
         }
       ]
     },
@@ -264,7 +284,8 @@
             "tackling",
             "marking",
             "positioning"
-          ]
+          ],
+          "description": "Protects the flank and offers support down the touchline."
         },
         {
           "id": "dr:in_possession:inside_full_back",
@@ -273,7 +294,8 @@
             "passing",
             "positioning",
             "decisions"
-          ]
+          ],
+          "description": "Moves inside from the flank to support central build-up."
         }
       ],
       "out_of_possession": [
@@ -284,7 +306,8 @@
             "tackling",
             "marking",
             "positioning"
-          ]
+          ],
+          "description": "Protects the flank and offers support down the touchline."
         },
         {
           "id": "dr:out_of_possession:pressing_full_back",
@@ -293,7 +316,8 @@
             "work_rate",
             "stamina",
             "tackling"
-          ]
+          ],
+          "description": "Steps forward to put immediate pressure on the opposition’s wide player."
         },
         {
           "id": "dr:out_of_possession:holding_full_back",
@@ -302,7 +326,8 @@
             "positioning",
             "marking",
             "decisions"
-          ]
+          ],
+          "description": "Maintains the defensive line and protects space behind the press."
         }
       ]
     },
@@ -318,7 +343,8 @@
             "stamina",
             "work_rate",
             "crossing"
-          ]
+          ],
+          "description": "Works the flank in both directions and provides width going forward."
         },
         {
           "id": "wbl:in_possession:advanced_wing_back",
@@ -327,7 +353,8 @@
             "crossing",
             "pace",
             "stamina"
-          ]
+          ],
+          "description": "Pushes up the flank to offer a high, wide attacking outlet."
         },
         {
           "id": "wbl:in_possession:inside_wing_back",
@@ -336,7 +363,8 @@
             "passing",
             "decisions",
             "stamina"
-          ]
+          ],
+          "description": "Moves from the flank into midfield to create central passing options."
         },
         {
           "id": "wbl:in_possession:playmaking_wing_back",
@@ -345,7 +373,8 @@
             "passing",
             "vision",
             "first_touch"
-          ]
+          ],
+          "description": "Creates chances and progresses possession from a wide starting position."
         }
       ],
       "out_of_possession": [
@@ -356,7 +385,8 @@
             "stamina",
             "work_rate",
             "crossing"
-          ]
+          ],
+          "description": "Works the flank in both directions and provides width going forward."
         },
         {
           "id": "wbl:out_of_possession:holding_wing_back",
@@ -365,7 +395,8 @@
             "positioning",
             "marking",
             "tackling"
-          ]
+          ],
+          "description": "Drops alongside the defenders to protect the flank from deep."
         },
         {
           "id": "wbl:out_of_possession:pressing_wing_back",
@@ -374,7 +405,8 @@
             "work_rate",
             "stamina",
             "pace"
-          ]
+          ],
+          "description": "Pushes out of the defensive shape to close down opponents on the flank."
         }
       ]
     },
@@ -390,7 +422,8 @@
             "stamina",
             "work_rate",
             "crossing"
-          ]
+          ],
+          "description": "Works the flank in both directions and provides width going forward."
         },
         {
           "id": "wbr:in_possession:advanced_wing_back",
@@ -399,7 +432,8 @@
             "crossing",
             "pace",
             "stamina"
-          ]
+          ],
+          "description": "Pushes up the flank to offer a high, wide attacking outlet."
         },
         {
           "id": "wbr:in_possession:inside_wing_back",
@@ -408,7 +442,8 @@
             "passing",
             "decisions",
             "stamina"
-          ]
+          ],
+          "description": "Moves from the flank into midfield to create central passing options."
         },
         {
           "id": "wbr:in_possession:playmaking_wing_back",
@@ -417,7 +452,8 @@
             "passing",
             "vision",
             "first_touch"
-          ]
+          ],
+          "description": "Creates chances and progresses possession from a wide starting position."
         }
       ],
       "out_of_possession": [
@@ -428,7 +464,8 @@
             "stamina",
             "work_rate",
             "crossing"
-          ]
+          ],
+          "description": "Works the flank in both directions and provides width going forward."
         },
         {
           "id": "wbr:out_of_possession:holding_wing_back",
@@ -437,7 +474,8 @@
             "positioning",
             "marking",
             "tackling"
-          ]
+          ],
+          "description": "Drops alongside the defenders to protect the flank from deep."
         },
         {
           "id": "wbr:out_of_possession:pressing_wing_back",
@@ -446,7 +484,8 @@
             "work_rate",
             "stamina",
             "pace"
-          ]
+          ],
+          "description": "Pushes out of the defensive shape to close down opponents on the flank."
         }
       ]
     },
@@ -462,7 +501,8 @@
             "tackling",
             "positioning",
             "decisions"
-          ]
+          ],
+          "description": "Protects the space ahead of the centre-backs and keeps possession moving."
         },
         {
           "id": "dm:in_possession:deep_lying_playmaker",
@@ -471,7 +511,8 @@
             "passing",
             "vision",
             "decisions"
-          ]
+          ],
+          "description": "Directs play from deep and looks for passes that advance attacks."
         },
         {
           "id": "dm:in_possession:half_back",
@@ -480,7 +521,8 @@
             "positioning",
             "passing",
             "decisions"
-          ]
+          ],
+          "description": "Drops between the centre-backs to provide an extra build-up option."
         }
       ],
       "out_of_possession": [
@@ -491,7 +533,8 @@
             "tackling",
             "positioning",
             "decisions"
-          ]
+          ],
+          "description": "Protects the space ahead of the centre-backs and keeps possession moving."
         },
         {
           "id": "dm:out_of_possession:dropping_defensive_midfielder",
@@ -500,7 +543,8 @@
             "positioning",
             "marking",
             "tackling"
-          ]
+          ],
+          "description": "Retreats into the back line when the opposition has possession."
         },
         {
           "id": "dm:out_of_possession:screening_defensive_midfielder",
@@ -509,7 +553,8 @@
             "positioning",
             "decisions",
             "marking"
-          ]
+          ],
+          "description": "Protects the centre-backs by closing passing lanes in front of them."
         },
         {
           "id": "dm:out_of_possession:pressing_defensive_midfielder",
@@ -518,7 +563,8 @@
             "work_rate",
             "tackling",
             "stamina"
-          ]
+          ],
+          "description": "Leaves the holding position to close down an opponent on the ball."
         },
         {
           "id": "dm:out_of_possession:wide_covering_defensive_midfielder",
@@ -527,7 +573,8 @@
             "stamina",
             "work_rate",
             "positioning"
-          ]
+          ],
+          "description": "Shifts across to protect wide spaces and support the full-back."
         }
       ]
     },
@@ -543,7 +590,8 @@
             "passing",
             "decisions",
             "work_rate"
-          ]
+          ],
+          "description": "Links defence and attack and supports teammates through the middle."
         },
         {
           "id": "mc:in_possession:midfield_playmaker",
@@ -552,7 +600,8 @@
             "passing",
             "vision",
             "first_touch"
-          ]
+          ],
+          "description": "Looks to receive centrally and create opportunities with the next pass."
         },
         {
           "id": "mc:in_possession:box_to_box_midfielder",
@@ -561,7 +610,8 @@
             "stamina",
             "work_rate",
             "off_the_ball"
-          ]
+          ],
+          "description": "Supports both penalty areas and arrives from deep to join attacks."
         },
         {
           "id": "mc:in_possession:box_to_box_playmaker",
@@ -570,7 +620,8 @@
             "passing",
             "stamina",
             "vision"
-          ]
+          ],
+          "description": "Combines runs from deep with creative passing in advanced areas."
         },
         {
           "id": "mc:in_possession:channel_midfielder",
@@ -579,7 +630,8 @@
             "off_the_ball",
             "dribbling",
             "pace"
-          ]
+          ],
+          "description": "Runs into the inside channels to receive and progress possession."
         }
       ],
       "out_of_possession": [
@@ -590,7 +642,8 @@
             "passing",
             "decisions",
             "work_rate"
-          ]
+          ],
+          "description": "Links defence and attack and supports teammates through the middle."
         },
         {
           "id": "mc:out_of_possession:pressing_central_midfielder",
@@ -599,7 +652,8 @@
             "work_rate",
             "stamina",
             "tackling"
-          ]
+          ],
+          "description": "Steps towards the ball carrier to disrupt the opposition’s midfield play."
         },
         {
           "id": "mc:out_of_possession:screening_central_midfielder",
@@ -608,7 +662,8 @@
             "positioning",
             "decisions",
             "marking"
-          ]
+          ],
+          "description": "Holds a central defensive position and blocks routes through midfield."
         },
         {
           "id": "mc:out_of_possession:wide_covering_central_midfielder",
@@ -617,7 +672,8 @@
             "stamina",
             "work_rate",
             "positioning"
-          ]
+          ],
+          "description": "Shifts towards the flank to support teammates defending wide."
         }
       ]
     },
@@ -633,7 +689,8 @@
             "work_rate",
             "crossing",
             "stamina"
-          ]
+          ],
+          "description": "Provides width from midfield and tracks back to support the flank."
         },
         {
           "id": "ml:in_possession:wide_central_midfielder",
@@ -642,7 +699,8 @@
             "passing",
             "decisions",
             "first_touch"
-          ]
+          ],
+          "description": "Starts on the flank and comes inside to help the central midfield."
         }
       ],
       "out_of_possession": [
@@ -653,7 +711,8 @@
             "work_rate",
             "crossing",
             "stamina"
-          ]
+          ],
+          "description": "Provides width from midfield and tracks back to support the flank."
         },
         {
           "id": "ml:out_of_possession:tracking_wide_midfielder",
@@ -662,7 +721,8 @@
             "work_rate",
             "stamina",
             "marking"
-          ]
+          ],
+          "description": "Follows the opposing wide player back to support the defence."
         },
         {
           "id": "ml:out_of_possession:wide_outlet_midfielder",
@@ -671,7 +731,8 @@
             "pace",
             "off_the_ball",
             "first_touch"
-          ]
+          ],
+          "description": "Stays wide and advanced to offer a target when possession is regained."
         }
       ]
     },
@@ -687,7 +748,8 @@
             "work_rate",
             "crossing",
             "stamina"
-          ]
+          ],
+          "description": "Provides width from midfield and tracks back to support the flank."
         },
         {
           "id": "mr:in_possession:wide_central_midfielder",
@@ -696,7 +758,8 @@
             "passing",
             "decisions",
             "first_touch"
-          ]
+          ],
+          "description": "Starts on the flank and comes inside to help the central midfield."
         }
       ],
       "out_of_possession": [
@@ -707,7 +770,8 @@
             "work_rate",
             "crossing",
             "stamina"
-          ]
+          ],
+          "description": "Provides width from midfield and tracks back to support the flank."
         },
         {
           "id": "mr:out_of_possession:tracking_wide_midfielder",
@@ -716,7 +780,8 @@
             "work_rate",
             "stamina",
             "marking"
-          ]
+          ],
+          "description": "Follows the opposing wide player back to support the defence."
         },
         {
           "id": "mr:out_of_possession:wide_outlet_midfielder",
@@ -725,7 +790,8 @@
             "pace",
             "off_the_ball",
             "first_touch"
-          ]
+          ],
+          "description": "Stays wide and advanced to offer a target when possession is regained."
         }
       ]
     },
@@ -741,7 +807,8 @@
             "passing",
             "off_the_ball",
             "first_touch"
-          ]
+          ],
+          "description": "Receives between midfield and defence and links play near the striker."
         },
         {
           "id": "amc:in_possession:advanced_playmaker",
@@ -750,7 +817,8 @@
             "vision",
             "passing",
             "first_touch"
-          ]
+          ],
+          "description": "Looks to create chances for teammates from advanced positions."
         },
         {
           "id": "amc:in_possession:free_role",
@@ -759,7 +827,8 @@
             "vision",
             "dribbling",
             "off_the_ball"
-          ]
+          ],
+          "description": "Roams away from a fixed position to find and exploit space."
         }
       ],
       "out_of_possession": [
@@ -770,7 +839,8 @@
             "passing",
             "off_the_ball",
             "first_touch"
-          ]
+          ],
+          "description": "Receives between midfield and defence and links play near the striker."
         },
         {
           "id": "amc:out_of_possession:tracking_attacking_midfielder",
@@ -779,7 +849,8 @@
             "work_rate",
             "stamina",
             "marking"
-          ]
+          ],
+          "description": "Drops back to pick up the opposition’s deeper midfielder."
         },
         {
           "id": "amc:out_of_possession:central_outlet_attacking_midfielder",
@@ -788,7 +859,8 @@
             "off_the_ball",
             "first_touch",
             "pace"
-          ]
+          ],
+          "description": "Remains high through the middle as a passing option on the counter."
         },
         {
           "id": "amc:out_of_possession:splitting_outlet_attacking_midfielder",
@@ -797,7 +869,8 @@
             "off_the_ball",
             "pace",
             "first_touch"
-          ]
+          ],
+          "description": "Finds gaps between defenders to receive when a counterattack starts."
         }
       ]
     },
@@ -813,7 +886,8 @@
             "crossing",
             "dribbling",
             "pace"
-          ]
+          ],
+          "description": "Stays wide, takes on defenders and delivers balls into the box."
         },
         {
           "id": "aml:in_possession:inside_winger",
@@ -822,7 +896,8 @@
             "dribbling",
             "passing",
             "off_the_ball"
-          ]
+          ],
+          "description": "Cuts in from wide to combine with teammates or shoot."
         },
         {
           "id": "aml:in_possession:half_space_winger",
@@ -831,7 +906,8 @@
             "passing",
             "off_the_ball",
             "first_touch"
-          ]
+          ],
+          "description": "Uses the inside channel to link the flank with central attackers."
         },
         {
           "id": "aml:in_possession:wide_playmaker",
@@ -840,7 +916,8 @@
             "passing",
             "vision",
             "first_touch"
-          ]
+          ],
+          "description": "Receives out wide and moves inside to create passing opportunities."
         },
         {
           "id": "aml:in_possession:wide_forward",
@@ -849,7 +926,8 @@
             "finishing",
             "off_the_ball",
             "pace"
-          ]
+          ],
+          "description": "Starts wide and attacks space behind the defence to get into scoring positions."
         },
         {
           "id": "aml:in_possession:inside_forward",
@@ -858,7 +936,8 @@
             "finishing",
             "dribbling",
             "off_the_ball"
-          ]
+          ],
+          "description": "Drives in from the flank to threaten goal and attack the box."
         }
       ],
       "out_of_possession": [
@@ -869,7 +948,8 @@
             "crossing",
             "dribbling",
             "pace"
-          ]
+          ],
+          "description": "Stays wide, takes on defenders and delivers balls into the box."
         },
         {
           "id": "aml:out_of_possession:tracking_winger",
@@ -878,7 +958,8 @@
             "work_rate",
             "stamina",
             "marking"
-          ]
+          ],
+          "description": "Follows the opposing full-back and helps defend the flank."
         },
         {
           "id": "aml:out_of_possession:wide_outlet_winger",
@@ -887,7 +968,8 @@
             "pace",
             "off_the_ball",
             "first_touch"
-          ]
+          ],
+          "description": "Stays high and wide to provide an immediate counterattacking outlet."
         },
         {
           "id": "aml:out_of_possession:inverting_outlet_winger",
@@ -896,7 +978,8 @@
             "pace",
             "off_the_ball",
             "finishing"
-          ]
+          ],
+          "description": "Stays advanced and narrows from the flank to receive on the break."
         }
       ]
     },
@@ -912,7 +995,8 @@
             "crossing",
             "dribbling",
             "pace"
-          ]
+          ],
+          "description": "Stays wide, takes on defenders and delivers balls into the box."
         },
         {
           "id": "amr:in_possession:inside_winger",
@@ -921,7 +1005,8 @@
             "dribbling",
             "passing",
             "off_the_ball"
-          ]
+          ],
+          "description": "Cuts in from wide to combine with teammates or shoot."
         },
         {
           "id": "amr:in_possession:half_space_winger",
@@ -930,7 +1015,8 @@
             "passing",
             "off_the_ball",
             "first_touch"
-          ]
+          ],
+          "description": "Uses the inside channel to link the flank with central attackers."
         },
         {
           "id": "amr:in_possession:wide_playmaker",
@@ -939,7 +1025,8 @@
             "passing",
             "vision",
             "first_touch"
-          ]
+          ],
+          "description": "Receives out wide and moves inside to create passing opportunities."
         },
         {
           "id": "amr:in_possession:wide_forward",
@@ -948,7 +1035,8 @@
             "finishing",
             "off_the_ball",
             "pace"
-          ]
+          ],
+          "description": "Starts wide and attacks space behind the defence to get into scoring positions."
         },
         {
           "id": "amr:in_possession:inside_forward",
@@ -957,7 +1045,8 @@
             "finishing",
             "dribbling",
             "off_the_ball"
-          ]
+          ],
+          "description": "Drives in from the flank to threaten goal and attack the box."
         }
       ],
       "out_of_possession": [
@@ -968,7 +1057,8 @@
             "crossing",
             "dribbling",
             "pace"
-          ]
+          ],
+          "description": "Stays wide, takes on defenders and delivers balls into the box."
         },
         {
           "id": "amr:out_of_possession:tracking_winger",
@@ -977,7 +1067,8 @@
             "work_rate",
             "stamina",
             "marking"
-          ]
+          ],
+          "description": "Follows the opposing full-back and helps defend the flank."
         },
         {
           "id": "amr:out_of_possession:wide_outlet_winger",
@@ -986,7 +1077,8 @@
             "pace",
             "off_the_ball",
             "first_touch"
-          ]
+          ],
+          "description": "Stays high and wide to provide an immediate counterattacking outlet."
         },
         {
           "id": "amr:out_of_possession:inverting_outlet_winger",
@@ -995,7 +1087,8 @@
             "pace",
             "off_the_ball",
             "finishing"
-          ]
+          ],
+          "description": "Stays advanced and narrows from the flank to receive on the break."
         }
       ]
     },
@@ -1011,7 +1104,8 @@
             "finishing",
             "off_the_ball",
             "first_touch"
-          ]
+          ],
+          "description": "Leads the line, links with teammates and attacks scoring chances."
         },
         {
           "id": "stc:in_possession:target_forward",
@@ -1020,7 +1114,8 @@
             "heading",
             "strength",
             "first_touch"
-          ]
+          ],
+          "description": "Provides a focal point for direct balls and brings supporting players into play."
         },
         {
           "id": "stc:in_possession:poacher",
@@ -1029,7 +1124,8 @@
             "finishing",
             "off_the_ball",
             "pace"
-          ]
+          ],
+          "description": "Plays close to the last defender and looks for chances near goal."
         },
         {
           "id": "stc:in_possession:deep_lying_forward",
@@ -1038,7 +1134,8 @@
             "first_touch",
             "passing",
             "strength"
-          ]
+          ],
+          "description": "Drops towards midfield to receive and bring advancing teammates into play."
         },
         {
           "id": "stc:in_possession:false_nine",
@@ -1047,7 +1144,8 @@
             "passing",
             "vision",
             "first_touch"
-          ]
+          ],
+          "description": "Leaves the striker position to receive deeper and open space for runners."
         },
         {
           "id": "stc:in_possession:channel_forward",
@@ -1056,7 +1154,8 @@
             "pace",
             "off_the_ball",
             "work_rate"
-          ]
+          ],
+          "description": "Runs between central and wide defenders to stretch the back line."
         },
         {
           "id": "stc:in_possession:second_striker",
@@ -1065,7 +1164,8 @@
             "off_the_ball",
             "finishing",
             "first_touch"
-          ]
+          ],
+          "description": "Plays off another forward and makes late runs into scoring positions."
         },
         {
           "id": "stc:in_possession:half_space_forward",
@@ -1074,7 +1174,8 @@
             "off_the_ball",
             "passing",
             "dribbling"
-          ]
+          ],
+          "description": "Moves into inside channels to receive and combine with nearby attackers."
         }
       ],
       "out_of_possession": [
@@ -1085,7 +1186,8 @@
             "finishing",
             "off_the_ball",
             "first_touch"
-          ]
+          ],
+          "description": "Leads the line, links with teammates and attacks scoring chances."
         },
         {
           "id": "stc:out_of_possession:tracking_centre_forward",
@@ -1094,7 +1196,8 @@
             "work_rate",
             "stamina",
             "marking"
-          ]
+          ],
+          "description": "Drops off the front to help mark the opposition’s holding midfielder."
         },
         {
           "id": "stc:out_of_possession:central_outlet_centre_forward",
@@ -1103,7 +1206,8 @@
             "off_the_ball",
             "strength",
             "first_touch"
-          ]
+          ],
+          "description": "Stays high and central to receive the first pass forward after a regain."
         },
         {
           "id": "stc:out_of_possession:splitting_outlet_centre_forward",
@@ -1112,7 +1216,8 @@
             "pace",
             "off_the_ball",
             "finishing"
-          ]
+          ],
+          "description": "Positions between defenders to attack the space behind them on the break."
         }
       ]
     }
