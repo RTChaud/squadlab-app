@@ -331,7 +331,11 @@ function roleMode(cat, L, R) {
       panel.replaceChildren(h('p', { class: 'muted small role-hint' }, `The role catalogue has no roles for ${formatPositions([pos])}.`));
       return;
     }
-    panel.replaceChildren(h('h3', { class: 'cmp-roles-head' }, 'Roles · ', h('span', { class: 'role-x-pos' }, position.short)),
+    const info = h('button', {
+      type: 'button', class: 'info-btn', 'aria-label': 'Role descriptions', 'aria-haspopup': 'dialog',
+      onclick: () => openRoleInfo(position, Object.fromEntries(PHASES.map((ph) => [ph.id, savedRole(ph.id)]))),
+    }, 'i');
+    panel.replaceChildren(h('div', { class: 'role-x-head' }, h('h3', { class: 'cmp-roles-head' }, 'Roles · ', h('span', { class: 'role-x-pos' }, position.short)), info),
       ...PHASES.map(phaseSection));
   }
   draw();
@@ -378,15 +382,10 @@ export async function CompareView() {
     class: 'select select-sm cmp-mode', id: 'cmp-mode',
     onchange: (e) => setMode(e.target.value),
   }, MODES.map((m) => h('option', { value: m.id, selected: m.id === mode }, m.label)));
-  const roleInfoBtn = h('button', {
-    type: 'button', class: 'info-btn', 'aria-label': 'About Role attributes /100 and the role catalogue',
-    onclick: () => openRoleInfo(cat),
-  }, 'i');
-  const controls = h('div', { class: 'cmp-controls' }, h('label', { class: 'cmp-mode-label', for: 'cmp-mode' }, 'Compare by'), modeSelect, roleInfoBtn);
+  const controls = h('div', { class: 'cmp-controls' }, h('label', { class: 'cmp-mode-label', for: 'cmp-mode' }, 'Compare by'), modeSelect);
 
   function setMode(next) {
     mode = next;
-    roleInfoBtn.hidden = mode !== 'role';
     modeSelect.value = next;
     setCompareView({ mode });
     drawPicker();
@@ -422,7 +421,6 @@ export async function CompareView() {
     content.replaceChildren(radarBox, h('section', { class: 'cmp-table', 'aria-label': label }, tables));
   }
 
-  roleInfoBtn.hidden = mode !== 'role';
   drawPicker();
   drawContent();
   return page(controls, pickerSlot, content);
