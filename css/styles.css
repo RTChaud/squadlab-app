@@ -608,8 +608,17 @@ a.prow:active { background: var(--surface-2); }
 .sheet-note { margin: 0; font-size: 13px; color: var(--muted); }
 .sheet-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
 body.sheet-open { overflow: hidden; }
-/* Keyboard open: the backdrop is fitted to the space above it (sheet.js). */
-.sheet-backdrop.kb-open { padding-top: 8px; padding-bottom: 8px; }
+/* Keyboard open: the backdrop is fitted to the space above it (sheet.js) and the
+   sheet sits straight on the keyboard. The shadow keeps the page dimmed in any
+   strip iOS shows outside that space (e.g. behind Safari's address bar). */
+.sheet-backdrop.kb-open {
+  padding-top: 8px;
+  padding-bottom: 0;
+  animation: none;
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.62);
+}
+.sheet-backdrop.kb-open .sheet { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 0; animation: none; }
+.sheet-backdrop.kb-open .sheet.sheet-tall .sheet-actions { padding-bottom: 12px; }
 
 .ack {
   display: flex;
