@@ -1497,7 +1497,6 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
   display: grid; grid-row: 1 / span 3; grid-template-rows: subgrid; row-gap: 6px; align-content: start; min-width: 0; padding: 8px;
   border-radius: 12px; background: var(--surface); border: 1px solid var(--border);
 }
-.role-col.active { border-color: rgba(247, 134, 30, 0.6); }
 .role-col-phase { margin: 0; align-self: end; font-size: 11px; font-weight: 750; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
 .role-pick {
   position: relative; display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 8px;
@@ -1521,14 +1520,13 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .radar-compact .radar-name { font-size: 19px; font-weight: 650; }
 .radar-compact .radar-val { font-size: 21px; }
 .radar-compact .radar-label.unavailable .radar-val { font-size: 16px; }
-.role-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); }
-.role-tab {
-  min-height: 38px; padding: 0 6px; border: 0; border-radius: 9px; background: none; color: var(--text-2);
-  font: inherit; font-size: 13.5px; font-weight: 650; cursor: pointer;
-}
-.role-tab.active { background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px rgba(247, 134, 30, 0.6); }
-.role-details { display: flex; flex-direction: column; gap: 10px; scroll-margin-top: calc(var(--header-h) + 8px); }
-.role-details-title { margin: 0; font-size: 15px; font-weight: 750; }
+/* Key attributes for both phases, side by side under the radars (one list per column). */
+.role-attr-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.role-attr-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.role-attr-col .attr-list { grid-template-columns: minmax(0, 1fr); padding: 0; }
+.role-attr-col .attr { padding: 0 2px 0 4px; }
+.role-attr-col .attr-name, .role-attr-col button.attr-name { font-size: 13.5px; }
+.role-attr-col .role-breakdown p { font-size: 12px; overflow-wrap: anywhere; }
 
 /* Group summary: net of the leads above. */
 .cmp-sum-list { padding-top: 0; }
