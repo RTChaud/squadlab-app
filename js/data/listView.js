@@ -119,10 +119,43 @@ export const emptyFilters = () => ({
   feet: [], tags: [], tagMode: 'any',
   tiers: [], slots: [], unassigned: false,
   attrs: [],
+  roles: null,
 });
 
 const intIn = (v, min, max) => (Number.isInteger(v) && v >= min && v <= max ? v : null);
 const uniq = (arr) => [...new Set(arr)];
+
+// ---- Role filter ------------------------------------------------------------------------
+// Only with exactly one position selected. Stored with the filters (so saved views keep it):
+//   roles: null | { position, in_possession: { id, name } | null, out_of_possession: { id, name } | null,
+//                   conds: [{ key, op: 'gte' | 'lte' | null, value: 1–20 | null, tendency }] }
+// conds are the selected roles' key attributes (one per attribute, shared across phases).
+// Ordinary attributes always carry a threshold; a tendency stays unset (not applied) until
+// a minimum or maximum is chosen.
+
+export const ROLE_DEFAULT_MIN = 15;
+export const ROLE_OPERATORS = OPERATORS.filter((o) => o.id !== 'eq');
+export const roleCondActive = (c) => !!c.op && c.value !== null;
+
+function sanitizeRoleFilter(raw, positions) {
+  if (!raw || typeof raw !== 'object' || positions.length !== 1 || raw.position !== positions[0]) return null;
+  const pos = positions[0];
+  const role = (r, phase) => (r && typeof r.id === 'string' && r.id.startsWith(`${pos}:${phase}:`)
+    ? { id: r.id, name: typeof r.name === 'string' && r.name.trim() ? r.name.trim() : r.id } : null);
+  const ip = role(raw.in_possession, 'in_possession');
+  const oop = role(raw.out_of_possession, 'out_of_possession');
+  if (!ip && !oop) return null;
+  const seen = new Set();
+  const conds = (Array.isArray(raw.conds) ? raw.conds : []).map((c) => {
+    if (!c || !ATTR_CHOICE[c.key] || seen.has(c.key)) return null;
+    const tendency = c.tendency === true;
+    const set = ROLE_OPERATORS.some((o) => o.id === c.op) && validAttrValue(c.value);
+    if (!tendency && !set) return null;
+    seen.add(c.key);
+    return { key: c.key, op: set ? c.op : null, value: set ? c.value : null, tendency };
+  }).filter(Boolean);
+  return { position: pos, in_possession: ip, out_of_possession: oop, conds };
+}
 
 export function sanitizeFilters(raw) {
   const f = emptyFilters();
@@ -145,6 +178,7 @@ export function sanitizeFilters(raw) {
   f.attrs = arr(raw.attrs)
     .filter((c) => c && ATTR_CHOICE[c.key] && OP_BY_ID[c.op] && validAttrValue(c.value))
     .map((c) => ({ key: c.key, op: c.op, value: c.value }));
+  f.roles = sanitizeRoleFilter(raw.roles, f.positions);
   return f;
 }
 
@@ -184,6 +218,7 @@ export function activeFilterCount(f) {
   if (f.slots.length) n++;
   if (f.unassigned) n++;
   n += f.attrs.length;
+  if (f.roles) n++;
   return n;
 }
 
@@ -272,6 +307,12 @@ export function matchesFilters(row, f) {
     const v = attrValue(row.p, c.key);
     if (v === null || !compareOp(v, c.op, c.value)) return false; // missing never matches
   }
+  // Role key attributes: every active condition must match too (AND with everything above).
+  for (const c of f.roles?.conds || []) {
+    if (!roleCondActive(c)) continue;
+    const v = attrValue(row.p, c.key);
+    if (v === null || !compareOp(v, c.op, c.value)) return false;
+  }
   return true;
 }
 
@@ -282,6 +323,15 @@ export function filterChips(f, tagName) {
   if (f.positions.length) {
     chips.push({ id: 'pos', text: `${f.positions.map((c) => formatPositions([c])).join(', ')} ≥ ${f.minFam}`,
       label: `Position familiarity at least ${f.minFam}`, remove: () => ({ ...clone(), positions: [] }) });
+  }
+  if (f.roles) {
+    const r = f.roles;
+    const names = [r.in_possession && `${r.in_possession.name} (IP)`, r.out_of_possession && `${r.out_of_possession.name} (OOP)`].filter(Boolean);
+    const active = r.conds.filter(roleCondActive);
+    const conds = active.map((c) => `${ATTR_CHOICE[c.key].short} ${OP_BY_ID[c.op].symbol} ${c.value}`).join(', ');
+    chips.push({ id: 'roles', role: true, text: `Role: ${names.join(' + ')}${conds ? ` · ${conds}` : ''}`,
+      label: `Role filter: ${names.join(' and ')}${active.length ? `; ${active.map((c) => `${ATTR_CHOICE[c.key].label} ${OP_BY_ID[c.op].label} ${c.value}`).join(', ')}` : ''}`,
+      remove: () => ({ ...clone(), roles: null }) });
   }
   for (const k of Object.keys(RANGES)) {
     const [lo, hi] = f[k];
