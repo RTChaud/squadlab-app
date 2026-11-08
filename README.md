@@ -53,5 +53,5 @@ js/ui/dataMenu.js      Data menu and import/export/reset flows
 js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js, tagSheet.js, promptSheet.js, radarChart.js, radarSection.js,
                        playerBrowser.js, playerTable.js, filterSheet.js, viewSheet.js, attributePicker.js, familiarityPitch.js,
                        attributeInfoSheet.js, playerPicker.js, radarAttributePicker.js, roleControls.js, roleExplorer.js, contractSheet.js
-js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js, lineups.js, lineup.js, lineupPicker.js, compare.js
+js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js, lineups.js, lineup.js, lineupPicker.js, compare.js, tactic.js (placeholder)
 ```
