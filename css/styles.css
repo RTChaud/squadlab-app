@@ -1479,6 +1479,48 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .role-cmp-score.none { color: var(--muted); font-weight: 600; }
 .role-cmp-note { margin: -2px 4px 0; }
 
+/* Role explorer (profile): selectable familiarity tiles + two phase columns + one full-width radar. */
+.fam-section { display: flex; flex-direction: column; gap: 10px; }
+.ptile-btn { font: inherit; font-size: 12px; color: var(--text); cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent; }
+.ptile-btn.fnone { color: var(--muted); }
+.ptile-btn:active { filter: brightness(1.15); }
+.ptile-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ptile-btn.ptile-sel { box-shadow: 0 0 0 2px var(--accent); border-color: var(--accent); }
+.role-explorer { display: flex; flex-direction: column; gap: 10px; }
+.role-hint { margin: 0; text-align: center; }
+.role-x-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.role-x-head h4 { margin: 0; font-size: 15px; font-weight: 750; }
+.role-x-pos { color: var(--accent); }
+/* The columns share rows (phase, role, score) so they stay level when a label or name wraps. */
+.role-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: repeat(3, auto); column-gap: 8px; }
+.role-col {
+  display: grid; grid-row: 1 / span 3; grid-template-rows: subgrid; row-gap: 6px; align-content: start; min-width: 0; padding: 8px;
+  border-radius: 12px; background: var(--surface); border: 1px solid var(--border);
+}
+.role-col.active { border-color: rgba(247, 134, 30, 0.6); }
+.role-col-phase { margin: 0; align-self: end; font-size: 11px; font-weight: 750; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.role-pick {
+  position: relative; display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 8px;
+  border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border);
+}
+.role-pick-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 700; line-height: 1.2; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; }
+.role-pick-none .role-pick-name { color: var(--muted); font-weight: 600; }
+.role-pick-chev { flex: none; width: 8px; height: 8px; margin: 0 2px 3px 0; border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent); transform: rotate(45deg); }
+.role-pick-select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; cursor: pointer; }
+.role-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.role-col-score { display: flex; flex-direction: column; gap: 1px; }
+.role-col-num { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text); }
+.role-col-num.none { color: var(--muted); }
+.role-col-unit { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.role-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); }
+.role-tab {
+  min-height: 38px; padding: 0 6px; border: 0; border-radius: 9px; background: none; color: var(--text-2);
+  font: inherit; font-size: 13.5px; font-weight: 650; cursor: pointer;
+}
+.role-tab.active { background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px rgba(247, 134, 30, 0.6); }
+.role-details { display: flex; flex-direction: column; gap: 10px; scroll-margin-top: calc(var(--header-h) + 8px); }
+.role-details-title { margin: 0; font-size: 15px; font-weight: 750; }
+
 /* Group summary: net of the leads above. */
 .cmp-sum-list { padding-top: 0; }
 .cmp-sum { border-top: 1px solid var(--border); border-bottom: 0; border-radius: 0 0 6px 6px; }
