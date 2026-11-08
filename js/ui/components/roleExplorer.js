@@ -3,11 +3,11 @@
 // Tap a position tile (tap it again to close) → two columns for that position: In Possession (left)
 // and Out of Possession (right), each with a role dropdown (options sorted by
 // the player's Role attributes /100, highest first) and the chosen role's
-// score. Both role radars sit side by side underneath; a phase switch shows
-// one phase's key attributes and score breakdown. Familiarity stays on the
-// tiles, separate from the score.
+// score. Underneath, both phases side by side: the role radars, then each
+// role's key attributes and score breakdown. Familiarity stays on the tiles,
+// separate from the score.
 //
-// Remembered per player: the selected position, the phase shown, and the last
+// Remembered per player: the selected position and the last
 // valid role for every position + phase (so M (C) → DM → M (C) restores the
 // M (C) choices). Role ids are checked against the active catalogue.
 
@@ -77,7 +77,6 @@ function roleDetails(p, role, score) {
 export function RoleExplorer(p, playerKey) {
   const prefs = () => getRadarPrefs(playerKey);
   let pos = prefs().rolePos;
-  let tab = prefs().roleTab;
   let cat = null;
 
   const panel = h('div', { class: 'role-explorer', 'aria-live': 'polite' });
@@ -109,15 +108,13 @@ export function RoleExplorer(p, playerKey) {
     const select = h('select', {
       class: 'role-pick-select', 'data-phase-select': phase.id, 'aria-label': `${phase.label} role`,
       onchange: (e) => {
-        const id = e.target.value || null;
-        tab = phase.id;
-        saveRoleExplorer(playerKey, { role: { position: pos, phase: phase.id, id }, roleTab: tab });
+        saveRoleExplorer(playerKey, { role: { position: pos, phase: phase.id, id: e.target.value || null } });
         draw(true);
       },
     },
       h('option', { value: '', selected: !role }, 'Choose a role'),
       roles.map((r) => h('option', { value: r.id, selected: role?.id === r.id }, `${r.name} · ${fmtScore(scores.get(r.id).value)}`)));
-    return h('div', { class: `role-col${tab === phase.id ? ' active' : ''}`, 'data-phase': phase.id },
+    return h('div', { class: 'role-col', 'data-phase': phase.id },
       h('p', { class: 'role-col-phase' }, phase.label),
       // The visible face wraps long names; the native select sits on top (transparent).
       h('div', { class: `role-pick${role ? '' : ' role-pick-none'}` },
@@ -149,22 +146,14 @@ export function RoleExplorer(p, playerKey) {
     const readout = h('div', { class: 'radar-readout', 'aria-live': 'polite', hidden: true });
     const radars = h('div', { class: 'role-radars' }, PHASES.map((ph) => roleRadar(p, ph, roles[ph.id], readout)));
 
-    const tabs = h('div', { class: 'role-tabs', role: 'tablist', 'aria-label': 'Phase details' }, PHASES.map((ph) =>
-      h('button', {
-        type: 'button', role: 'tab', class: `role-tab${tab === ph.id ? ' active' : ''}`, 'data-tab': ph.id,
-        'aria-selected': String(tab === ph.id), 'aria-controls': 'role-details',
-        onclick: () => { if (tab === ph.id) return; tab = ph.id; saveRoleExplorer(playerKey, { roleTab: tab }); draw(); },
-      }, ph.label)));
+    // Key attributes and score breakdown for both phases, under their radars.
+    const details = h('div', { class: 'role-attr-cols' }, PHASES.map((ph) => {
+      const role = roles[ph.id];
+      return h('div', { class: 'role-attr-col', 'data-phase': ph.id, 'aria-label': `${ph.label} key attributes` },
+        role ? roleDetails(p, role, scores.get(role.id)) : null); // the radar above already says “Choose a role”
+    }));
 
-    const active = PHASES.find((ph) => ph.id === tab);
-    const role = roles[tab];
-    const details = h('div', { class: 'role-details', id: 'role-details', role: 'tabpanel', 'data-phase': tab },
-      role
-        ? [h('p', { class: 'role-details-title' }, role.name, h('span', { class: 'muted' }, ` · ${active.label}`)), ...roleDetails(p, role, scores.get(role.id))]
-        : [h('div', { class: 'empty radar-empty role-prompt' }, h('p', { class: 'empty-title' }, 'Choose a role'),
-          h('p', { class: 'empty-text' }, `Pick an ${active.label} role for ${position.label} to see its key attributes.`))]);
-
-    panel.replaceChildren(head, cols, radars, readout, tabs, details);
+    panel.replaceChildren(head, cols, radars, readout, details);
     if (reveal) requestAnimationFrame(() => radars.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
   }
 
