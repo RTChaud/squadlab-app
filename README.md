@@ -46,10 +46,12 @@ js/data/lineups.js     4-2-3-1 slot definitions, default/custom lineups, Squad s
 js/data/radar.js       radar overviews, selectable attributes, radar preferences
 js/data/roles.js       role catalogue loading/validation, position + attribute mapping, Role attributes /100 score
 js/data/listView.js    Squad/Shortlists columns, filters, sorting, change columns, saved views
+js/data/money.js       currency formatting (GBP, two decimals) and weekly → monthly salary
+js/data/contract.js    Contract sheet values: expiry + time remaining, salary, transfer value, release clauses
 js/ui/dom.js           DOM helper + icons
 js/ui/dataMenu.js      Data menu and import/export/reset flows
 js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js, tagSheet.js, promptSheet.js, radarChart.js, radarSection.js,
                        playerBrowser.js, playerTable.js, filterSheet.js, viewSheet.js, attributePicker.js, familiarityPitch.js,
-                       attributeInfoSheet.js, playerPicker.js, radarAttributePicker.js, roleControls.js, roleExplorer.js
+                       attributeInfoSheet.js, playerPicker.js, radarAttributePicker.js, roleControls.js, roleExplorer.js, contractSheet.js
 js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js, lineups.js, lineup.js, lineupPicker.js, compare.js
 ```
