@@ -26,7 +26,7 @@ const state = {
   radar: Radar.emptyRadarPrefs(), // per-player radar choices for the active career
   changes: Changes.emptyChangePrefs(), // per-player 'Show changes' toggle + baseline
   lists: ListView.emptyListPrefs(),     // Squad/Shortlists table settings + saved views
-  compare: { left: null, right: null, mode: 'all', selected: [], roles: {} }, // Comparison: players (persistent ids), Compare by mode, selected attributes, role per phase
+  compare: { left: null, right: null, mode: 'all', selected: [], rolePos: null, roleByPos: {} }, // Comparison: players (persistent ids), Compare by mode, selected attributes, position / roles
 };
 
 const listeners = new Set();
@@ -487,7 +487,10 @@ function sanitizeCompare(raw) {
     right: pidOrNull(raw?.right),
     mode: COMPARE_MODES.includes(raw?.mode) ? raw.mode : 'all',
     selected,
-    roles: Object.fromEntries(Radar.ROLE_PHASES.map((ph) => [ph.id, Radar.sanitizeRoleSel(raw?.roles?.[ph.id])])),
+    // Position / role: the selected position and the last role per position + phase
+    // (earlier one-role-per-phase choices are carried over).
+    rolePos: typeof raw?.rolePos === 'string' && raw.rolePos ? raw.rolePos : null,
+    roleByPos: Radar.sanitizeRoleMemory(raw?.roleByPos, raw?.roles),
   };
 }
 
