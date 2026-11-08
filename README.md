@@ -46,8 +46,8 @@ js/data/lineups.js     4-2-3-1 slot definitions, default/custom lineups, Squad s
 js/data/radar.js       radar overviews, selectable attributes, radar preferences
 js/data/roles.js       role catalogue loading/validation, position + attribute mapping, Role attributes /100 score
 js/data/listView.js    Squad/Shortlists columns, filters, sorting, change columns, saved views
-js/data/money.js       currency formatting (GBP, two decimals), weekly → monthly salary, typed amounts
-js/data/contract.js    Contract data shared by the Contract sheet, table columns and filters: expiry, salary, value, clauses
+js/data/money.js       GBP formatting (two decimals, display rounded up: next £1,000 below £1m, next £100,000 from £1m), weekly → monthly salary, typed amounts
+js/data/contract.js    Contract data shared by the Contract sheet, table columns and filters: expiry, salary, value, clauses (FM26 codes 0, 27, 1 and 55 read only in the tested FM26 format)
 js/ui/dom.js           DOM helper + icons
 js/ui/dataMenu.js      Data menu and import/export/reset flows
 js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js, tagSheet.js, promptSheet.js, radarChart.js, radarSection.js,
