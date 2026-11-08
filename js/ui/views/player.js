@@ -7,7 +7,7 @@ import {
 } from '../../store.js';
 import { openTagSheet } from '../components/tagSheet.js';
 import { openAttributeInfo } from '../components/attributeInfoSheet.js';
-import { FamiliarityPitch } from '../components/familiarityPitch.js';
+import { RoleExplorer } from '../components/roleExplorer.js';
 import { RadarSection } from '../components/radarSection.js';
 import { isNaturalGoalkeeper } from '../../data/radar.js';
 import { formatGameDate, resolveTeams } from '../../data/snapshot.js';
@@ -246,8 +246,10 @@ function traitsSection(p) {
 }
 
 // Pitch layout, attack at the top; left side on the left. (No sweeper: not in current FM.)
+// Tapping a tile explores that position's roles underneath (role explorer).
 function familiaritySection(p) {
-  return h('section', { class: 'psection' }, h('h3', {}, 'Position familiarity'), FamiliarityPitch(p));
+  const { pitch, panel } = RoleExplorer(p, playerKeyOf(p));
+  return h('section', { class: 'psection fam-section' }, h('h3', {}, 'Position familiarity'), pitch, panel);
 }
 
 function hiddenSection(p, chg) {
