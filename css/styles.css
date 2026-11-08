@@ -1502,7 +1502,7 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
   position: relative; display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 8px;
   border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border);
 }
-.role-pick-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 700; line-height: 1.2; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; }
+.role-pick-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 700; line-height: 1.2; overflow-wrap: break-word; -webkit-hyphens: manual; hyphens: manual; }
 .role-pick-none .role-pick-name { color: var(--muted); font-weight: 600; }
 .role-pick-chev { flex: none; width: 8px; height: 8px; margin: 0 2px 3px 0; border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent); transform: rotate(45deg); }
 .role-pick-select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; cursor: pointer; }
@@ -1576,3 +1576,6 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .cmp-roles { display: flex; flex-direction: column; gap: 12px; }
 .cmp-roles-head { margin: 0; font-size: 16px; font-weight: 750; }
 .cmp-roles .cmp-phase { display: flex; flex-direction: column; gap: 10px; }
+/* Role descriptions sheet */
+.role-desc + .role-desc { margin-top: 14px; }
+.role-desc-name { margin: 0 0 4px; font-size: 16px; font-weight: 750; color: var(--text); }
