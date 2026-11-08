@@ -1303,7 +1303,9 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .fcond .select.select-sm.fcond-op { max-width: 7.2rem; min-height: 40px; }
 .fcond-val { padding: 0 6px; text-align: center; }
 /* − value + steppers (attribute thresholds, age, CA and PA) */
-.fstep { display: flex; align-items: stretch; height: 40px; min-width: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); overflow: hidden; }
+.fstep { display: flex; align-items: stretch; height: 40px; min-width: 0; padding: 0 3px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); overflow: hidden; }
+/* In condition rows the stepper keeps its full width; the attribute name gives way instead. */
+.fcond .fstep { min-width: max-content; }
 .fstep:focus-within { border-color: var(--accent); }
 .fstep .fstep-val { flex: 1 1 auto; width: 2.6rem; min-width: 2rem; height: 100%; padding: 0 2px; border: 0; border-radius: 0; background: none; text-align: center; font-variant-numeric: tabular-nums; }
 .fstep .fstep-val:focus { border: 0; }
