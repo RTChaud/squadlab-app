@@ -31,7 +31,7 @@ const els = {
 const VIEWS = {
   home: () => HomeView({ onImport: () => pick('snapshot'), onRestore: () => pick('backup') }),
   squadTeam: (p) => SquadView(p),
-  shortlists: (p) => ShortlistsView(p),
+  shortlists: (p, q) => ShortlistsView({ ...p, query: q }),
   tags: (p) => TagsView(p),
   lineups: () => LineupsView(),
   compare: () => CompareView(),

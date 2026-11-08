@@ -58,6 +58,7 @@ async function reload() {
   state.changes = career ? Changes.sanitizeChangePrefs(await db.getSetting(changesKey(career), null)) : Changes.emptyChangePrefs();
   state.lists = career ? ListView.sanitizeListPrefs(await db.getSetting(listsKey(career), null)) : ListView.emptyListPrefs();
   state.compare = sanitizeCompare(career ? await db.getSetting(compareKey(career), null) : null);
+  state.tactic = sanitizeTactic(career ? await db.getSetting(tacticKey(career), null) : null);
   state.prefs = new Map((await db.getAllSettings()).filter((x) => x.key.startsWith('pref:')).map((x) => [x.key.slice(5), x.value]));
   await ensureMetrics(metas);
   emit();
@@ -69,6 +70,7 @@ const radarKey = (career) => `radar:${career.careerId}`;
 const changesKey = (career) => `changes:${career.careerId}`;
 const listsKey = (career) => `lists:${career.careerId}`;
 const compareKey = (career) => `compare:${career.careerId}`;
+const tacticKey = (career) => `tactic:${career.careerId}`;
 
 /**
  * Load (or create once) the career's lineups. The three defaults have fixed
@@ -513,4 +515,19 @@ export async function setCompareView(patch) {
   if (!state.career) return;
   state.compare = sanitizeCompare({ ...state.compare, ...patch });
   await db.setSetting(compareKey(state.career), state.compare);
+}
+
+// ---- Tactic (per career) -----------------------------------------------------------------
+// The selected position and one optional role per phase, by catalogue role id
+// (ids are unique per position and phase). Checked against the catalogue when
+// the Tactic screen opens. Saved without emitting: the screen updates itself.
+
+const strOrNull = (v) => (typeof v === 'string' && v ? v : null);
+function sanitizeTactic(raw) {
+  return { position: strOrNull(raw?.position), in_possession: strOrNull(raw?.in_possession), out_of_possession: strOrNull(raw?.out_of_possession) };
+}
+export const getTactic = () => state.tactic || sanitizeTactic(null);
+export async function setTactic(next) {
+  state.tactic = sanitizeTactic(next);
+  if (state.career) await db.setSetting(tacticKey(state.career), state.tactic);
 }
