@@ -14,7 +14,7 @@ import { pickAttribute } from './attributePicker.js';
 import {
   POSITION_CHOICES, FOOT_CHOICES, TIER_CHOICES, SLOT_CHOICES, OPERATORS, RANGES, ATTR_CHOICE, ATTR_SCALE,
   sanitizeFilters, conditionError, rangeError, DEFAULT_MIN_FAM, ROLE_DEFAULT_MIN, ROLE_OPERATORS,
-  EXPIRY_CHOICES, MONEY_RANGES, CLAUSE_TYPES, moneyRangeError, moneyError,
+  EXPIRY_CHOICES, MONEY_RANGES, CLAUSE_FILTERS, moneyRangeError, moneyError,
 } from '../../data/listView.js';
 import { parseMoney, formatMoneyInput } from '../../data/money.js';
 import { PHASES, loadRoleCatalogue, positionByCode, rolesFor } from '../../data/roles.js';
@@ -344,7 +344,7 @@ export function openFilterSheet(o) {
       class: 'select select-sm', id: 'f-clause', 'aria-label': 'Release clause type',
       onchange: (e) => { c.clauseType = e.target.value; if (c.clauseType !== 'relegation') c.clauseStatus = 'any'; render(); },
     }, h('option', { value: '', selected: !c.clauseType }, 'Not required'),
-      CLAUSE_TYPES.map((t) => h('option', { value: t.id, selected: c.clauseType === t.id }, t.label)));
+      CLAUSE_FILTERS.map((t) => h('option', { value: t.id, selected: c.clauseType === t.id }, t.label)));
     const clauseExtra = c.clauseType ? h('div', { class: 'fclause' },
       h('div', { class: 'fmrange' },
         h('span', { class: 'fct-label' }, 'Maximum amount'),
