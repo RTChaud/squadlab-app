@@ -11,6 +11,7 @@ import { ShortlistsView } from './ui/views/shortlists.js';
 import { TagsView } from './ui/views/tags.js';
 import { LineupsView } from './ui/views/lineups.js';
 import { CompareView } from './ui/views/compare.js';
+import { TacticView } from './ui/views/tactic.js';
 import { LineupView } from './ui/views/lineup.js';
 import { LineupPickerView, pickerOpenedFrom } from './ui/views/lineupPicker.js';
 import { PlayerView } from './ui/views/player.js';
@@ -34,6 +35,7 @@ const VIEWS = {
   tags: (p) => TagsView(p),
   lineups: () => LineupsView(),
   compare: () => CompareView(),
+  tactic: () => TacticView(),
   lineup: (p, q) => LineupView({ ...p, query: q }),
   lineupPick: (p) => LineupPickerView(p),
   player: (p, q) => PlayerView({ ...p, query: q }),
@@ -74,6 +76,7 @@ async function render() {
   els.back.hidden = !vm.back;
   if (vm.back) els.back.setAttribute('href', vm.back);
   els.brand.hidden = !vm.isHome;
+  document.documentElement.classList.toggle('on-home', !!vm.isHome);
   els.title.hidden = !!vm.isHome;
   els.titleMain.textContent = vm.title;
   const sub = vm.subtitle || (model ? `${model.club?.name ?? '—'} · ${formatGameDate(model.gameDate)}` : '');
