@@ -1,10 +1,11 @@
 // Role explorer on the player profile, under the Position familiarity grid.
 //
 // Tap a position tile → two columns for that position: In Possession (left)
-// and Out of Possession (right), each with a role dropdown (every option shows
-// the player's Role attributes /100) and the chosen role's score. A phase
-// switch shows one phase's radar, key attributes and score breakdown at full
-// width underneath. Familiarity stays on the tiles, separate from the score.
+// and Out of Possession (right), each with a role dropdown (options sorted by
+// the player's Role attributes /100, highest first) and the chosen role's
+// score. Both role radars sit side by side underneath; a phase switch shows
+// one phase's key attributes and score breakdown. Familiarity stays on the
+// tiles, separate from the score.
 //
 // Remembered per player: the selected position, the phase shown, and the last
 // valid role for every position + phase (so M (C) → DM → M (C) restores the
@@ -12,7 +13,7 @@
 
 import { h, DASH } from '../dom.js';
 import { getRadarPrefs, saveRoleExplorer } from '../../store.js';
-import { attrBand, attributeDirection } from '../../data/attributes.js';
+import { attrBand, attributeDirection, scoreBand, ATTRIBUTE_ABBR } from '../../data/attributes.js';
 import { formatPositions } from '../../data/positions.js';
 import {
   PHASES, loadRoleCatalogue, positionByCode, rolesFor, roleScore, roleValue, fmtScore, scoreBreakdown,
@@ -20,33 +21,52 @@ import {
 import { FamiliarityPitch } from './familiarityPitch.js';
 import { openRoleInfo } from './roleControls.js';
 import { openAttributeInfo } from './attributeInfoSheet.js';
-import { chartBlock } from './radarSection.js';
+import { RadarChart } from './radarChart.js';
 
-/** Radar, key attributes (badges + tap-to-read) and the score breakdown for one role. */
-function roleDetails(p, role, score) {
+const axisDirection = (a) => (a.tendency ? 'neutral' : (a.mapped ? attributeDirection(a.key) : 'positive'));
+
+/** Compact radar for one phase's role (two sit side by side). Tapping an axis fills the shared readout. */
+function roleRadar(p, phase, role, readout) {
+  if (!role) return h('div', { class: 'role-radar role-radar-none', 'data-phase': phase.id }, h('p', {}, 'Choose a role'));
   const axes = role.attrs.map((a) => {
     const value = roleValue(p, a);
-    const direction = a.tendency ? 'neutral' : (a.mapped ? attributeDirection(a.key) : 'positive');
-    return { label: a.label, value, display: value === null ? null : String(value), direction,
-      note: a.tendency ? 'Tendency — shown, not scored.' : null };
+    const direction = axisDirection(a);
+    return { label: a.label, short: ATTRIBUTE_ABBR[a.key] || a.label.slice(0, 3), value, display: value === null ? null : String(value),
+      direction, band: scoreBand(value, direction), marker: a.tendency ? '†' : '' };
   });
   const known = axes.filter((a) => a.value !== null).length;
-  const chart = known >= 3
-    ? chartBlock(axes, {
-      title: `${role.name} key attributes`,
-      describe: (a) => [h('span', { class: 'ro-title' }, a.label, ' ', h('b', {}, a.value === null ? 'Unavailable' : a.display)), a.note ? h('span', { class: 'ro-note' }, a.note) : null],
-    })
-    : [h('p', { class: 'muted small role-chart-note' }, `Not enough recorded values to draw this role (${known} of ${axes.length}).`)];
+  if (known < 3) {
+    return h('div', { class: 'role-radar role-radar-none', 'data-phase': phase.id },
+      h('p', {}, `Not enough values to draw (${known} of ${axes.length})`));
+  }
+  const chart = RadarChart({
+    compact: true,
+    axes,
+    ariaLabel: `${role.name}, ${phase.label}: ${axes.map((a) => `${a.label} ${a.value ?? 'unavailable'}`).join(', ')}`,
+    showBands: axes.every((a) => a.direction === 'positive'),
+    onSelect: (i) => {
+      const a = axes[i];
+      readout.hidden = false;
+      readout.replaceChildren(...[h('span', { class: 'ro-title' }, a.label, ' ', h('b', {}, a.value === null ? 'Unavailable' : a.display)),
+        h('span', { class: 'ro-formula' }, `${role.name} · ${phase.label}`),
+        a.marker ? h('span', { class: 'ro-note' }, 'Tendency — shown, not scored.') : null].filter(Boolean));
+    },
+  });
+  return h('div', { class: 'role-radar', 'data-phase': phase.id }, chart.el);
+}
+
+/** Key attributes (badges + tap-to-read) and the score breakdown for one role. */
+function roleDetails(p, role, score) {
   const list = h('ul', { class: 'attr-list role-attrs' }, role.attrs.map((a) => {
     const value = roleValue(p, a);
-    const band = a.tendency ? null : attrBand(value, a.mapped ? attributeDirection(a.key) : 'positive');
+    const band = a.tendency ? null : attrBand(value, axisDirection(a));
     const btn = h('button', { type: 'button', class: 'attr-name', 'aria-haspopup': 'dialog', onclick: () => openAttributeInfo({ key: a.key, label: a.label }, btn) },
       a.label, a.tier === 'supporting' ? h('span', { class: 'muted' }, ' · supporting') : null, a.tendency ? h('span', { class: 'muted' }, ' †') : null);
     return h('li', { class: 'attr' }, h('span', { class: 'attr-mark', 'aria-hidden': 'true' }), btn,
       h('span', { class: `attr-val ${band || 'none'}` }, value ?? DASH));
   }));
   const breakdown = h('div', { class: 'role-breakdown' }, scoreBreakdown(score).map((t) => h('p', {}, t)));
-  return [...chart.filter(Boolean), list, breakdown];
+  return [list, breakdown];
 }
 
 /**
@@ -81,7 +101,9 @@ export function RoleExplorer(p, playerKey) {
   }
 
   function column(phase, role, scores) {
-    const roles = rolesFor(cat, pos, phase.id);
+    // Highest Role attributes first; unavailable scores last; ties by name.
+    const val = (r) => scores.get(r.id).value ?? -1;
+    const roles = [...rolesFor(cat, pos, phase.id)].sort((a, b) => val(b) - val(a) || a.name.localeCompare(b.name));
     const s = role ? scores.get(role.id) : null;
     const select = h('select', {
       class: 'role-pick-select', 'data-phase-select': phase.id, 'aria-label': `${phase.label} role`,
@@ -123,6 +145,9 @@ export function RoleExplorer(p, playerKey) {
       h('button', { type: 'button', class: 'info-btn', 'aria-label': 'About Role attributes /100 and the role catalogue', onclick: () => openRoleInfo(cat) }, 'i'));
     const cols = h('div', { class: 'role-cols' }, PHASES.map((ph) => column(ph, roles[ph.id], scores)));
 
+    const readout = h('div', { class: 'radar-readout', 'aria-live': 'polite', hidden: true });
+    const radars = h('div', { class: 'role-radars' }, PHASES.map((ph) => roleRadar(p, ph, roles[ph.id], readout)));
+
     const tabs = h('div', { class: 'role-tabs', role: 'tablist', 'aria-label': 'Phase details' }, PHASES.map((ph) =>
       h('button', {
         type: 'button', role: 'tab', class: `role-tab${tab === ph.id ? ' active' : ''}`, 'data-tab': ph.id,
@@ -136,10 +161,10 @@ export function RoleExplorer(p, playerKey) {
       role
         ? [h('p', { class: 'role-details-title' }, role.name, h('span', { class: 'muted' }, ` · ${active.label}`)), ...roleDetails(p, role, scores.get(role.id))]
         : [h('div', { class: 'empty radar-empty role-prompt' }, h('p', { class: 'empty-title' }, 'Choose a role'),
-          h('p', { class: 'empty-text' }, `Pick an ${active.label} role for ${position.label} to see its radar and key attributes.`))]);
+          h('p', { class: 'empty-text' }, `Pick an ${active.label} role for ${position.label} to see its key attributes.`))]);
 
-    panel.replaceChildren(head, cols, tabs, details);
-    if (reveal) requestAnimationFrame(() => details.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
+    panel.replaceChildren(head, cols, radars, readout, tabs, details);
+    if (reveal) requestAnimationFrame(() => radars.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
   }
 
   draw();

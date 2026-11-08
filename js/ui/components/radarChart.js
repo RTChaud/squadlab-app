@@ -9,6 +9,7 @@ import { h } from '../dom.js';
 import { RADAR_SCALE } from '../../data/radar.js';
 import { SCORE_BAND_EDGES } from '../../data/attributes.js';
 
+const DASH_TXT = '—';
 const NS = 'http://www.w3.org/2000/svg';
 const s = (tag, attrs = {}, ...kids) => {
   const el = document.createElementNS(NS, tag);
@@ -31,7 +32,8 @@ function wrapLabel(text, max = 12) {
 
 /**
  * @param {object} o
- *   axes      [{ label, value (number|null), display (string), marker?, band? ('a1'…'a6' or null = neutral) }]
+ *   axes      [{ label, short?, value (number|null), display (string), marker?, band? ('a1'…'a6' or null = neutral) }]
+ *   compact   smaller chart for two side by side (axis labels use `short`)
  *   showBands draw the faint red→green score bands behind the shape (only
  *             where higher means better for every axis)
  *   onSelect  (index) => void — tap on an axis label / point
@@ -47,13 +49,15 @@ export function RadarChart(o) {
       h('p', { class: 'empty-text' }, `${known} of ${n} axes have values; at least 3 are needed.`)), setActive() {} };
   }
 
-  const W = 400, H = 316, cx = W / 2, cy = 158, R = 100, LR = R + 20;
+  // Compact (two charts side by side): short labels, larger text relative to the drawing.
+  const C = !!o.compact;
+  const W = C ? 220 : 400, H = C ? 196 : 316, cx = W / 2, cy = C ? 98 : 158, R = C ? 70 : 100, LR = R + (C ? 12 : 20);
   const ang = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / n; // clockwise from the top
   const pt = (i, v) => [cx + Math.cos(ang(i)) * (R * v) / RADAR_SCALE.max, cy + Math.sin(ang(i)) * (R * v) / RADAR_SCALE.max];
   // A small margin around the drawing keeps long single-word labels (e.g.
   // "Communication") and two-line top labels inside the chart.
-  const PADX = 20, PADY = 6;
-  const svg = s('svg', { class: 'radar', viewBox: `${-PADX} ${-PADY} ${W + 2 * PADX} ${H + 2 * PADY}`, role: 'img', 'aria-label': o.ariaLabel || 'Radar chart' });
+  const PADX = C ? 4 : 20, PADY = C ? 22 : 6;
+  const svg = s('svg', { class: `radar${C ? ' radar-compact' : ''}`, viewBox: `${-PADX} ${-PADY} ${W + 2 * PADX} ${H + 2 * PADY}`, role: 'img', 'aria-label': o.ariaLabel || 'Radar chart' });
 
   // Score bands: concentric polygon rings at the same score boundaries as the
   // attribute colours, so distance from the centre means the same on every
@@ -87,23 +91,26 @@ export function RadarChart(o) {
       if (a && b) svg.append(s('line', { class: 'radar-edge', x1: a[0], y1: a[1], x2: b[0], y2: b[1] }));
     }
   }
-  pts.forEach((p, i) => p && svg.append(s('circle', { class: `radar-dot ${o.axes[i].band || 'neutral'}`, cx: p[0], cy: p[1], r: 4.5 })));
+  pts.forEach((p, i) => p && svg.append(s('circle', { class: `radar-dot ${o.axes[i].band || 'neutral'}`, cx: p[0], cy: p[1], r: C ? 4 : 4.5 })));
 
   // labels (+ value) and generous tap targets
+  let yMin = cy - R, yMax = cy + R;
   const labelEls = o.axes.map((a, i) => {
     const c = Math.cos(ang(i)), sn = Math.sin(ang(i));
     const x = cx + c * LR, y = cy + sn * LR;
     const anchor = Math.abs(c) < 0.25 ? 'middle' : c > 0 ? 'start' : 'end';
-    const lines = wrapLabel(a.label);
+    const lines = C ? [a.short || a.label] : wrapLabel(a.label);
     const total = lines.length + 1;
-    const lh = 14;
+    const lh = C ? 21 : 14;
     const top = sn < -0.5 ? y - (total - 1) * lh : sn > 0.5 ? y + 6 : y - ((total - 1) * lh) / 2;
+    if (C) { yMin = Math.min(yMin, top - lh); yMax = Math.max(yMax, top + (total - 1) * lh + 6); }
     const g = s('g', { class: `radar-label${a.value === null ? ' unavailable' : ''}`, 'data-i': i });
     lines.forEach((ln, k) => g.append(s('text', { x, y: top + k * lh, 'text-anchor': anchor, class: 'radar-name' }, ln + (k === lines.length - 1 && a.marker ? ` ${a.marker}` : ''))));
-    g.append(s('text', { x, y: top + lines.length * lh, 'text-anchor': anchor, class: `radar-val ${a.value === null ? '' : a.band || 'neutral'}` }, a.value === null ? 'Unavailable' : a.display));
+    g.append(s('text', { x, y: top + lines.length * lh, 'text-anchor': anchor, class: `radar-val ${a.value === null ? '' : a.band || 'neutral'}` }, a.value === null ? (C ? DASH_TXT : 'Unavailable') : a.display));
     svg.append(g);
-    const hx = anchor === 'middle' ? x - 46 : anchor === 'start' ? x - 8 : x - 84;
-    const hit = s('rect', { class: 'radar-hit', x: hx, y: top - 14, width: 92, height: total * lh + 12, rx: 8 });
+    const hw = C ? 56 : 92;
+    const hx = anchor === 'middle' ? x - hw / 2 : anchor === 'start' ? x - 8 : x - hw + 8;
+    const hit = s('rect', { class: 'radar-hit', x: hx, y: top - lh, width: hw, height: total * lh + 12, rx: 8 });
     hit.addEventListener('click', () => select(i));
     svg.append(hit);
     if (pts[i]) {
@@ -113,6 +120,9 @@ export function RadarChart(o) {
     }
     return g;
   });
+
+  // Compact: trim the height to the drawing and its labels.
+  if (C) svg.setAttribute('viewBox', `${-PADX} ${yMin - 4} ${W + 2 * PADX} ${yMax - yMin + 8}`);
 
   function setActive(i) {
     spokes.forEach((sp, k) => sp.classList.toggle('active', k === i));
