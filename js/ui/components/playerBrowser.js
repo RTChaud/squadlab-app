@@ -26,28 +26,21 @@ import { openViewSheet } from './viewSheet.js';
 
 const session = {}; // section → { search, scrollX, source }
 
+/** Start a section's next visit with an empty search (e.g. Tactic → Shortlists → All). */
+export function clearBrowserSearch(section) {
+  if (session[section]) { session[section].search = ''; session[section].scrollX = 0; }
+}
+
 /**
- * @param {object} o
- *   section 'squad' | 'shortlists' | 'tags', source (stable id of the selected squad/list/tag),
- *   sourceName, players (members; latest snapshot unless listed in `older`),
- *   older (Map player → game date, for members only found in an earlier snapshot),
- *   from (route to return to), emptyTitle, emptyText
+ * Row context shared by the browser and anything that must count rows the same
+ * way (Tactic's match count). `older`: Map player → game date for members only
+ * found in an earlier snapshot.
  */
-export async function PlayerBrowser(o) {
-  const model = getModel();
+export function browserRowContext(model, older = new Map()) {
   const careerId = getCareer()?.careerId;
-  const [metrics] = await Promise.all([getCareerMetrics(), loadNations()]);
-
-  const ses = session[o.section] || (session[o.section] = { search: '', scrollX: 0, source: null });
-  const sourceChanged = ses.source !== null && ses.source !== o.source;
-  if (sourceChanged) ses.scrollX = 0;
-  ses.source = o.source;
-
-  // ---- Rows (built once per render) -------------------------------------------------
-  const older = o.older || new Map();
   const teamByUid = new Map();
   for (const t of resolveTeams(model)) for (const p of t.players) if (!teamByUid.has(p.uid)) teamByUid.set(p.uid, { key: t.key, label: t.label, short: t.short });
-  const rowCtx = {
+  return {
     keyOf: playerKeyOf,
     slotsOf: squadSlotsFor,
     tagsOf: (key) => (key ? tagsForPlayer(key) : []),
@@ -58,6 +51,27 @@ export async function PlayerBrowser(o) {
     nationsOf: (p) => [p.nation_id, ...(Array.isArray(p.second_nation_ids) ? p.second_nation_ids : [])]
       .filter(Number.isInteger).map((id) => resolveNation(id, careerId)).filter(Boolean),
   };
+}
+
+/**
+ * @param {object} o
+ *   section 'squad' | 'shortlists' | 'tags', source (stable id of the selected squad/list/tag),
+ *   sourceName, players (members; latest snapshot unless listed in `older`),
+ *   older (Map player → game date, for members only found in an earlier snapshot),
+ *   from (route to return to), emptyTitle, emptyText
+ */
+export async function PlayerBrowser(o) {
+  const model = getModel();
+  const [metrics] = await Promise.all([getCareerMetrics(), loadNations()]);
+
+  const ses = session[o.section] || (session[o.section] = { search: '', scrollX: 0, source: null });
+  const sourceChanged = ses.source !== null && ses.source !== o.source;
+  if (sourceChanged) ses.scrollX = 0;
+  ses.source = o.source;
+
+  // ---- Rows (built once per render) -------------------------------------------------
+  const older = o.older || new Map();
+  const rowCtx = browserRowContext(model, older);
   const allRows = o.players.map((p) => {
     const row = buildRow(p, rowCtx);
     if (older.has(p)) row.note = `Last recorded ${fmt(older.get(p))}`;

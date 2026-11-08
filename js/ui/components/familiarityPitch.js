@@ -5,6 +5,7 @@
 //
 // With `onSelect`, tiles become buttons (role explorers): the selected tile
 // gets an orange outline, and the familiarity colour stays.
+// With `plain` (Tactic), tiles show only the position, no player values.
 // With `pair` (Comparison), each tile shows both players' familiarity: left
 // player's value on the left, right player's on the right, each in its colour.
 
@@ -23,7 +24,7 @@ const PITCH = [
 
 /**
  * @param p player record
- * @param {object} [o]  selected (code), onSelect(code), selectable(code) → bool,
+ * @param {object} [o]  selected (code), onSelect(code), selectable(code) → bool, plain (no values),
  *                      pair [{ player, name } | null, { player, name } | null] (Comparison)
  * Returns the pitch element; with onSelect it also has setSelected(code).
  */
@@ -53,6 +54,16 @@ export function FamiliarityPitch(p, o = {}) {
     const v = intOrNull(fam[code]);
     const band = famBand(v);
     const label = formatPositions([code]);
+    if (o.plain) {
+      const sel = !o.selectable || o.selectable(code);
+      if (!o.onSelect || !sel) return h('span', { class: 'ptile ptile-plain ptile-off', 'data-pos': code }, h('span', { class: 'ptile-code' }, label));
+      const btn = h('button', {
+        type: 'button', class: 'ptile ptile-btn ptile-plain', 'data-pos': code, 'aria-pressed': 'false',
+        'aria-label': label, onclick: () => o.onSelect(code),
+      }, h('span', { class: 'ptile-code' }, label));
+      tiles.set(code, btn);
+      return btn;
+    }
     const kids = [h('span', { class: 'ptile-code' }, label), h('span', { class: 'ptile-val' }, v ?? DASH)];
     if (!o.onSelect || (o.selectable && !o.selectable(code))) {
       return h('span', { class: `ptile ${band ? band.cls : 'fnone'}`, title: `${label}: ${v ?? DASH}` }, kids);
