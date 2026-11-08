@@ -11,6 +11,7 @@ import { RoleExplorer } from '../components/roleExplorer.js';
 import { RadarSection } from '../components/radarSection.js';
 import { isNaturalGoalkeeper } from '../../data/radar.js';
 import { formatGameDate, resolveTeams } from '../../data/snapshot.js';
+import { openContractSheet } from '../components/contractSheet.js';
 import { describePositions } from '../../data/positions.js';
 import { persistentId, profileNameOf } from '../../data/players.js';
 import { resolveNation, loadNations } from '../../data/nations.js';
@@ -264,12 +265,16 @@ function hiddenSection(p, chg) {
   );
 }
 
-/** Development | Tags, side by side. */
-function actionRow(p, devHref) {
+/** Development | Contract | Tags, side by side. */
+function actionRow(p, devHref, model, current) {
   const key = playerKeyOf(p);
   const count = key ? tagsForPlayer(key).length : 0;
   return h('div', { class: 'profile-actions' },
     h('a', { class: 'btn btn-primary dev-btn', href: devHref }, icon('chart'), 'Development'),
+    h('button', {
+      type: 'button', class: 'btn btn-secondary contract-btn', 'aria-haspopup': 'dialog',
+      onclick: () => openContractSheet(p, model.gameDate, { name: displayName(p).main, current }),
+    }, icon('contract'), 'Contract'),
     h('button', {
       type: 'button', class: 'btn btn-secondary tags-btn', disabled: !key,
       onclick: () => openTagSheet({ playerKey: key, playerName: displayName(p).main }),
@@ -320,7 +325,7 @@ export async function PlayerView({ pid, query }) {
         h('p', {}, h('strong', {}, `Not in the latest snapshot (${formatGameDate(latestDate)}).`),
           ` Showing their last recorded data, from ${formatGameDate(model.gameDate)}.`)),
       headEl,
-      actionRow(p, devHref),
+      actionRow(p, devHref, model, current),
       details(p, model, current, backHere),
       familiaritySection(p),
       RadarSection(p, playerKeyOf(p)),
