@@ -1,6 +1,6 @@
 import { h, icon } from '../dom.js';
-import { getModel, getHistory, listTags, listLineups, getCompare } from '../../store.js';
-import { formatGameDate, resolveTeams } from '../../data/snapshot.js';
+import { getModel } from '../../store.js';
+import { formatGameDate } from '../../data/snapshot.js';
 
 function welcome(onImport, onRestore) {
   return h('div', { class: 'welcome' },
@@ -13,70 +13,36 @@ function welcome(onImport, onRestore) {
   );
 }
 
-export function SnapshotCard(model, count) {
-  return h('div', { class: 'snapshot' },
-    h('div', { class: 'snapshot-main' },
-      h('span', { class: 'snapshot-club' }, model.club?.name || '—'),
-      model.club?.manager_name ? h('span', { class: 'snapshot-manager' }, model.club.manager_name) : null,
-    ),
-    h('div', { class: 'snapshot-date' },
-      h('span', { class: 'snapshot-label' }, 'In-game date'),
-      h('span', { class: 'snapshot-value' }, formatGameDate(model.gameDate)),
-      count > 1 ? h('span', { class: 'snapshot-label' }, `${count} snapshots`) : null,
-    ),
-  );
+// Compact save strip: club on the left (wraps if long), in-game date on the right.
+function saveStrip(model) {
+  return h('div', { class: 'save-strip' },
+    h('span', { class: 'save-club' }, model.club?.name || '—'),
+    h('span', { class: 'save-date' }, formatGameDate(model.gameDate)));
 }
 
-function widget({ href, iconName, title, meta }) {
-  return h('a', { class: 'widget', href },
-    icon(iconName, 'widget-icon'),
-    h('span', { class: 'widget-body' },
-      h('span', { class: 'widget-title' }, title),
-      h('span', { class: 'widget-meta' }, meta),
-    ),
-    icon('chevron', 'widget-chevron'),
-  );
-}
+// Launcher order: Squad, Shortlists, Lineups / Comparison, Tags, Tactic.
+const TILES = [
+  { href: '#/squad', iconName: 'squad', label: 'Squad' },
+  { href: '#/shortlists', iconName: 'list', label: 'Shortlists' },
+  { href: '#/lineups', iconName: 'pitch', label: 'Lineups' },
+  { href: '#/compare', iconName: 'compare', label: 'Comparison' },
+  { href: '#/tags', iconName: 'tag', label: 'Tags' },
+  { href: '#/tactic', iconName: 'tactic', label: 'Tactic' },
+];
+
+const tile = ({ href, iconName, label }) => h('li', { class: 'app-cell' },
+  h('a', { class: 'app-tile', href },
+    icon(iconName, 'app-icon'),
+    h('span', { class: 'app-label' }, label)));
 
 export function HomeView({ onImport, onRestore }) {
   const model = getModel();
   if (!model) return { title: 'SquadLab', isHome: true, body: welcome(onImport, onRestore) };
-
-  const teams = resolveTeams(model);
-  const teamMeta = teams.some((t) => t.issues.length)
-    ? 'Squad data problem — tap for details'
-    : teams.map((t) => `${t.short} ${t.players.length}`).join(' · ');
-  const listCount = model.visibleShortlists.length;
-  const tagCount = listTags().length;
-  const lineupCount = listLineups().length;
-
   return {
     title: 'SquadLab',
     isHome: true,
-    body: h('div', { class: 'stack' },
-      SnapshotCard(model, getHistory().length),
-      h('div', { class: 'widgets' },
-        widget({
-          href: '#/squad', iconName: 'squad', title: 'Squad',
-          meta: teamMeta,
-        }),
-        widget({
-          href: '#/shortlists', iconName: 'list', title: 'Shortlists',
-          meta: `${listCount} ${listCount === 1 ? 'list' : 'lists'}`,
-        }),
-        widget({
-          href: '#/tags', iconName: 'tag', title: 'Tags',
-          meta: tagCount ? `${tagCount} ${tagCount === 1 ? 'tag' : 'tags'}` : 'Add tags from player profiles',
-        }),
-        widget({
-          href: '#/lineups', iconName: 'pitch', title: 'Lineups',
-          meta: `${lineupCount} lineups · First, Backup & Future XI`,
-        }),
-        widget({
-          href: '#/compare', iconName: 'compare', title: 'Comparison',
-          meta: getCompare().left || getCompare().right ? 'Continue your comparison' : 'Compare two players side by side',
-        }),
-      ),
-    ),
+    body: h('div', { class: 'home' },
+      saveStrip(model),
+      h('nav', { 'aria-label': 'Sections' }, h('ul', { class: 'app-grid' }, TILES.map(tile)))),
   };
 }
