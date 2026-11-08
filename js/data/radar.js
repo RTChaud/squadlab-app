@@ -149,6 +149,28 @@ export const sanitizeRoleSel = (r) => ({
   role: typeof r?.role === 'string' && r.role ? r.role : null,
 });
 
+/**
+ * Last role per position and phase: { [position]: { in_possession, out_of_possession } }
+ * (role ids, checked against the catalogue when used). `legacy` is the older
+ * one-{ position, role }-per-phase shape, whose choices are carried over.
+ */
+export function sanitizeRoleMemory(byPos, legacy) {
+  const str = (x) => (typeof x === 'string' && x ? x : null);
+  const out = {};
+  const add = (pos, phase, role) => {
+    if (!str(pos) || !str(role) || !ROLE_PHASES.some((ph) => ph.id === phase)) return;
+    (out[pos] ||= {})[phase] = role;
+  };
+  if (byPos && typeof byPos === 'object') {
+    for (const [pos, byPhase] of Object.entries(byPos)) for (const ph of ROLE_PHASES) add(pos, ph.id, byPhase?.[ph.id]);
+  }
+  for (const ph of ROLE_PHASES) {
+    const r = sanitizeRoleSel(legacy?.[ph.id]);
+    if (r.position && r.role && !out[r.position]?.[ph.id]) add(r.position, ph.id, r.role);
+  }
+  return out;
+}
+
 export function sanitizeRadarPrefs(raw) {
   const out = emptyRadarPrefs();
   if (!raw || typeof raw !== 'object' || typeof raw.players !== 'object') return out;
@@ -159,21 +181,7 @@ export function sanitizeRadarPrefs(raw) {
     // position and the phase whose details are shown. Role ids are checked
     // against the active catalogue when used.
     const str = (x) => (typeof x === 'string' && x ? x : null);
-    const roleByPos = {};
-    const addRole = (pos, phase, role) => {
-      if (!str(pos) || !str(role) || !ROLE_PHASES.some((ph) => ph.id === phase)) return;
-      (roleByPos[pos] ||= {})[phase] = role;
-    };
-    if (v.roleByPos && typeof v.roleByPos === 'object') {
-      for (const [pos, byPhase] of Object.entries(v.roleByPos)) {
-        for (const ph of ROLE_PHASES) addRole(pos, ph.id, byPhase?.[ph.id]);
-      }
-    }
-    // Earlier versions saved one { position, role } per phase: keep those choices.
-    for (const ph of ROLE_PHASES) {
-      const r = sanitizeRoleSel(v.roles?.[ph.id]);
-      if (r.position && r.role && !roleByPos[r.position]?.[ph.id]) addRole(r.position, ph.id, r.role);
-    }
+    const roleByPos = sanitizeRoleMemory(v.roleByPos, v.roles);
     out.players[key] = {
       selected: attrs, roleByPos,
       rolePos: str(v.rolePos),
