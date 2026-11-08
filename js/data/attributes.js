@@ -47,6 +47,18 @@ export const ATTRIBUTE_GROUPS = [
 export const FOOTBALL_ATTRS = ATTRIBUTE_GROUPS.flatMap((g) => g.attrs.map((a) => ({ ...a, group: g.key, groupLabel: g.label })));
 export const ATTR_BY_KEY = Object.fromEntries(FOOTBALL_ATTRS.map((a) => [a.key, a]));
 
+/** FM's short attribute names, for small charts (full names stay in lists and on tap). */
+export const ATTRIBUTE_ABBR = {
+  corners: 'Cor', crossing: 'Cro', dribbling: 'Dri', finishing: 'Fin', first_touch: 'Fir', free_kick_taking: 'Fre',
+  heading: 'Hea', long_shots: 'Lon', long_throws: 'L Th', marking: 'Mar', passing: 'Pas', penalty_taking: 'Pen',
+  tackling: 'Tck', technique: 'Tec', aggression: 'Agg', anticipation: 'Ant', bravery: 'Bra', composure: 'Cmp',
+  concentration: 'Cnt', decisions: 'Dec', determination: 'Det', flair: 'Fla', leadership: 'Ldr', off_the_ball: 'OtB',
+  positioning: 'Pos', teamwork: 'Tea', vision: 'Vis', work_rate: 'Wor', acceleration: 'Acc', agility: 'Agi',
+  balance: 'Bal', jumping_reach: 'Jum', natural_fitness: 'Nat', pace: 'Pac', stamina: 'Sta', strength: 'Str',
+  aerial_reach: 'Aer', command_of_area: 'Cmd', communication: 'Com', eccentricity: 'Ecc', handling: 'Han',
+  kicking: 'Kic', one_on_ones: '1v1', punching: 'Pun', reflexes: 'Ref', rushing_out: 'TRO', throwing: 'Thr',
+};
+
 /**
  * Hidden attributes inside `attributes` and the `personality` block. Their
  * ranges and whether high is good differ, so they are shown neutrally.
