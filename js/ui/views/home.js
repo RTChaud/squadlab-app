@@ -20,14 +20,15 @@ function saveStrip(model) {
     h('span', { class: 'save-date' }, formatGameDate(model.gameDate)));
 }
 
-// Launcher order: Squad, Shortlists, Lineups / Comparison, Tags, Tactic.
+// Launcher order: squad tools on top (Squad, Lineups, Tactic), scouting below
+// (Shortlists, Tags, Comparison).
 const TILES = [
   { href: '#/squad', iconName: 'squad', label: 'Squad' },
-  { href: '#/shortlists', iconName: 'list', label: 'Shortlists' },
   { href: '#/lineups', iconName: 'pitch', label: 'Lineups' },
-  { href: '#/compare', iconName: 'compare', label: 'Comparison' },
-  { href: '#/tags', iconName: 'tag', label: 'Tags' },
   { href: '#/tactic', iconName: 'tactic', label: 'Tactic' },
+  { href: '#/shortlists', iconName: 'list', label: 'Shortlists' },
+  { href: '#/tags', iconName: 'tag', label: 'Tags' },
+  { href: '#/compare', iconName: 'compare', label: 'Comparison' },
 ];
 
 const tile = ({ href, iconName, label }) => h('li', { class: 'app-cell' },
