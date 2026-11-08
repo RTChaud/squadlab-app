@@ -14,7 +14,9 @@ import { pickAttribute } from './attributePicker.js';
 import {
   POSITION_CHOICES, FOOT_CHOICES, TIER_CHOICES, SLOT_CHOICES, OPERATORS, RANGES, ATTR_CHOICE, ATTR_SCALE,
   sanitizeFilters, conditionError, rangeError, DEFAULT_MIN_FAM, ROLE_DEFAULT_MIN, ROLE_OPERATORS,
+  EXPIRY_CHOICES, MONEY_RANGES, CLAUSE_TYPES, moneyRangeError, moneyError,
 } from '../../data/listView.js';
+import { parseMoney, formatMoneyInput } from '../../data/money.js';
 import { PHASES, loadRoleCatalogue, positionByCode, rolesFor } from '../../data/roles.js';
 
 // Familiarity codes laid out like the profile pitch (front to back).
@@ -28,6 +30,17 @@ function draftRole(r) {
     in_possession: r?.in_possession?.id || null,
     out_of_possession: r?.out_of_possession?.id || null,
     conds: (r?.conds || []).map((c) => ({ key: c.key, op: c.op || '', value: strOf(c.value), tendency: c.tendency })),
+  };
+}
+/** Draft contract filters with raw text for the amounts. */
+function draftContract(f) {
+  return {
+    expiry: f?.expiry ? String(f.expiry) : '',
+    salary: (f?.salary || [null, null]).map(formatMoneyInput),
+    tvalue: (f?.tvalue || [null, null]).map(formatMoneyInput),
+    clauseType: f?.clause?.type || '',
+    clauseMax: formatMoneyInput(f?.clause?.max ?? null),
+    clauseStatus: f?.clause?.status || 'any',
   };
 }
 const emptyRole = (position = null) => ({ position, in_possession: null, out_of_possession: null, conds: [] });
@@ -65,6 +78,24 @@ function stepper(o) {
   return h('div', { class: `fstep${o.disabled ? ' disabled' : ''}` }, btn(-1), input, btn(1));
 }
 
+/** Amount field with a £ prefix; typed amounts are tidied to "150,000.00" on blur. */
+function moneyInput(o) {
+  const input = h('input', {
+    type: 'text', inputmode: 'decimal', class: 'finput fmoney-val', value: o.value,
+    placeholder: o.placeholder || '', 'aria-label': o.label, autocomplete: 'off',
+    oninput: (e) => o.onInput(e.target.value.trim()),
+    onblur: (e) => {
+      const n = parseMoney(e.target.value);
+      if (n === null || Number.isNaN(n)) return;
+      // Same amount, tidier text: update the draft without redrawing the buttons
+      // (a redraw here would swallow a tap on Apply that caused the blur).
+      e.target.value = formatMoneyInput(n);
+      o.onInput(e.target.value, true);
+    },
+  });
+  return h('div', { class: 'fmoney' }, h('span', { class: 'fmoney-cur', 'aria-hidden': 'true' }, '£'), input);
+}
+
 const ATTR_START = 10; // new attribute conditions and empty fields start here
 const RANGE_START = { age: [18, 30], ca: [100, 150], pa: [100, 150] };
 
@@ -85,6 +116,7 @@ export function openFilterSheet(o) {
     tiers: [...f0.tiers], slots: [...f0.slots], unassigned: f0.unassigned,
     attrs: f0.attrs.map((c) => ({ ...c, value: String(c.value) })),
     role: draftRole(f0.roles),
+    ct: draftContract(f0),
   };
   let cat = null; // role catalogue (loaded below)
 
@@ -102,6 +134,8 @@ export function openFilterSheet(o) {
     const out = {};
     for (const k of Object.keys(RANGES)) { const e = rangeError(k, ...d.ranges[k]); if (e) out[k] = e; }
     d.attrs.forEach((c, i) => { const e = conditionError(c); if (e) out[`attr${i}`] = e; });
+    for (const k of Object.keys(MONEY_RANGES)) { const e = moneyRangeError(MONEY_RANGES[k].label, ...d.ct[k]); if (e) out[k] = e; }
+    if (d.ct.clauseType) { const e = moneyError('Maximum amount', d.ct.clauseMax); if (e) out.clauseMax = e; }
     if (roleActive()) {
       for (const c of d.role.conds) {
         if (c.tendency && !c.op) continue; // unset tendency: shown, not applied
@@ -291,6 +325,44 @@ export function openFilterSheet(o) {
       }, '+ Add condition'));
   }
 
+  function contractSection() {
+    const c = d.ct;
+    const field = (label, id, control) => h('div', { class: 'frow fct-row' }, h('label', { class: 'fct-label', for: id }, label), control);
+    const expiry = h('select', {
+      class: 'select select-sm', id: 'f-expiry', 'aria-label': 'Contract expiry',
+      onchange: (e) => { c.expiry = e.target.value; updateErrors(); },
+    }, h('option', { value: '', selected: !c.expiry }, 'Any'),
+      EXPIRY_CHOICES.map((m) => h('option', { value: String(m), selected: c.expiry === String(m) }, `Within ${m} months`)));
+    const range = (k) => h('div', { class: 'fmrange' },
+      h('span', { class: 'fct-label' }, MONEY_RANGES[k].label),
+      h('div', { class: 'fmrange-inputs' },
+        moneyInput({ value: c[k][0], placeholder: 'Min', label: `${MONEY_RANGES[k].label} minimum`, onInput: (v, tidy) => { c[k][0] = v; if (!tidy) updateErrors(); } }),
+        h('span', { class: 'muted' }, '–'),
+        moneyInput({ value: c[k][1], placeholder: 'Max', label: `${MONEY_RANGES[k].label} maximum`, onInput: (v, tidy) => { c[k][1] = v; if (!tidy) updateErrors(); } })),
+      h('p', { class: 'ferror', dataset: { err: k }, role: 'alert', hidden: true }));
+    const type = h('select', {
+      class: 'select select-sm', id: 'f-clause', 'aria-label': 'Release clause type',
+      onchange: (e) => { c.clauseType = e.target.value; if (c.clauseType !== 'relegation') c.clauseStatus = 'any'; render(); },
+    }, h('option', { value: '', selected: !c.clauseType }, 'Not required'),
+      CLAUSE_TYPES.map((t) => h('option', { value: t.id, selected: c.clauseType === t.id }, t.label)));
+    const clauseExtra = c.clauseType ? h('div', { class: 'fclause' },
+      h('div', { class: 'fmrange' },
+        h('span', { class: 'fct-label' }, 'Maximum amount'),
+        h('div', { class: 'fmrange-inputs single' },
+          moneyInput({ value: c.clauseMax, placeholder: 'Any amount', label: 'Release clause maximum amount', onInput: (v, tidy) => { c.clauseMax = v; if (!tidy) updateErrors(); } })),
+        h('p', { class: 'ferror', dataset: { err: 'clauseMax' }, role: 'alert', hidden: true })),
+      c.clauseType === 'relegation' ? field('Relegation clause status', 'f-clause-status', h('select', {
+        class: 'select select-sm', id: 'f-clause-status', 'aria-label': 'Relegation clause status',
+        onchange: (e) => { c.clauseStatus = e.target.value; updateErrors(); },
+      }, [['any', 'Any status'], ['active', 'Confirmed active only']].map(([v, label]) => h('option', { value: v, selected: c.clauseStatus === v }, label)))) : null) : null;
+    return h('fieldset', { class: 'fsec fsec-contract' }, h('legend', { class: 'fsec-title' }, 'Contract & transfer'),
+      field('Contract expiry', 'f-expiry', expiry),
+      range('salary'),
+      range('tvalue'),
+      field('Release clause', 'f-clause', type),
+      clauseExtra);
+  }
+
   function updateErrors() {
     const errs = errors();
     body.querySelectorAll('.ferror').forEach((el) => {
@@ -310,6 +382,7 @@ export function openFilterSheet(o) {
       section('Preferred foot', h('div', { class: 'tchips' }, FOOT_CHOICES.map((x) => tchip(x, d.feet.includes(x), () => { d.feet = toggleIn(d.feet, x); render(); })))),
       tagsSection(),
       lineupSection(),
+      contractSection(),
       attrsSection(),
     );
     updateErrors();
@@ -325,6 +398,10 @@ export function openFilterSheet(o) {
     };
     for (const k of Object.keys(RANGES)) out[k] = d.ranges[k].map(numOrNull);
     out.roles = roleFilterOut();
+    const money = (v) => { const n = parseMoney(v); return Number.isNaN(n) ? null : n; };
+    out.expiry = d.ct.expiry ? Number(d.ct.expiry) : null;
+    for (const k of Object.keys(MONEY_RANGES)) out[k] = d.ct[k].map(money);
+    out.clause = d.ct.clauseType ? { type: d.ct.clauseType, max: money(d.ct.clauseMax), status: d.ct.clauseStatus } : null;
     return sanitizeFilters(out);
   }
 
@@ -345,7 +422,7 @@ export function openFilterSheet(o) {
     return [
       { label: hasErrors ? 'Fix the highlighted values' : applyLabel(), disabled: hasErrors, onClick: apply },
       { label: 'Clear all', kind: 'secondary', onClick: () => {
-        Object.assign(d, { positions: [], minFam: DEFAULT_MIN_FAM, feet: [], tags: [], tagMode: 'any', tiers: [], slots: [], unassigned: false, attrs: [], role: emptyRole(),
+        Object.assign(d, { positions: [], minFam: DEFAULT_MIN_FAM, feet: [], tags: [], tagMode: 'any', tiers: [], slots: [], unassigned: false, attrs: [], role: emptyRole(), ct: draftContract(null),
           ranges: Object.fromEntries(Object.keys(RANGES).map((k) => [k, ['', '']])) });
         render();
       } },

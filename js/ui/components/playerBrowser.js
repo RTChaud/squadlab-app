@@ -53,6 +53,8 @@ export async function PlayerBrowser(o) {
     tagsOf: (key) => (key ? tagsForPlayer(key) : []),
     // Squad membership comes from the latest snapshot, so older records have none.
     teamOf: (p) => (older.has(p) ? null : teamByUid.get(p.uid) || null),
+    // Contract dates are measured from the row's own snapshot.
+    gameDateOf: (p) => (older.has(p) ? older.get(p) : model.gameDate),
     nationsOf: (p) => [p.nation_id, ...(Array.isArray(p.second_nation_ids) ? p.second_nation_ids : [])]
       .filter(Number.isInteger).map((id) => resolveNation(id, careerId)).filter(Boolean),
   };

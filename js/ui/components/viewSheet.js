@@ -6,7 +6,7 @@ import { h } from '../dom.js';
 import { openSheet, confirmSheet } from './sheet.js';
 import { promptSheet } from './promptSheet.js';
 import { pickAttribute } from './attributePicker.js';
-import { columnDef, INFO_COLUMNS, DEFAULT_COLUMNS, DEFAULT_VIEW_ID } from '../../data/listView.js';
+import { columnDef, INFO_COLUMNS, CONTRACT_COLUMNS, DEFAULT_COLUMNS, DEFAULT_VIEW_ID } from '../../data/listView.js';
 import { formatGameDate } from '../../data/snapshot.js';
 
 /**
@@ -65,12 +65,15 @@ export function openViewSheet(api) {
         c.locked ? h('span', { class: 'col-btn-spacer' })
           : h('button', { type: 'button', class: 'col-btn', 'aria-label': `Hide ${c.label}`, onclick: () => set(cols.filter((x) => x !== id)) }, '×'));
     });
-    const unused = [...INFO_COLUMNS, columnDef('d:ca')].filter((c) => !cols.includes(c.id));
+    const groups = [
+      { label: 'Player', cols: [...INFO_COLUMNS, columnDef('d:ca')] },
+      { label: 'Contract & transfer', cols: CONTRACT_COLUMNS },
+    ].map((g) => ({ ...g, cols: g.cols.filter((c) => !cols.includes(c.id)) })).filter((g) => g.cols.length);
     const addSel = h('select', {
       class: 'select select-sm', 'aria-label': 'Add a column',
       onchange: (e) => { if (e.target.value) set([...cols, e.target.value]); },
-    }, h('option', { value: '' }, unused.length ? 'Add column…' : 'All info columns shown'),
-      unused.map((c) => h('option', { value: c.id }, c.label)));
+    }, h('option', { value: '' }, groups.length ? 'Add column…' : 'All columns shown'),
+      groups.map((g) => h('optgroup', { label: g.label }, g.cols.map((c) => h('option', { value: c.id }, c.label)))));
     const addAttr = (prefix, title) => async () => {
       const used = new Set(cols.filter((id) => id.startsWith(prefix)).map((id) => id.slice(2)));
       const key = await pickAttribute({ title, exclude: used, excludeNote: 'Shown' });

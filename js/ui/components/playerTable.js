@@ -13,12 +13,41 @@ import { attrBand, attributeDirection } from '../../data/attributes.js';
 import { DEFAULT_LINEUPS } from '../../data/lineups.js';
 import { columnDef, attrValue, devChange, NAME_MIN_REM, NAME_WIDE_REM, NAME_FIT_REM, ATTR_CHOICE } from '../../data/listView.js';
 import { linkWithFrom } from '../../router.js';
+import { formatGameDate } from '../../data/snapshot.js';
 
 const TIER_NAME = Object.fromEntries(DEFAULT_LINEUPS.map((d) => [d.tier, d.name]));
 
 // Wrap between positions, never inside one ("ST (C)" stays on one line).
 const keepTogether = (text) => text.replace(/ \(/g, ' (');
 const num = (v, cls = '') => h('div', { class: `tc num ${cls}${v === null ? ' dash' : ''}` }, v === null ? DASH : String(v));
+
+const STATUS_TEXT = { active: 'Active', inactive: 'Inactive', unknown: 'Status unknown' };
+
+/** Contract & transfer cell: same values and wording as the profile's Contract sheet. */
+function contractCell(row, col) {
+  const { contract, transfer } = row.ct;
+  const money = (text, aria, cls = '') => h('div', { class: `tc num ct-cell ${cls}`, 'aria-label': aria }, text);
+  const unavailable = () => money(h('span', { class: 'ct-na' }, 'Unavailable'), `${col.label} unavailable`);
+  const dash = () => h('div', { class: 'tc num ct-cell dash', 'aria-label': `No ${col.label.toLowerCase()}` }, DASH);
+  switch (col.ct) {
+    case 'expiry':
+      return contract.end ? h('div', { class: 'tc num ct-cell ct-date' }, formatGameDate(contract.end)) : unavailable();
+    case 'salary':
+      return contract.monthly === null ? unavailable() : money(contract.monthlyText, `Monthly salary ${contract.monthlyText}`);
+    case 'value':
+      return transfer.valueAmount === null ? unavailable() : money(transfer.value, `Transfer value ${transfer.value}`);
+    case 'release': case 'foreign': case 'relegation': {
+      const c = transfer[col.ct];
+      if (c.state === 'none') return dash();
+      const amount = c.state === 'ok' ? c.text : h('span', { class: 'ct-na' }, c.text);
+      if (col.ct !== 'relegation') return money(amount, `${col.label} ${c.text}`);
+      return h('div', { class: 'tc num ct-cell ct-releg', 'aria-label': `${col.label} ${c.text}, ${STATUS_TEXT[c.status]}` },
+        h('span', { class: `ct-amt${c.status === 'inactive' ? ' ct-inactive' : ''}` }, amount),
+        h('span', { class: `ct-st ${c.status}` }, STATUS_TEXT[c.status]));
+    }
+    default: return h('div', { class: 'tc' });
+  }
+}
 
 /** Same pitch diagram as the profile, in a sheet (never navigates). */
 function openPositions(row) {
@@ -68,6 +97,7 @@ function cell(row, col, ctx) {
     }
     case 'foot': return h('div', { class: `tc text${row.foot ? '' : ' dash'}` }, row.foot || DASH);
     default: {
+      if (col.ct) return contractCell(row, col);
       if (col.dev) {
         const c = devChange(row, col, ctx.dev);
         return h('div', { class: `tc num delta d-${c.tone}`, title: c.title, 'aria-label': c.label }, c.text);
