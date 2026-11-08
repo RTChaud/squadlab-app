@@ -1286,12 +1286,12 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .seg-btn.on { background: var(--accent-soft); color: var(--text); }
 .fconds { display: flex; flex-direction: column; gap: 10px; }
 .fcond { display: flex; flex-direction: column; gap: 4px; }
-.fcond-main { display: grid; grid-template-columns: minmax(0, 1fr) auto auto 28px; gap: 6px; align-items: center; }
+.fcond-main { display: grid; grid-template-columns: minmax(0, 1fr) 5.7rem 96px 28px; gap: 6px; align-items: center; }
 /* Narrow phones: attribute + remove on the first line, operator + value on the second. */
 @media (max-width: 374px) {
-  .fcond-main:not(.frole-main) { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'attr x' 'op val'; }
+  .fcond-main:not(.frole-main) { grid-template-columns: minmax(0, 1fr) 96px; grid-template-areas: 'attr x' 'op val'; }
   .fcond-main:not(.frole-main) .fcond-attr { grid-area: attr; }
-  .fcond-main:not(.frole-main) .chip-x { grid-area: x; }
+  .fcond-main:not(.frole-main) .chip-x { grid-area: x; justify-self: end; }
   .fcond .fcond-main:not(.frole-main) .select.select-sm.fcond-op { grid-area: op; max-width: none; width: 100%; }
   .fcond-main:not(.frole-main) .fstep { grid-area: val; justify-self: end; }
 }
@@ -1300,21 +1300,21 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
   color: var(--text); font: inherit; font-size: 14px; font-weight: 650; text-align: left;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
 }
-.fcond .select.select-sm.fcond-op { max-width: 7.2rem; min-height: 40px; }
+.fcond .select.select-sm.fcond-op { width: 100%; max-width: none; min-height: 40px; padding: 0 24px 0 10px; background-position: right 8px center; }
 .fcond-val { padding: 0 6px; text-align: center; }
 /* − value + steppers (attribute thresholds, age, CA and PA) */
-.fstep { display: flex; align-items: stretch; height: 40px; min-width: 0; padding: 0 3px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); overflow: hidden; }
+.fstep { display: flex; align-items: stretch; height: 40px; min-width: 0; padding: 0 2px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); overflow: hidden; }
 /* In condition rows the stepper keeps its full width; the attribute name gives way instead. */
-.fcond .fstep { min-width: max-content; }
+.fcond .fstep { width: 96px; min-width: 96px; }
 .fstep:focus-within { border-color: var(--accent); }
 .fstep .fstep-val { flex: 1 1 auto; width: 2.6rem; min-width: 2rem; height: 100%; padding: 0 2px; border: 0; border-radius: 0; background: none; text-align: center; font-variant-numeric: tabular-nums; }
 .fstep .fstep-val:focus { border: 0; }
-.fstep-btn { -webkit-touch-callout: none; flex: 0 0 30px; border: 0; background: none; color: var(--accent); font: inherit; font-size: 20px; font-weight: 700; line-height: 1; cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.fstep-btn { -webkit-touch-callout: none; flex: 0 0 28px; display: grid; place-items: center; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 20px; font-weight: 700; line-height: 1; cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
 .fstep-btn:active { background: var(--accent-soft); }
 .fstep-btn:disabled { color: var(--muted); opacity: 0.5; cursor: default; }
 .fstep.disabled { opacity: 0.6; }
-.fcond .fstep .fstep-val { flex: 0 0 2.1rem; width: 2.1rem; }
-@media (max-width: 374px) { .frole-cond .select.select-sm.fcond-op { max-width: 6.4rem; padding-left: 10px; } .frole-main { gap: 5px; } }
+.fcond .fstep .fstep-val { flex: 1 1 0; width: 0; }
+@media (max-width: 374px) { .frole-main { gap: 5px; } }
 .fadd { align-self: flex-start; }
 .tool-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .tool-row.center { justify-content: center; }
@@ -1608,7 +1608,7 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .frole-phase { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .frole-col .role-pick { min-height: 44px; flex: 1 1 auto; } /* both boxes match the taller one */
 .frole-conds { gap: 8px; }
-.frole-main { grid-template-columns: minmax(0, 1fr) auto auto; }
+.frole-main { grid-template-columns: minmax(0, 1fr) 5.7rem 96px; }
 .frole-attr { display: flex; flex-direction: column; min-width: 0; font-size: 14px; font-weight: 650; overflow-wrap: normal; }
 .frole-where { font-size: 11.5px; font-weight: 600; color: var(--muted); }
 .frole-where.both { color: var(--accent); }
