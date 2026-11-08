@@ -33,7 +33,7 @@ js/router.js           hash routes
 js/store.js            active career, snapshot history, backup/restore/reset
 js/data/db.js          IndexedDB (snapshots, snapshotIndex, settings, metrics; upgrades keep data)
 js/data/importer.js    snapshot + backup parsing and validation
-js/data/snapshot.js    model building, team_slot squad linking, player summary values
+js/data/snapshot.js    model building (incl. the deduplicated pool behind Shortlists → All), team_slot squad linking, player summary values
 js/data/positions.js   FM-style position formatting
 js/data/attributes.js  attribute groups/labels, colour bands, value direction, traits
 js/data/attributeInfo.js  short attribute explanations + source (SI FM24 manual), bundled offline
@@ -45,7 +45,7 @@ js/data/tags.js        player tags (app data, kept in backups)
 js/data/lineups.js     4-2-3-1 slot definitions, default/custom lineups, Squad slot ranks
 js/data/radar.js       radar overviews, selectable attributes, radar preferences
 js/data/roles.js       role catalogue loading/validation, position + attribute mapping, Role attributes /100 score
-js/data/listView.js    Squad/Shortlists columns, filters, sorting, change columns, saved views
+js/data/listView.js    Squad/Shortlists columns, filters (incl. Tactic → filters), sorting, change columns, saved views
 js/data/money.js       GBP formatting (two decimals, display rounded up: next £1,000 below £1m, next £100,000 from £1m), weekly → monthly salary, typed amounts
 js/data/contract.js    Contract data shared by the Contract sheet, table columns and filters: expiry, salary, value, clauses (FM26 codes 0, 27, 1 and 55 read only in the tested FM26 format)
 js/ui/dom.js           DOM helper + icons
@@ -53,5 +53,5 @@ js/ui/dataMenu.js      Data menu and import/export/reset flows
 js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js, tagSheet.js, promptSheet.js, radarChart.js, radarSection.js,
                        playerBrowser.js, playerTable.js, filterSheet.js, viewSheet.js, attributePicker.js, familiarityPitch.js,
                        attributeInfoSheet.js, playerPicker.js, radarAttributePicker.js, roleControls.js, roleExplorer.js, contractSheet.js
-js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js, lineups.js, lineup.js, lineupPicker.js, compare.js, tactic.js (placeholder)
+js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js, lineups.js, lineup.js, lineupPicker.js, compare.js, tactic.js (position + roles → Find matching players)
 ```
