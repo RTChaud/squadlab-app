@@ -155,17 +155,34 @@ export function sanitizeRadarPrefs(raw) {
   for (const [key, v] of Object.entries(raw.players)) {
     if (!v || typeof v !== 'object') continue;
     const attrs = [...new Set((Array.isArray(v.selected) ? v.selected : []).filter((k) => SELECTABLE[k]))].slice(0, MAX_SELECTED);
-    const roles = {};
-    for (const ph of ROLE_PHASES) {
-      const r = v.roles?.[ph.id];
-      roles[ph.id] = sanitizeRoleSel(r);
+    // Role explorer (profile): last role per position and phase, the selected
+    // position and the phase whose details are shown. Role ids are checked
+    // against the active catalogue when used.
+    const str = (x) => (typeof x === 'string' && x ? x : null);
+    const roleByPos = {};
+    const addRole = (pos, phase, role) => {
+      if (!str(pos) || !str(role) || !ROLE_PHASES.some((ph) => ph.id === phase)) return;
+      (roleByPos[pos] ||= {})[phase] = role;
+    };
+    if (v.roleByPos && typeof v.roleByPos === 'object') {
+      for (const [pos, byPhase] of Object.entries(v.roleByPos)) {
+        for (const ph of ROLE_PHASES) addRole(pos, ph.id, byPhase?.[ph.id]);
+      }
     }
-    out.players[key] = { selected: attrs, roles };
+    // Earlier versions saved one { position, role } per phase: keep those choices.
+    for (const ph of ROLE_PHASES) {
+      const r = sanitizeRoleSel(v.roles?.[ph.id]);
+      if (r.position && r.role && !roleByPos[r.position]?.[ph.id]) addRole(r.position, ph.id, r.role);
+    }
+    out.players[key] = {
+      selected: attrs, roleByPos,
+      rolePos: str(v.rolePos),
+      roleTab: ROLE_PHASES.some((ph) => ph.id === v.roleTab) ? v.roleTab : ROLE_PHASES[0].id,
+    };
   }
   return out;
 }
 
 export const playerRadarPrefs = (prefs, key) => prefs.players[key] || {
-  selected: [],
-  roles: Object.fromEntries(ROLE_PHASES.map((ph) => [ph.id, { position: null, role: null }])),
+  selected: [], roleByPos: {}, rolePos: null, roleTab: ROLE_PHASES[0].id,
 };
