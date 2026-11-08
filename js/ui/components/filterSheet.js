@@ -16,7 +16,7 @@ import {
   sanitizeFilters, conditionError, rangeError, DEFAULT_MIN_FAM, ROLE_DEFAULT_MIN, ROLE_OPERATORS,
   EXPIRY_CHOICES, MONEY_RANGES, CLAUSE_FILTERS, moneyRangeError, moneyError,
 } from '../../data/listView.js';
-import { parseMoney, formatMoneyInput } from '../../data/money.js';
+import { parseMoney, formatMoneyInput, formatMoneyTyping } from '../../data/money.js';
 import { PHASES, loadRoleCatalogue, positionByCode, rolesFor } from '../../data/roles.js';
 
 // Familiarity codes laid out like the profile pitch (front to back).
@@ -80,10 +80,24 @@ function stepper(o) {
 
 /** Amount field with a £ prefix; typed amounts are tidied to "150,000.00" on blur. */
 function moneyInput(o) {
+  let prev = o.value || '';
   const input = h('input', {
     type: 'text', inputmode: 'decimal', class: 'finput fmoney-val', value: o.value,
     placeholder: o.placeholder || '', 'aria-label': o.label, autocomplete: 'off',
-    oninput: (e) => o.onInput(e.target.value.trim()),
+    // Formatted as it's typed: 1000 reads 1,000.00, one more 0 reads 10,000.00.
+    onfocus: (e) => { prev = e.target.value; },
+    oninput: (e) => {
+      const el = e.target;
+      let raw = el.value;
+      let caret = el.selectionStart ?? raw.length;
+      // A decimal comma from the keypad counts as the point.
+      if (e.data === ',' && raw[caret - 1] === ',') raw = `${raw.slice(0, caret - 1)}.${raw.slice(caret)}`;
+      const r = formatMoneyTyping(raw, caret, prev, e.inputType || '');
+      el.value = r.text;
+      try { el.setSelectionRange(r.caret, r.caret); } catch { /* not focused */ }
+      prev = r.text;
+      o.onInput(r.text);
+    },
     onblur: (e) => {
       const n = parseMoney(e.target.value);
       if (n === null || Number.isNaN(n)) return;

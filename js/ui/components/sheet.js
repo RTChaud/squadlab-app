@@ -19,13 +19,34 @@ function fitToViewport() {
     b.style.bottom = 'auto';
     b.classList.toggle('kb-open', keyboard);
   }
+  if (keyboard) requestAnimationFrame(keepFieldVisible);
 }
+
+// With the keyboard up the sheet is short: keep the field being typed in clear
+// of the sheet's edges and of a sticky action bar (Apply / Clear all).
+function keepFieldVisible() {
+  const el = document.activeElement;
+  const sheet = el?.closest?.('.sheet');
+  if (!sheet || !el.matches('input, textarea, select')) return;
+  const box = sheet.getBoundingClientRect();
+  const bar = sheet.querySelector('.sheet-actions');
+  const sticky = bar && !bar.hidden && getComputedStyle(bar).position === 'sticky';
+  const bottom = sticky ? bar.getBoundingClientRect().top : box.bottom;
+  const top = box.top + (sheet.querySelector('.cp-top') && sheet.contains(el) && !el.closest('.cp-top') ? sheet.querySelector('.cp-top').getBoundingClientRect().height : 0);
+  const r = el.getBoundingClientRect();
+  const gap = 12;
+  if (r.bottom > bottom - gap) sheet.scrollTop += r.bottom - (bottom - gap);
+  else if (r.top < top + gap) sheet.scrollTop -= (top + gap) - r.top;
+}
+const onFocusIn = () => { if (document.querySelector('.sheet-backdrop.kb-open')) requestAnimationFrame(keepFieldVisible); };
+
 function watchViewport(on) {
   const vv = window.visualViewport;
   if (!vv) return;
   const fn = on ? 'addEventListener' : 'removeEventListener';
   vv[fn]('resize', fitToViewport);
   vv[fn]('scroll', fitToViewport);
+  document[fn]('focusin', onFocusIn);
 }
 
 /**
