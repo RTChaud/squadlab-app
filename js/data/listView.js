@@ -188,6 +188,33 @@ function sanitizeRoleFilter(raw, positions) {
   return { position: pos, in_possession: ip, out_of_possession: oop, conds };
 }
 
+// ---- Tactic → filters ---------------------------------------------------------------------
+// The Tactic screen's search, as ordinary filters (so its count and the Shortlists
+// results use the same matching): familiarity ≥ 16 at the position, and each key
+// attribute of the chosen role(s) ≥ 15 — once per attribute even when both phases
+// list it. Tendencies are listed but left unset, as in the Filters sheet.
+export const TACTIC_MIN_FAM = 16;
+
+/** @param roles { in_possession: role | null, out_of_possession: role | null } (catalogue roles) */
+export function tacticFilters(position, roles) {
+  const conds = [];
+  const seen = new Set();
+  for (const phase of ['in_possession', 'out_of_possession']) {
+    for (const a of roles[phase]?.attrs || []) {
+      if (!a.mapped || !ATTR_CHOICE[a.key] || seen.has(a.key)) continue;
+      seen.add(a.key);
+      conds.push(a.tendency ? { key: a.key, op: null, value: null, tendency: true } : { key: a.key, op: 'gte', value: ROLE_DEFAULT_MIN, tendency: false });
+    }
+  }
+  const pick = (r) => (r ? { id: r.id, name: r.name } : null);
+  return sanitizeFilters({
+    ...emptyFilters(),
+    positions: [position],
+    minFam: TACTIC_MIN_FAM,
+    roles: { position, in_possession: pick(roles.in_possession), out_of_possession: pick(roles.out_of_possession), conds },
+  });
+}
+
 export function sanitizeFilters(raw) {
   const f = emptyFilters();
   if (!raw || typeof raw !== 'object') return f;

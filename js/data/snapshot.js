@@ -21,6 +21,9 @@ export function makeSnapshotRecord(data, fileName = '') {
   };
 }
 
+/** Built-in Shortlists view of every player in the snapshot (never an imported id). */
+export const ALL_LIST_ID = 'squadlab:all';
+
 /** Shortlists hidden from the app (data is still stored and backed up). */
 export const HIDDEN_SHORTLIST_IDS = new Set(['default']);
 
@@ -55,6 +58,18 @@ export function buildModel(record) {
     playerUids: l.player_uids,
   }));
 
+  // Every player available for the career in this snapshot (squads, shortlists
+  // and anyone else exported), once each by stable player ID. Rebuilt with the
+  // model, so it follows each import.
+  const allPlayers = [];
+  const seenIds = new Set();
+  for (const p of data.players) {
+    const id = persistentId(p) ?? `uid:${p.uid}`;
+    if (seenIds.has(id)) continue;
+    seenIds.add(id);
+    allPlayers.push(p);
+  }
+
   // FM's automatic "Default shortlist" is kept in the data but not shown.
   const visibleShortlists = shortlists.filter((l) => !HIDDEN_SHORTLIST_IDS.has(l.id));
 
@@ -75,6 +90,7 @@ export function buildModel(record) {
     club: data.club,
     raw: data,
     playersByUid,
+    allPlayers,
     squads,
     shortlists,
     visibleShortlists,
