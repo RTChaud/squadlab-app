@@ -139,7 +139,7 @@ export function RoleExplorer(p, playerKey) {
 
     const head = h('div', { class: 'role-x-head' },
       h('h4', {}, 'Roles · ', h('span', { class: 'role-x-pos' }, position.short)),
-      h('button', { type: 'button', class: 'info-btn', 'aria-label': 'About Role attributes /100 and the role catalogue', onclick: () => openRoleInfo(cat) }, 'i'));
+      h('button', { type: 'button', class: 'info-btn', 'aria-label': 'Role descriptions', 'aria-haspopup': 'dialog', onclick: () => openRoleInfo(position, roles) }, 'i'));
     const cols = h('div', { class: 'role-cols' }, PHASES.map((ph) => column(ph, roles[ph.id], scores)));
 
     const readout = h('div', { class: 'radar-readout', 'aria-live': 'polite', hidden: true });
