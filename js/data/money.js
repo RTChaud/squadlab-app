@@ -15,3 +15,19 @@ export function formatMoney(amount) {
 
 /** Weekly wage → monthly salary (× 52 ÷ 12); full precision, rounded only for display. */
 export const monthlyFromWeekly = (weekly) => (typeof weekly === 'number' && Number.isFinite(weekly) ? (weekly * 52) / 12 : null);
+
+/** Rounded to whole pence — what the formatted amount shows (used for comparisons). */
+export const toPence = (amount) => Math.round(amount * 100) / 100;
+
+/**
+ * Amount typed by the user: "150000", "150,000.00", "£1,000" → number; '' → null;
+ * anything else → NaN (invalid).
+ */
+export function parseMoney(text) {
+  const t = String(text ?? '').replace(/[£,\s]/g, '');
+  if (!t) return null;
+  return /^\d+(\.\d{1,2})?$/.test(t) ? Number(t) : NaN;
+}
+
+/** Amount for an input field: "150,000.00" (no £ sign — the field shows it). */
+export const formatMoneyInput = (amount) => (typeof amount === 'number' && Number.isFinite(amount) ? FMT.format(amount).replace(/^£/, '') : '');

@@ -12,6 +12,8 @@ import { SLOT_IDS, DEFAULT_LINEUPS, hierarchyRank } from './lineups.js';
 import { profileNameOf, searchTextOf, persistentId, normalizeSearch } from './players.js';
 import { describeChange } from './changes.js';
 import { formatGameDate } from './snapshot.js';
+import { contractDetails, clausesOf, clauseValue, clauseStatus, addMonths, CLAUSE_TYPES } from './contract.js';
+import { formatMoney, toPence, parseMoney } from './money.js';
 
 // ---- Attributes available to columns and conditions ---------------------------------
 
@@ -73,7 +75,16 @@ const BASE_COLUMNS = [
   { id: 'foot', label: 'Preferred foot', head: 'Foot', width: 3.3, dir: 'asc', group: 'info' },
   { id: 'd:ca', label: 'CA change', head: '±CA', width: 2.9, dir: 'desc', group: 'dev', num: true, dev: true },
 ];
-const BASE_BY_ID = Object.fromEntries(BASE_COLUMNS.map((c) => [c.id, c]));
+// Contract & transfer (optional; values from the same player snapshot as the row).
+export const CONTRACT_COLUMNS = [
+  { id: 'c:expiry', label: 'Contract expiry', head: 'Expiry', width: 5.7, dir: 'asc', group: 'contract', num: true, ct: 'expiry' },
+  { id: 'c:salary', label: 'Monthly salary', head: 'Salary/m', width: 7, dir: 'desc', group: 'contract', num: true, ct: 'salary' },
+  { id: 'c:value', label: 'Transfer value', head: 'Value', width: 7.4, dir: 'desc', group: 'contract', num: true, ct: 'value' },
+  { id: 'c:release', label: 'Release clause', head: 'Release', width: 7.4, dir: 'desc', group: 'contract', num: true, ct: 'release' },
+  { id: 'c:foreign', label: 'Foreign-club release clause', head: 'Foreign', width: 7.4, dir: 'desc', group: 'contract', num: true, ct: 'foreign' },
+  { id: 'c:relegation', label: 'Relegation release clause', head: 'Relegation', width: 7.4, dir: 'desc', group: 'contract', num: true, ct: 'relegation' },
+];
+const BASE_BY_ID = Object.fromEntries([...BASE_COLUMNS, ...CONTRACT_COLUMNS].map((c) => [c.id, c]));
 export const INFO_COLUMNS = BASE_COLUMNS.filter((c) => c.group === 'info');
 
 /** Definition for any column id, or null if unknown. */
@@ -113,6 +124,19 @@ export const RANGES = {
 };
 export const DEFAULT_MIN_FAM = 15;
 
+// Contract & transfer filters:
+//   expiry: null | 6 | 12 | 18 (months from the row's snapshot date, both ends inclusive)
+//   salary / tvalue: [min | null, max | null] in GBP (monthly salary, transfer value)
+//   clause: null | { type: 'standard' | 'foreign' | 'relegation', max: GBP | null, status: 'any' | 'active' }
+export const EXPIRY_CHOICES = [6, 12, 18];
+export const MONEY_RANGES = {
+  salary: { label: 'Monthly salary', chip: 'Salary' },
+  tvalue: { label: 'Transfer value', chip: 'Value' },
+};
+export { CLAUSE_TYPES };
+const MONEY_MAX = 1e13;
+const moneyOrNull = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= MONEY_MAX ? toPence(v) : null);
+
 export const emptyFilters = () => ({
   positions: [], minFam: DEFAULT_MIN_FAM,
   age: [null, null], ca: [null, null], pa: [null, null],
@@ -120,6 +144,7 @@ export const emptyFilters = () => ({
   tiers: [], slots: [], unassigned: false,
   attrs: [],
   roles: null,
+  expiry: null, salary: [null, null], tvalue: [null, null], clause: null,
 });
 
 const intIn = (v, min, max) => (Number.isInteger(v) && v >= min && v <= max ? v : null);
@@ -179,6 +204,17 @@ export function sanitizeFilters(raw) {
     .filter((c) => c && ATTR_CHOICE[c.key] && OP_BY_ID[c.op] && validAttrValue(c.value))
     .map((c) => ({ key: c.key, op: c.op, value: c.value }));
   f.roles = sanitizeRoleFilter(raw.roles, f.positions);
+  f.expiry = EXPIRY_CHOICES.includes(raw.expiry) ? raw.expiry : null;
+  for (const k of Object.keys(MONEY_RANGES)) {
+    const r = arr(raw[k]);
+    let lo = moneyOrNull(r[0]), hi = moneyOrNull(r[1]);
+    if (lo !== null && hi !== null && lo > hi) [lo, hi] = [hi, lo];
+    f[k] = [lo, hi];
+  }
+  const cl = raw.clause;
+  f.clause = cl && CLAUSE_TYPES.some((t) => t.id === cl.type)
+    ? { type: cl.type, max: moneyOrNull(cl.max), status: cl.type === 'relegation' && cl.status === 'active' ? 'active' : 'any' }
+    : null;
   return f;
 }
 
@@ -191,6 +227,19 @@ export function conditionError(c) {
   if (!Number.isInteger(n)) return `Use a whole number from ${ATTR_SCALE.min} to ${ATTR_SCALE.max}.`;
   if (n < ATTR_SCALE.min || n > ATTR_SCALE.max) return `${ATTR_CHOICE[c.key].label} uses ${ATTR_SCALE.min}–${ATTR_SCALE.max}, so ${n} isn’t valid.`;
   return null;
+}
+
+/** Validate a money min–max (typed text) while editing; returns an error message or null. */
+export function moneyRangeError(label, lo, hi) {
+  const a = parseMoney(lo), b = parseMoney(hi);
+  if (Number.isNaN(a) || Number.isNaN(b)) return `${label}: enter an amount such as 150,000.`;
+  if (a !== null && b !== null && a > b) return `${label}: the minimum is higher than the maximum.`;
+  return null;
+}
+
+/** Validate one money amount (typed text); returns an error message or null. */
+export function moneyError(label, v) {
+  return Number.isNaN(parseMoney(v)) ? `${label}: enter an amount such as 30,000,000.` : null;
 }
 
 /** Validate a min–max range while editing; returns an error message or null. */
@@ -219,6 +268,9 @@ export function activeFilterCount(f) {
   if (f.unassigned) n++;
   n += f.attrs.length;
   if (f.roles) n++;
+  if (f.expiry) n++;
+  for (const k of Object.keys(MONEY_RANGES)) if (f[k][0] !== null || f[k][1] !== null) n++;
+  if (f.clause) n++;
   return n;
 }
 
@@ -270,6 +322,9 @@ export function buildRow(p, ctx) {
     club: (typeof p.club_short_name === 'string' && p.club_short_name.trim()) || (typeof p.club_name === 'string' && p.club_name.trim()) || null,
     nations,
     foot: preferredFoot(p),
+    // Contract & transfer, read the same way as the profile's Contract sheet.
+    ctDate: ctx.gameDateOf?.(p) || null,
+    ct: contractDetails(p, ctx.gameDateOf?.(p) || null),
   };
 }
 
@@ -313,8 +368,33 @@ export function matchesFilters(row, f) {
     const v = attrValue(row.p, c.key);
     if (v === null || !compareOp(v, c.op, c.value)) return false;
   }
+  // Contract & transfer (missing dates or amounts never match).
+  if (f.expiry) {
+    const from = row.ctDate, end = row.ct.contract.end;
+    if (!from || !end || end < from || end > addMonths(from, f.expiry)) return false;
+  }
+  if (!inRange(moneySort(row, 'salary'), f.salary) || !inRange(moneySort(row, 'value'), f.tvalue)) return false;
+  if (f.clause) {
+    const { type, max, status } = f.clause;
+    // One clause of the chosen type must satisfy the maximum and status together.
+    const ok = clausesOf(row.p, type).some((cl) => {
+      const v = clauseValue(cl);
+      return (max === null || (v !== null && toPence(v) <= max)) && (status !== 'active' || clauseStatus(cl) === 'active');
+    });
+    if (!ok) return false;
+  }
   return true;
 }
+
+/** Numeric contract value for sorting / ranges (pence-rounded, as displayed), or null. */
+function moneySort(row, which) {
+  const t = row.ct.transfer;
+  const v = which === 'salary' ? row.ct.contract.monthly : which === 'value' ? t.valueAmount : t[which]?.amount ?? null;
+  return typeof v === 'number' && Number.isFinite(v) ? toPence(v) : null;
+}
+
+const moneyRangeText = (label, [lo, hi]) => (lo !== null && hi !== null ? (lo === hi ? `${label} ${formatMoney(lo)}` : `${label} ${formatMoney(lo)}–${formatMoney(hi)}`)
+  : lo !== null ? `${label} ≥ ${formatMoney(lo)}` : `${label} ≤ ${formatMoney(hi)}`);
 
 /** Removable chips describing the active filters: [{ id, text, label, remove(filters) → filters }]. */
 export function filterChips(f, tagName) {
@@ -354,6 +434,18 @@ export function filterChips(f, tagName) {
     chips.push({ id: `attr${i}`, text, label: `${ATTR_CHOICE[c.key].label} ${OP_BY_ID[c.op].label} ${c.value}`,
       remove: () => { const n = clone(); n.attrs.splice(i, 1); return n; } });
   });
+  if (f.expiry) chips.push({ id: 'expiry', text: `Expires within ${f.expiry} months`, label: `Contract expires within ${f.expiry} months`, remove: () => ({ ...clone(), expiry: null }) });
+  for (const k of Object.keys(MONEY_RANGES)) {
+    if (f[k][0] === null && f[k][1] === null) continue;
+    const text = moneyRangeText(MONEY_RANGES[k].chip, f[k]);
+    chips.push({ id: k, text, label: moneyRangeText(MONEY_RANGES[k].label, f[k]), remove: () => ({ ...clone(), [k]: [null, null] }) });
+  }
+  if (f.clause) {
+    const t = CLAUSE_TYPES.find((x) => x.id === f.clause.type);
+    const what = `${t.label} clause${f.clause.status === 'active' ? ' (active)' : ''}`;
+    const text = f.clause.max === null ? what : `${what} ≤ ${formatMoney(f.clause.max)}`;
+    chips.push({ id: 'clause', text, label: `Release clause: ${text}`, remove: () => ({ ...clone(), clause: null }) });
+  }
   return chips;
 }
 
@@ -419,6 +511,12 @@ function sortValue(row, id, dev) {
     case 'club': return row.club;
     case 'nat': return row.nations[0]?.name ?? null;
     case 'foot': return row.foot;
+    case 'c:expiry': return row.ct.contract.end ? Number(row.ct.contract.end.replace(/-/g, '')) : null;
+    case 'c:salary': return moneySort(row, 'salary');
+    case 'c:value': return moneySort(row, 'value');
+    case 'c:release': return moneySort(row, 'release');
+    case 'c:foreign': return moneySort(row, 'foreign');
+    case 'c:relegation': return moneySort(row, 'relegation');
     default: {
       const col = columnDef(id);
       if (!col) return null;
