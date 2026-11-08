@@ -1,6 +1,7 @@
-// Money formatting, in one place. Amounts in this version are assumed to be GBP
-// (the extract stores plain numbers). Every amount shows a pound sign, comma
-// separators and exactly two decimals: £1,000.00, £74,256,000.00.
+// Money formatting, in one place. Amounts are GBP. Every amount shows a pound
+// sign, comma separators and exactly two decimals: £1,000.00, £74,300,000.00.
+// Contract and transfer amounts are rounded up for display only
+// (formatMoneyDisplay); calculations, sorting and filtering use raw amounts.
 
 export const CURRENCY = 'GBP';
 
@@ -12,6 +13,20 @@ const FMT = new Intl.NumberFormat('en-GB', {
 export function formatMoney(amount) {
   return typeof amount === 'number' && Number.isFinite(amount) ? FMT.format(amount) : null;
 }
+
+/**
+ * Display rounding, always upwards: below £1m to the next £1,000, from £1m to
+ * the next £100,000. An amount already on a boundary stays there.
+ */
+export function roundUpForDisplay(amount) {
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) return null;
+  const pence = Math.round(amount * 100); // whole pence first, so float noise can't push it up a step
+  const stepPence = (pence < 100_000_000 ? 1_000 : 100_000) * 100;
+  return (Math.ceil(pence / stepPence) * stepPence) / 100;
+}
+
+/** Contract/transfer amount for display: rounded up, then £1,000.00 style. */
+export const formatMoneyDisplay = (amount) => formatMoney(roundUpForDisplay(amount));
 
 /** Weekly wage → monthly salary (× 52 ÷ 12); full precision, rounded only for display. */
 export const monthlyFromWeekly = (weekly) => (typeof weekly === 'number' && Number.isFinite(weekly) ? (weekly * 52) / 12 : null);

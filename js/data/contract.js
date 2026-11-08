@@ -2,10 +2,14 @@
 // from the extractor's `contract` block and transfer fields as they are. Every
 // value comes from the same player snapshot as the rest of the profile.
 //
-// Clause kinds are matched by the extractor's decoded `kind` names only; codes
-// it couldn't name ("unknown") are never guessed.
+// Clauses are matched by the extractor's decoded `kind` names. For the tested
+// FM26 export format a few raw codes are also read (see FM26_CODES); in any
+// other format those codes are never guessed.
+//
+// Amounts are GBP. Display rounds up (formatMoneyDisplay); calculations,
+// sorting and filtering use the raw amounts.
 
-import { formatMoney, monthlyFromWeekly } from './money.js';
+import { formatMoneyDisplay, monthlyFromWeekly } from './money.js';
 
 export const UNAVAILABLE = 'Unavailable';
 
@@ -34,38 +38,83 @@ export function timeRemaining(fromIso, toIso) {
 /** True when the snapshot holds a usable contract record for this player. */
 export const hasContract = (c) => !!c && typeof c === 'object' && c.end_source !== 'none';
 
-/** Clause types, matched by the extractor's decoded kind names (shared by the profile, table and filters). */
-export const CLAUSE_TYPES = [
-  { id: 'standard', label: 'Standard', test: (k) => k === 'minimum_fee_release' },
-  { id: 'foreign', label: 'Foreign-club', test: (k) => /release/.test(k) && /foreign/.test(k) },
-  { id: 'relegation', label: 'Relegation', test: (k) => k === 'relegation_release' },
-];
-const CLAUSE_TEST = Object.fromEntries(CLAUSE_TYPES.map((t) => [t.id, t.test]));
+// ---- Export format ------------------------------------------------------------
 
-/** Every decoded clause of a type (the profile and columns show the first). */
-export function clausesOf(p, type) {
-  const c = p?.contract;
-  const test = CLAUSE_TEST[type];
-  return test && Array.isArray(c?.clauses) ? c.clauses.filter((x) => x && typeof x.kind === 'string' && test(x.kind)) : [];
+// Players are tagged with their snapshot's format as snapshots are loaded
+// (db.js), so a record from an older snapshot keeps its own format.
+const FORMAT = new WeakMap();
+export function noteSnapshotFormat(data) {
+  if (!data || !Array.isArray(data.players)) return;
+  const fmt = data.source?.game === 'FM26' && data.schema_version === 2 ? 'fm26' : 'other';
+  for (const p of data.players) if (p && typeof p === 'object') FORMAT.set(p, fmt);
 }
+const isFm26 = (p) => FORMAT.get(p) === 'fm26';
+
+// Raw clause codes confirmed for the tested FM26 export format.
+const FM26_CODES = { standard: 0, champions: 27, relegation: 1, relegationActive: 55 };
+
+const rawClauses = (p) => (Array.isArray(p?.contract?.clauses) ? p.contract.clauses.filter((x) => x && typeof x === 'object') : []);
+const codeOf = (cl) => (Number.isInteger(cl?.kind_code) ? cl.kind_code : null);
+const kindOf = (cl) => (typeof cl?.kind === 'string' ? cl.kind : '');
+/** Every clause carries a code, so "no active clause" can be trusted. */
+const completeClauses = (p) => rawClauses(p).every((cl) => codeOf(cl) !== null);
 
 /** Clause amount as a number, or null when missing. */
 export const clauseValue = (cl) => (typeof cl?.value === 'number' && Number.isFinite(cl.value) ? cl.value : null);
 
-/** Amount cell for a clause: dash when not decoded, "Unavailable" when its amount is missing. */
+/** Clause types shared by the profile, table and filters. */
+export const CLAUSE_TYPES = [
+  { id: 'standard', label: 'Standard' },
+  { id: 'foreign', label: 'Foreign-club' },
+  { id: 'champions', label: 'Champions League' },
+  { id: 'relegation', label: 'Relegation' },
+];
+
+const MATCH = {
+  standard: (cl, fm26) => kindOf(cl) === 'minimum_fee_release' || (fm26 && codeOf(cl) === FM26_CODES.standard),
+  foreign: (cl) => /release/.test(kindOf(cl)) && /foreign/.test(kindOf(cl)),
+  champions: (cl, fm26) => (/release/.test(kindOf(cl)) && /champions/.test(kindOf(cl))) || (fm26 && codeOf(cl) === FM26_CODES.champions),
+};
+
+/**
+ * The relegation release clause as one entry { value, status }, or null.
+ * FM26: a positive amount under code 55 is the active clause; otherwise an
+ * ordinary code 1 clause is inactive when the clause data is complete, and of
+ * unknown status when it isn't. Other formats: decoded name, status unknown.
+ */
+function relegationClause(p) {
+  const all = rawClauses(p);
+  if (isFm26(p)) {
+    const active = all.find((cl) => codeOf(cl) === FM26_CODES.relegationActive && clauseValue(cl) > 0);
+    if (active) return { value: clauseValue(active), status: 'active' };
+    const ordinary = all.find((cl) => codeOf(cl) === FM26_CODES.relegation || kindOf(cl) === 'relegation_release');
+    const pending = all.find((cl) => codeOf(cl) === FM26_CODES.relegationActive);
+    if (ordinary) return { value: clauseValue(ordinary), status: completeClauses(p) ? 'inactive' : 'unknown' };
+    return pending ? { value: clauseValue(pending), status: 'unknown' } : null;
+  }
+  const named = all.find((cl) => kindOf(cl) === 'relegation_release');
+  return named ? { value: clauseValue(named), status: 'unknown' } : null;
+}
+
+/** Every clause of a type as { value, status? } (the profile and columns show the first). */
+export function clausesOf(p, type) {
+  if (!hasContract(p?.contract)) return [];
+  if (type === 'relegation') { const r = relegationClause(p); return r ? [r] : []; }
+  const test = MATCH[type];
+  if (!test) return [];
+  const fm26 = isFm26(p);
+  return rawClauses(p).filter((cl) => test(cl, fm26)).map((cl) => ({ value: clauseValue(cl) }));
+}
+
+/** Amount cell for a clause: dash when not recorded, "Unavailable" when its amount is missing. */
 function clauseAmount(cl) {
   if (!cl) return { text: null, state: 'none', amount: null };
   const amount = clauseValue(cl);
-  return amount === null ? { text: UNAVAILABLE, state: 'unavailable', amount } : { text: formatMoney(amount), state: 'ok', amount };
+  return amount === null ? { text: UNAVAILABLE, state: 'unavailable', amount } : { text: formatMoneyDisplay(amount), state: 'ok', amount };
 }
 
-/** Relegation release status: only from an explicit flag in the snapshot. */
-export function clauseStatus(cl) {
-  const v = cl?.active ?? cl?.is_active ?? (typeof cl?.status === 'string' ? cl.status.toLowerCase() : undefined);
-  if (v === true || v === 'active') return 'active';
-  if (v === false || v === 'inactive') return 'inactive';
-  return 'unknown';
-}
+/** Relegation release status: 'active' | 'inactive' | 'unknown'. */
+export const clauseStatus = (cl) => cl?.status || 'unknown';
 
 /** Recorded expiry (ISO date) or null. */
 export const contractEnd = (p) => (hasContract(p?.contract) && parseDate(p.contract.end) ? p.contract.end : null);
@@ -100,21 +149,22 @@ export function contractDetails(p, gameDate) {
   // Asking price: only from a dedicated field (the current extract has none).
   const askingRaw = p?.asking_price ?? p?.transfer?.asking_price ?? c?.asking_price;
   const tv = transferValue(p);
-  const relegation = clausesOf(p, 'relegation')[0];
+  const relegation = clausesOf(p, 'relegation')[0];  // { value, status } or undefined
 
   return {
     contract: {
       end,
       remaining: end ? timeRemaining(gameDate, end) : null,
       monthly,
-      monthlyText: monthly === null ? UNAVAILABLE : formatMoney(monthly),
+      monthlyText: monthly === null ? UNAVAILABLE : formatMoneyDisplay(monthly),
     },
     transfer: {
-      asking: formatMoney(askingRaw) || UNAVAILABLE,
-      value: formatMoney(tv) || UNAVAILABLE,
+      asking: formatMoneyDisplay(askingRaw) || UNAVAILABLE,
+      value: formatMoneyDisplay(tv) || UNAVAILABLE,
       valueAmount: tv,
       release: clauseAmount(clausesOf(p, 'standard')[0]),
       foreign: clauseAmount(clausesOf(p, 'foreign')[0]),
+      champions: clauseAmount(clausesOf(p, 'champions')[0]),
       relegation: { ...clauseAmount(relegation), status: relegation ? clauseStatus(relegation) : null },
     },
   };

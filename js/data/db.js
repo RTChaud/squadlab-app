@@ -17,6 +17,7 @@
 //   3  metrics store (filled from existing snapshots on first load).
 
 import { buildMetrics } from './players.js';
+import { noteSnapshotFormat } from './contract.js';
 
 const DB_NAME = 'squadlab';
 const DB_VERSION = 3;
@@ -126,14 +127,18 @@ const collect = (out, req) => { req.onsuccess = () => { out.value = req.result; 
 
 // ---- Snapshots -------------------------------------------------------------
 
+// Every snapshot read goes through here, so its players are tagged with the
+// export format (which raw clause codes can be trusted — contract.js).
+const noted = (rec) => { if (rec?.data) noteSnapshotFormat(rec.data); return rec; };
+
 export const getSnapshot = (id) =>
-  tx(['snapshots'], 'readonly', (s, out) => collect(out, s.snapshots.get(id)));
+  tx(['snapshots'], 'readonly', (s, out) => collect(out, s.snapshots.get(id))).then(noted);
 
 export const listSnapshotMeta = () =>
   tx(['snapshotIndex'], 'readonly', (s, out) => collect(out, s.snapshotIndex.getAll())).then((r) => r || []);
 
 export const getAllSnapshots = () =>
-  tx(['snapshots'], 'readonly', (s, out) => collect(out, s.snapshots.getAll())).then((r) => r || []);
+  tx(['snapshots'], 'readonly', (s, out) => collect(out, s.snapshots.getAll())).then((r) => (r || []).map(noted));
 
 /** Add or replace one snapshot (record + index + metrics) atomically. */
 export const putSnapshot = (record) => {

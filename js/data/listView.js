@@ -82,6 +82,7 @@ export const CONTRACT_COLUMNS = [
   { id: 'c:value', label: 'Transfer value', head: 'Value', width: 7.4, dir: 'desc', group: 'contract', num: true, ct: 'value' },
   { id: 'c:release', label: 'Release clause', head: 'Release', width: 7.4, dir: 'desc', group: 'contract', num: true, ct: 'release' },
   { id: 'c:foreign', label: 'Foreign-club release clause', head: 'Foreign', width: 7.4, dir: 'desc', group: 'contract', num: true, ct: 'foreign' },
+  { id: 'c:champions', label: 'Champions League clubs release clause', head: 'UCL clubs', width: 7.4, dir: 'desc', group: 'contract', num: true, ct: 'champions' },
   { id: 'c:relegation', label: 'Relegation release clause', head: 'Relegation', width: 7.4, dir: 'desc', group: 'contract', num: true, ct: 'relegation' },
 ];
 const BASE_BY_ID = Object.fromEntries([...BASE_COLUMNS, ...CONTRACT_COLUMNS].map((c) => [c.id, c]));
@@ -127,7 +128,7 @@ export const DEFAULT_MIN_FAM = 15;
 // Contract & transfer filters:
 //   expiry: null | 6 | 12 | 18 (months from the row's snapshot date, both ends inclusive)
 //   salary / tvalue: [min | null, max | null] in GBP (monthly salary, transfer value)
-//   clause: null | { type: 'any' | 'standard' | 'foreign' | 'relegation', max: GBP | null, status: 'any' | 'active' }
+//   clause: null | { type: 'any' | 'standard' | 'foreign' | 'champions' | 'relegation', max: GBP | null, status: 'any' | 'active' }
 //   ('any' looks across every decoded clause of the three types)
 export const EXPIRY_CHOICES = [6, 12, 18];
 export const MONEY_RANGES = {
@@ -391,7 +392,7 @@ export function matchesFilters(row, f) {
   return true;
 }
 
-/** Numeric contract value for sorting / ranges (pence-rounded, as displayed), or null. */
+/** Raw contract amount for sorting / ranges (to the penny, not the rounded display), or null. */
 function moneySort(row, which) {
   const t = row.ct.transfer;
   const v = which === 'salary' ? row.ct.contract.monthly : which === 'value' ? t.valueAmount : t[which]?.amount ?? null;
@@ -521,6 +522,7 @@ function sortValue(row, id, dev) {
     case 'c:value': return moneySort(row, 'value');
     case 'c:release': return moneySort(row, 'release');
     case 'c:foreign': return moneySort(row, 'foreign');
+    case 'c:champions': return moneySort(row, 'champions');
     case 'c:relegation': return moneySort(row, 'relegation');
     default: {
       const col = columnDef(id);
