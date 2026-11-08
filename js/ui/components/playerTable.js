@@ -36,7 +36,7 @@ function contractCell(row, col) {
       return contract.monthly === null ? unavailable() : money(contract.monthlyText, `Monthly salary ${contract.monthlyText}`);
     case 'value':
       return transfer.valueAmount === null ? unavailable() : money(transfer.value, `Transfer value ${transfer.value}`);
-    case 'release': case 'foreign': case 'relegation': {
+    case 'release': case 'foreign': case 'champions': case 'relegation': {
       const c = transfer[col.ct];
       if (c.state === 'none') return dash();
       const amount = c.state === 'ok' ? c.text : h('span', { class: 'ct-na' }, c.text);

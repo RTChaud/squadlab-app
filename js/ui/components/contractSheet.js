@@ -1,6 +1,6 @@
 // Contract sheet on the player profile: Contract (expiry + time remaining,
-// monthly salary) and Transfer (asking price, value, release clauses), all from
-// the profile's snapshot.
+// monthly salary) and Transfer (asking price, release clauses), all from the
+// profile's snapshot. Amounts are rounded up for display (money.js).
 
 import { h, DASH } from '../dom.js';
 import { openSheet } from './sheet.js';
@@ -46,9 +46,9 @@ export function openContractSheet(p, gameDate, o = {}) {
       h('p', { class: 'sheet-sub' }, 'Transfer'),
       h('dl', { class: 'ct-list' },
         row('Asking price', valueText(d.transfer.asking), { id: 'asking' }),
-        row('Transfer value', valueText(d.transfer.value), { id: 'value' }),
         row('Release clause', valueText(d.transfer.release.text), { id: 'release' }),
         row('Foreign-club release clause', valueText(d.transfer.foreign.text), { id: 'foreign', note: 'Foreign clubs only' }),
+        row('Champions League clubs release clause', valueText(d.transfer.champions.text), { id: 'champions' }),
         row('Relegation release clause', relegationValue, { id: 'relegation' })),
     ],
     actions: [{ label: 'Close', kind: 'secondary', onClick: (close) => close() }],
