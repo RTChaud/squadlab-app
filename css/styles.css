@@ -330,24 +330,28 @@ html.on-home .view { padding-top: 12px; }
   .app-tile:hover .app-icon { border-color: rgba(247, 134, 30, 0.5); }
 }
 
-/* Placeholder screen (Tactic) */
-.soon {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding: 40px 16px;
-  text-align: center;
-}
-.soon-icon {
-  width: 72px;
-  height: 72px;
-  padding: 17px;
-  border-radius: 23%;
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.soon-title { margin: 0; font-size: 20px; font-weight: 700; }
+/* Tactic: position pitch, a role column per phase, then the search button. */
+.tac { gap: 14px; }
+.tac-pitch .ptile-plain { justify-content: center; min-height: 40px; font-size: 13px; background: var(--surface-2); border-color: var(--border); color: var(--text); }
+.tac-pitch .ptile-plain.ptile-off { color: var(--muted); opacity: 0.5; }
+.tac-pitch .ptile-plain .ptile-code { font-weight: 700; }
+.tac-pitch .ptile-btn.ptile-sel { background: var(--accent); border-color: var(--accent); color: #17120c; box-shadow: 0 0 0 2px rgba(247, 134, 30, 0.35); }
+.tac-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: start; }
+.tac-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 10px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); }
+.tac-phase { margin: 0; font-size: 11px; font-weight: 750; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.tac-col .role-pick { min-height: 48px; }
+.tac-col .role-pick.tac-off { opacity: 0.6; }
+.tac-desc { margin: 0; font-size: 13px; line-height: 1.4; color: var(--text-2); }
+.tac-sub { margin: 2px 0 0; font-size: 11px; font-weight: 750; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.tac-attrs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.tac-attr { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.tac-attr:last-child { border-bottom: 0; }
+.tac-attr-name { min-width: 0; font-weight: 650; overflow-wrap: anywhere; }
+.tac-attr-min { flex: none; font-size: 12px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+.tac-attr-min.muted { color: var(--muted); font-weight: 600; }
+.tac-find { min-height: 56px; flex-direction: column; gap: 0; line-height: 1.2; }
+.tac-count { font-size: 13px; font-weight: 650; }
+
 
 /* ---- Widgets --------------------------------------------------------------- */
 
