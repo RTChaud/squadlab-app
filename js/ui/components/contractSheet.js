@@ -45,7 +45,9 @@ export function openContractSheet(p, gameDate, o = {}) {
         row('Monthly salary', valueText(d.contract.monthlyText), { id: 'salary' })),
       h('p', { class: 'sheet-sub' }, 'Transfer'),
       h('dl', { class: 'ct-list' },
-        row('Asking price', valueText(d.transfer.asking), { id: 'asking' }),
+        d.transfer.asking.source === 'indicative'
+          ? row('Indicative asking price', valueText(d.transfer.asking.text), { id: 'asking', cls: 'ct-indicative', note: 'Based on the exported transfer value.' })
+          : row('Asking price', valueText(d.transfer.asking.text), { id: 'asking' }),
         row('Release clause', valueText(d.transfer.release.text), { id: 'release' }),
         row('Foreign-club release clause', valueText(d.transfer.foreign.text), { id: 'foreign', note: 'Foreign clubs only' }),
         row('Champions League clubs release clause', valueText(d.transfer.champions.text), { id: 'champions' }),
