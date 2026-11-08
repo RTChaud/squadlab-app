@@ -712,9 +712,12 @@ body.sheet-open { overflow: hidden; }
 .show-changes .attr, .attr-list.show-changes .attr { gap: 4px; padding: 0 4px; }
 .chg-to { white-space: nowrap; }
 
-.profile-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.dev-btn, .tags-btn { min-height: 50px; padding: 0 12px; }
-.tags-btn .icon { width: 20px; height: 20px; color: var(--accent); }
+/* Development | Contract | Tags: icon above the label so all three fit a narrow iPhone. */
+.profile-actions { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.profile-actions .btn { position: relative; flex-direction: column; gap: 4px; min-height: 60px; padding: 8px 6px; font-size: 14px; line-height: 1.15; white-space: nowrap; }
+.dev-btn, .tags-btn, .contract-btn { min-height: 60px; }
+.tags-btn .icon, .contract-btn .icon { width: 20px; height: 20px; color: var(--accent); }
+.profile-actions .count-badge { position: absolute; top: 6px; right: 6px; min-width: 20px; height: 20px; font-size: 11px; }
 .count-badge {
   display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px;
   border-radius: 999px; background: var(--accent); color: #17120c;
@@ -1617,3 +1620,18 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .sheet-filters .sheet-actions .btn:first-child { flex: 2 1 0; flex-direction: column; gap: 0; padding-left: 10px; padding-right: 10px; line-height: 1.2; }
 .sheet-filters .apply-count { white-space: nowrap; font-size: 13px; font-weight: 650; }
 .sheet-filters .apply-dot { display: none; }
+/* Contract sheet */
+.ct-asof { margin: -6px 0 4px; }
+.ct-list { margin: 0 0 10px; }
+.ct-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.ct-row:last-child { border-bottom: 0; }
+.ct-label { display: flex; flex-direction: column; gap: 2px; margin: 0; font-size: 14px; font-weight: 600; color: var(--text-2); }
+.ct-note { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.ct-value { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; margin: 0; text-align: right; }
+.ct-main { font-size: 15px; font-weight: 750; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ct-main.ct-none { color: var(--muted); }
+.ct-main.ct-unavail { font-size: 14px; font-weight: 600; color: var(--muted); }
+.ct-main.ct-inactive { font-weight: 500; font-style: italic; color: var(--muted); }
+.ct-sub { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.ct-status { font-size: 11.5px; font-weight: 700; color: var(--muted); }
+.ct-status.active { color: #6fd08c; }
