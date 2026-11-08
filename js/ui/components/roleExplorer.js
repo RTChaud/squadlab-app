@@ -4,7 +4,7 @@
 // and Out of Possession (right), each with a role dropdown (options sorted by
 // the player's Role attributes /100, highest first) and the chosen role's
 // score. Underneath, both phases side by side: the role radars, then each
-// role's key attributes and score breakdown. Familiarity stays on the tiles,
+// role's key attributes. Familiarity stays on the tiles,
 // separate from the score.
 //
 // Remembered per player: the selected position and the last
@@ -16,7 +16,7 @@ import { getRadarPrefs, saveRoleExplorer } from '../../store.js';
 import { attrBand, attributeDirection, scoreBand, ATTRIBUTE_ABBR } from '../../data/attributes.js';
 import { formatPositions } from '../../data/positions.js';
 import {
-  PHASES, loadRoleCatalogue, positionByCode, rolesFor, roleScore, roleValue, fmtScore, scoreBreakdown,
+  PHASES, loadRoleCatalogue, positionByCode, rolesFor, roleScore, roleValue, fmtScore,
 } from '../../data/roles.js';
 import { FamiliarityPitch } from './familiarityPitch.js';
 import { openRoleInfo } from './roleControls.js';
@@ -55,8 +55,8 @@ function roleRadar(p, phase, role, readout) {
   return h('div', { class: 'role-radar', 'data-phase': phase.id }, chart.el);
 }
 
-/** Key attributes (badges + tap-to-read) and the score breakdown for one role. */
-function roleDetails(p, role, score) {
+/** Key attributes (badges + tap-to-read) for one role. */
+function roleDetails(p, role) {
   const list = h('ul', { class: 'attr-list role-attrs' }, role.attrs.map((a) => {
     const value = roleValue(p, a);
     const band = a.tendency ? null : attrBand(value, axisDirection(a));
@@ -65,8 +65,7 @@ function roleDetails(p, role, score) {
     return h('li', { class: 'attr' }, h('span', { class: 'attr-mark', 'aria-hidden': 'true' }), btn,
       h('span', { class: `attr-val ${band || 'none'}` }, value ?? DASH));
   }));
-  const breakdown = h('div', { class: 'role-breakdown' }, scoreBreakdown(score).map((t) => h('p', {}, t)));
-  return [list, breakdown];
+  return [list];
 }
 
 /**
@@ -146,11 +145,11 @@ export function RoleExplorer(p, playerKey) {
     const readout = h('div', { class: 'radar-readout', 'aria-live': 'polite', hidden: true });
     const radars = h('div', { class: 'role-radars' }, PHASES.map((ph) => roleRadar(p, ph, roles[ph.id], readout)));
 
-    // Key attributes and score breakdown for both phases, under their radars.
+    // Key attributes for both phases, under their radars.
     const details = h('div', { class: 'role-attr-cols' }, PHASES.map((ph) => {
       const role = roles[ph.id];
       return h('div', { class: 'role-attr-col', 'data-phase': ph.id, 'aria-label': `${ph.label} key attributes` },
-        role ? roleDetails(p, role, scores.get(role.id)) : null); // the radar above already says “Choose a role”
+        role ? roleDetails(p, role) : null); // the radar above already says “Choose a role”
     }));
 
     panel.replaceChildren(head, cols, radars, readout, details);

@@ -3,8 +3,10 @@
 // extract's `positions` block (sw is kept in the data but not drawn);
 // missing values stay "—", never 0 or 1.
 //
-// With `onSelect`, tiles become buttons (the profile's role explorer): the
-// selected tile gets an orange outline, and the familiarity colour stays.
+// With `onSelect`, tiles become buttons (role explorers): the selected tile
+// gets an orange outline, and the familiarity colour stays.
+// With `pair` (Comparison), each tile shows both players' familiarity: left
+// player's value on the left, right player's on the right, each in its colour.
 
 import { h, DASH } from '../dom.js';
 import { formatPositions, famBand } from '../../data/positions.js';
@@ -21,14 +23,33 @@ const PITCH = [
 
 /**
  * @param p player record
- * @param {object} [o]  selected (code), onSelect(code), selectable(code) → bool
+ * @param {object} [o]  selected (code), onSelect(code), selectable(code) → bool,
+ *                      pair [{ player, name } | null, { player, name } | null] (Comparison)
  * Returns the pitch element; with onSelect it also has setSelected(code).
  */
 export function FamiliarityPitch(p, o = {}) {
-  const fam = p.positions && typeof p.positions === 'object' ? p.positions : {};
+  const famOf = (pl) => (pl?.positions && typeof pl.positions === 'object' ? pl.positions : {});
+  const fam = famOf(p);
   const tiles = new Map();
+  const pairTile = (code) => {
+    const label = formatPositions([code]);
+    const side = (x, cls) => {
+      if (!x) return h('span', { class: `ptile-pv ${cls}` });
+      const v = intOrNull(famOf(x.player)[code]);
+      const band = famBand(v);
+      return h('span', { class: `ptile-pv ${cls} ${band ? band.cls : 'fnone'}` }, v ?? DASH);
+    };
+    const said = o.pair.filter(Boolean).map((x) => `${x.name} ${intOrNull(famOf(x.player)[code]) ?? 'unavailable'}`).join(', ');
+    const btn = h('button', {
+      type: 'button', class: 'ptile ptile-btn ptile-pair', 'data-pos': code, 'aria-pressed': 'false',
+      'aria-label': `${label}, familiarity ${said}: explore roles`, onclick: () => o.onSelect(code),
+    }, h('span', { class: 'ptile-code' }, label), h('span', { class: 'ptile-pvs' }, side(o.pair[0], 'l'), side(o.pair[1], 'r')));
+    tiles.set(code, btn);
+    return btn;
+  };
   const tile = (code) => {
     if (!code) return h('span', { class: 'ptile ptile-blank' });
+    if (o.pair && o.onSelect) return pairTile(code);
     const v = intOrNull(fam[code]);
     const band = famBand(v);
     const label = formatPositions([code]);
