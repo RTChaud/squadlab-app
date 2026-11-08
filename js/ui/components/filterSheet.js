@@ -1,26 +1,43 @@
-// Filters sheet for the Squad and Shortlists tables. Edits a draft and only
-// hands back sanitised filters on Apply. Different categories combine with
+// Filters sheet for the Squad, Shortlists and Tags tables. Edits a draft and
+// only hands back sanitised filters on Apply. Different categories combine with
 // AND; options inside one category match any selected option (tags can
 // switch to "All selected"); every attribute condition must match.
+//
+// Role filters (exactly one position selected): an optional role per phase;
+// each role's key attributes become editable conditions (default at least 15,
+// tendencies unset), one row per attribute even when both roles list it. They
+// are ANDed with everything else. The Apply button shows a live match count.
 
 import { h } from '../dom.js';
 import { openSheet } from './sheet.js';
 import { pickAttribute } from './attributePicker.js';
 import {
   POSITION_CHOICES, FOOT_CHOICES, TIER_CHOICES, SLOT_CHOICES, OPERATORS, RANGES, ATTR_CHOICE, ATTR_SCALE,
-  sanitizeFilters, conditionError, rangeError, DEFAULT_MIN_FAM,
+  sanitizeFilters, conditionError, rangeError, DEFAULT_MIN_FAM, ROLE_DEFAULT_MIN, ROLE_OPERATORS,
 } from '../../data/listView.js';
+import { PHASES, loadRoleCatalogue, positionByCode, rolesFor } from '../../data/roles.js';
 
 // Familiarity codes laid out like the profile pitch (front to back).
 const POS_LAYOUT = [[null, 'stc', null], ['aml', 'amc', 'amr'], ['ml', 'mc', 'mr'], ['wbl', 'dm', 'wbr'], ['dl', 'dc', 'dr'], [null, 'gk', null]];
 const POS_LABEL = Object.fromEntries(POSITION_CHOICES.map((p) => [p.code, p.label]));
+
+/** Draft role filter: ids per phase and conditions with raw text values. */
+function draftRole(r) {
+  return {
+    position: r?.position || null,
+    in_possession: r?.in_possession?.id || null,
+    out_of_possession: r?.out_of_possession?.id || null,
+    conds: (r?.conds || []).map((c) => ({ key: c.key, op: c.op || '', value: strOf(c.value), tendency: c.tendency })),
+  };
+}
+const emptyRole = (position = null) => ({ position, in_possession: null, out_of_possession: null, conds: [] });
 
 const toggleIn = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 const strOf = (v) => (v === null || v === undefined ? '' : String(v));
 const numOrNull = (v) => (String(v).trim() === '' ? null : Number(v));
 
 /**
- * @param {object} o  filters, tags: [{ id, name }], onApply(filters)
+ * @param {object} o  filters, tags: [{ id, name }], onApply(filters), count(filters) → number (optional)
  */
 export function openFilterSheet(o) {
   const f0 = sanitizeFilters(o.filters);
@@ -31,7 +48,9 @@ export function openFilterSheet(o) {
     feet: [...f0.feet], tags: [...f0.tags], tagMode: f0.tagMode,
     tiers: [...f0.tiers], slots: [...f0.slots], unassigned: f0.unassigned,
     attrs: f0.attrs.map((c) => ({ ...c, value: String(c.value) })),
+    role: draftRole(f0.roles),
   };
+  let cat = null; // role catalogue (loaded below)
 
   const body = h('div', { class: 'filter-form' });
   let sheet;
@@ -47,7 +66,115 @@ export function openFilterSheet(o) {
     const out = {};
     for (const k of Object.keys(RANGES)) { const e = rangeError(k, ...d.ranges[k]); if (e) out[k] = e; }
     d.attrs.forEach((c, i) => { const e = conditionError(c); if (e) out[`attr${i}`] = e; });
+    if (roleActive()) {
+      for (const c of d.role.conds) {
+        if (c.tendency && !c.op) continue; // unset tendency: shown, not applied
+        const e = conditionError({ key: c.key, op: c.op, value: c.value });
+        if (e) out[`role:${c.key}`] = e;
+      }
+    }
     return out;
+  }
+
+  // ---- Role filter --------------------------------------------------------------------
+  const onePosition = () => (d.positions.length === 1 ? d.positions[0] : null);
+  const roleOf = (phase) => (cat && d.role[phase] ? rolesFor(cat, d.role.position, phase).find((r) => r.id === d.role[phase]) || null : null);
+  /** Role filtering applies only with exactly one position and at least one role chosen. */
+  const roleActive = () => !!cat && !cat.error && onePosition() === d.role.position && PHASES.some((ph) => roleOf(ph.id));
+
+  /** Key attributes required by the chosen roles: key → { tendency, phases }. */
+  function requiredAttrs() {
+    const req = new Map();
+    for (const ph of PHASES) {
+      for (const a of roleOf(ph.id)?.attrs || []) {
+        if (!a.mapped || !ATTR_CHOICE[a.key]) continue;
+        const e = req.get(a.key) || { tendency: !!a.tendency, phases: [] };
+        e.phases.push(ph.id);
+        req.set(a.key, e);
+      }
+    }
+    return req;
+  }
+
+  /**
+   * Keep the role draft in step with the positions: a different single position
+   * starts empty; unknown role ids are dropped; conditions follow the chosen roles
+   * (shared ones keep their edited threshold; new ones get the defaults).
+   */
+  function syncRoles() {
+    const pos = onePosition();
+    if (!cat || cat.error || !pos) return;
+    if (d.role.position !== pos) d.role = emptyRole(pos);
+    for (const ph of PHASES) if (d.role[ph.id] && !roleOf(ph.id)) d.role[ph.id] = null;
+    const old = new Map(d.role.conds.map((c) => [c.key, c]));
+    d.role.conds = [...requiredAttrs()].map(([key, e]) => old.get(key)
+      || (e.tendency ? { key, op: '', value: '', tendency: true } : { key, op: 'gte', value: String(ROLE_DEFAULT_MIN), tendency: false }));
+  }
+
+  function roleFilterOut() {
+    if (!cat) return o.filters?.roles || null; // catalogue not loaded yet: keep what was there
+    if (!roleActive()) return null;
+    const pick = (ph) => { const r = roleOf(ph); return r ? { id: r.id, name: r.name } : null; };
+    return {
+      position: d.role.position, in_possession: pick('in_possession'), out_of_possession: pick('out_of_possession'),
+      conds: d.role.conds.map((c) => ({ key: c.key, op: c.op || null, value: c.op && c.value !== '' ? Number(c.value) : null, tendency: c.tendency })),
+    };
+  }
+
+  function roleSection() {
+    const pos = onePosition();
+    const hint = (t) => h('div', { class: 'frole' }, h('p', { class: 'fsub' }, 'Roles'), h('p', { class: 'fhint frole-hint' }, t));
+    if (!pos) return hint('Select one position to filter by role.');
+    if (!cat) return hint('Loading roles…');
+    if (cat.error) return hint(cat.error);
+    if (!positionByCode(cat, pos)) return hint(`The role catalogue has no roles for ${POS_LABEL[pos]}.`);
+    const picks = h('div', { class: 'frole-picks' }, PHASES.map((ph) => {
+      const role = roleOf(ph.id);
+      const select = h('select', {
+        class: 'role-pick-select', 'data-role-filter': ph.id, 'aria-label': `${ph.label} role`,
+        onchange: (e) => { d.role[ph.id] = e.target.value || null; render(); },
+      },
+        h('option', { value: '', selected: !role }, 'Any role'),
+        rolesFor(cat, pos, ph.id).map((r) => h('option', { value: r.id, selected: role?.id === r.id }, r.name)));
+      return h('div', { class: 'frole-col', 'data-phase': ph.id },
+        h('p', { class: 'frole-phase' }, ph.label),
+        h('div', { class: `role-pick${role ? '' : ' role-pick-none'}` },
+          h('span', { class: 'role-pick-name' }, role ? role.name : 'Any role'),
+          h('span', { class: 'role-pick-chev', 'aria-hidden': 'true' }),
+          select));
+    }));
+    const req = requiredAttrs();
+    const rows = d.role.conds.map((c) => {
+      const phases = req.get(c.key)?.phases || [];
+      const where = phases.length === 2 ? 'Both phases' : PHASES.find((ph) => ph.id === phases[0])?.label || '';
+      const label = ATTR_CHOICE[c.key].label;
+      const value = h('input', {
+        type: 'text', inputmode: 'numeric', pattern: '[0-9]*', class: 'finput fcond-val', value: c.value,
+        disabled: !c.op, 'aria-label': `${label} value (${ATTR_SCALE.min}–${ATTR_SCALE.max})`, placeholder: c.op ? `${ATTR_SCALE.min}–${ATTR_SCALE.max}` : '—',
+        oninput: (e) => { c.value = e.target.value.trim(); updateErrors(); },
+      });
+      const op = h('select', {
+        class: 'select select-sm fcond-op', 'aria-label': `${label} operator`,
+        onchange: (e) => {
+          c.op = e.target.value;
+          if (!c.op) c.value = '';
+          render();
+          if (c.op) setTimeout(() => body.querySelector(`.frole-cond[data-key="${c.key}"] .fcond-val`)?.focus(), 30);
+        },
+      },
+        c.tendency ? h('option', { value: '', selected: !c.op }, 'Not set') : null,
+        ROLE_OPERATORS.map((x) => h('option', { value: x.id, selected: x.id === c.op }, x.label)));
+      return h('div', { class: 'fcond frole-cond', 'data-key': c.key },
+        h('div', { class: 'fcond-main frole-main' },
+          h('span', { class: 'frole-attr' }, label,
+            h('span', { class: `frole-where${phases.length === 2 ? ' both' : ''}` }, c.tendency ? `${where} · tendency` : where)),
+          op, value),
+        h('p', { class: 'ferror', dataset: { err: `role:${c.key}` }, role: 'alert', hidden: true }));
+    });
+    return h('div', { class: 'frole' },
+      h('p', { class: 'fsub' }, 'Roles'),
+      picks,
+      rows.length ? h('div', { class: 'fconds frole-conds', 'aria-label': 'Role key attributes' }, rows) : null);
   }
 
   function positionsSection() {
@@ -56,11 +183,12 @@ export function openFilterSheet(o) {
       : h('span', { class: 'fpitch-gap' }))))));
     const fam = h('select', {
       class: 'select select-sm', id: 'f-minfam', 'aria-label': 'Minimum familiarity',
-      onchange: (e) => { d.minFam = Number(e.target.value); },
+      onchange: (e) => { d.minFam = Number(e.target.value); updateErrors(); },
     }, Array.from({ length: 20 }, (_, i) => i + 1).map((n) => h('option', { value: n, selected: n === d.minFam }, String(n))));
     return section('Position',
       grid,
-      h('div', { class: 'frow' }, h('label', { class: 'muted small', for: 'f-minfam' }, 'Minimum familiarity (1–20)'), fam));
+      h('div', { class: 'frow' }, h('label', { class: 'muted small', for: 'f-minfam' }, 'Minimum familiarity (1–20)'), fam),
+      roleSection());
   }
 
   function rangeSection(k) {
@@ -143,6 +271,7 @@ export function openFilterSheet(o) {
 
   function render() {
     const scroll = sheet?.el.scrollTop ?? 0;
+    syncRoles();
     body.replaceChildren(
       positionsSection(),
       section('Age, CA and PA', ...Object.keys(RANGES).map(rangeSection)),
@@ -155,8 +284,7 @@ export function openFilterSheet(o) {
     if (sheet) sheet.el.scrollTop = scroll;
   }
 
-  function apply(close) {
-    if (Object.keys(errors()).length) return updateErrors();
+  function draftFilters() {
     const out = {
       positions: d.positions, minFam: d.minFam,
       feet: d.feet, tags: d.tags, tagMode: d.tagMode,
@@ -164,15 +292,28 @@ export function openFilterSheet(o) {
       attrs: d.attrs.map((c) => ({ key: c.key, op: c.op, value: Number(c.value) })),
     };
     for (const k of Object.keys(RANGES)) out[k] = d.ranges[k].map(numOrNull);
-    o.onApply(sanitizeFilters(out));
+    out.roles = roleFilterOut();
+    return sanitizeFilters(out);
+  }
+
+  function apply(close) {
+    if (Object.keys(errors()).length) return updateErrors();
+    o.onApply(draftFilters());
     close();
+  }
+
+  function applyLabel() {
+    if (!o.count) return 'Apply filters';
+    const n = o.count(draftFilters());
+    // The count sits on a second line under “Apply filters” (CSS); the dot is for screen readers / copy.
+    return ['Apply filters', h('span', { class: 'apply-count' }, h('span', { class: 'apply-dot' }, '\u00a0·\u00a0'), `${n} match${n === 1 ? '' : 'es'}`)];
   }
 
   function actions(hasErrors) {
     return [
-      { label: hasErrors ? 'Fix the highlighted values' : 'Apply filters', disabled: hasErrors, onClick: apply },
+      { label: hasErrors ? 'Fix the highlighted values' : applyLabel(), disabled: hasErrors, onClick: apply },
       { label: 'Clear all', kind: 'secondary', onClick: () => {
-        Object.assign(d, { positions: [], minFam: DEFAULT_MIN_FAM, feet: [], tags: [], tagMode: 'any', tiers: [], slots: [], unassigned: false, attrs: [],
+        Object.assign(d, { positions: [], minFam: DEFAULT_MIN_FAM, feet: [], tags: [], tagMode: 'any', tiers: [], slots: [], unassigned: false, attrs: [], role: emptyRole(),
           ranges: Object.fromEntries(Object.keys(RANGES).map((k) => [k, ['', '']])) });
         render();
       } },
@@ -180,6 +321,7 @@ export function openFilterSheet(o) {
   }
 
   sheet = openSheet({ title: 'Filters', titleClass: 'sheet-title-sm', content: body, actions: actions(false) });
-  sheet.el.classList.add('sheet-tall');
+  sheet.el.classList.add('sheet-tall', 'sheet-filters');
   render();
+  loadRoleCatalogue().then((c) => { cat = c; if (sheet.el.isConnected) render(); });
 }

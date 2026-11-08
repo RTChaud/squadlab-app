@@ -92,6 +92,8 @@ export async function PlayerBrowser(o) {
     onclick: () => openFilterSheet({
       filters: config().filters,
       tags: listTags(),
+      // Live match count for the draft: the selected squad/list and the current search.
+      count: (filters) => allRows.filter((r) => (!ses.search.trim() || matchesSearch(r, ses.search)) && matchesFilters(r, filters)).length,
       onApply: (filters) => setConfig({ ...config(), filters }),
     }),
   });
@@ -155,7 +157,7 @@ export async function PlayerBrowser(o) {
     const chips = filterChips(f, (id) => tagById(id)?.name);
     chipsEl.hidden = !chips.length;
     chipsEl.replaceChildren(...[
-      ...chips.map((c) => h('span', { class: `chip fchip${c.tiers ? ` tiers` : ''}` },
+      ...chips.map((c) => h('span', { class: `chip fchip${c.tiers ? ' tiers' : ''}${c.role ? ' fchip-role' : ''}` },
         c.tiers ? c.tiers.map((t) => h('span', { class: `xi-dot t${t}`, 'aria-hidden': 'true' })) : null,
         h('span', { class: 'fchip-text' }, c.text),
         h('button', { type: 'button', class: 'chip-x', 'aria-label': `Remove filter: ${c.label}`, onclick: () => setConfig({ ...cfg, filters: c.remove() }) }, '×'))),
