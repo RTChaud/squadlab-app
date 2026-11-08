@@ -1635,3 +1635,26 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .ct-sub { font-size: 12.5px; font-weight: 600; color: var(--muted); }
 .ct-status { font-size: 11.5px; font-weight: 700; color: var(--muted); }
 .ct-status.active { color: #6fd08c; }
+
+/* ---- Contract & transfer: table cells ---- */
+.tc.num.ct-cell { font-size: 13px; font-weight: 650; white-space: nowrap; }
+.tc.num.ct-date { font-weight: 600; color: var(--text-2); }
+.ct-cell .ct-na { font-size: 12px; font-weight: 550; color: var(--muted); }
+.tc.ct-releg { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.ct-releg .ct-amt.ct-inactive { font-weight: 500; font-style: italic; color: var(--muted); }
+.ct-releg .ct-st { font-size: 10.5px; font-weight: 700; color: var(--muted); }
+.ct-releg .ct-st.active { color: #6fd08c; }
+
+/* ---- Contract & transfer: Filters ---- */
+.fsec-contract { gap: 10px; }
+.fct-row .select-sm { min-width: 0; }
+.fct-label { font-size: 14px; font-weight: 650; color: var(--text-2); }
+.fmrange { display: flex; flex-direction: column; gap: 6px; }
+.fmrange-inputs { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 6px; align-items: center; }
+.fmrange-inputs.single { grid-template-columns: minmax(0, 1fr); }
+.fmoney { position: relative; min-width: 0; }
+.fmoney-cur { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-weight: 650; pointer-events: none; }
+.fmoney .fmoney-val { padding-left: 24px; font-variant-numeric: tabular-nums; }
+.fclause { display: flex; flex-direction: column; gap: 10px; padding-left: 10px; border-left: 2px solid var(--border); }
+.frow.fct-row { flex-direction: column; align-items: stretch; gap: 6px; }
+.frow.fct-row .select.select-sm { width: 100%; max-width: none; min-height: 40px; }
