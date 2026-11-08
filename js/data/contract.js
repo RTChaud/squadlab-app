@@ -128,6 +128,24 @@ export function monthlySalary(p) {
 /** Stored transfer valuation: "zero" is a recorded £0, "unset" isn't recorded. */
 export const transferValue = (p) => (typeof p?.transfer_value === 'number' && Number.isFinite(p.transfer_value) ? p.transfer_value : (p?.transfer_value_state === 'zero' ? 0 : null));
 
+const positive = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0;
+
+/**
+ * The selling club's asking price (not a release clause), raw amount:
+ *   { amount, source: 'verified' | 'indicative' | null }
+ * 'verified': a dedicated `asking_price` field on the player record, when the
+ * snapshot has one. 'indicative': otherwise the top-level transfer_value, when
+ * transfer_value_state is "ok" and the amount is positive — in the current
+ * Crystal Palace exports it matched FM's asking price at the precision FM
+ * shows (Mainoo 80,874,782 ≈ £81m, Bergvall 60,498,534 ≈ £60m), but its
+ * meaning isn't confirmed, so the UI labels it as indicative.
+ */
+export function askingPrice(p) {
+  if (positive(p?.asking_price)) return { amount: p.asking_price, source: 'verified' };
+  if (p?.transfer_value_state === 'ok' && positive(p?.transfer_value)) return { amount: p.transfer_value, source: 'indicative' };
+  return { amount: null, source: null };
+}
+
 /** ISO date `months` calendar months after `iso` (day clamped to the month's end). */
 export function addMonths(iso, months) {
   const a = parseDate(iso);
@@ -146,8 +164,7 @@ export function contractDetails(p, gameDate) {
   const c = p?.contract;
   const end = contractEnd(p);
   const monthly = monthlySalary(p);
-  // Asking price: only from a dedicated field (the current extract has none).
-  const askingRaw = p?.asking_price ?? p?.transfer?.asking_price ?? c?.asking_price;
+  const asking = askingPrice(p);
   const tv = transferValue(p);
   const relegation = clausesOf(p, 'relegation')[0];  // { value, status } or undefined
 
@@ -159,7 +176,7 @@ export function contractDetails(p, gameDate) {
       monthlyText: monthly === null ? UNAVAILABLE : formatMoneyDisplay(monthly),
     },
     transfer: {
-      asking: formatMoneyDisplay(askingRaw) || UNAVAILABLE,
+      asking: { ...asking, text: asking.amount === null ? UNAVAILABLE : formatMoneyDisplay(asking.amount) },
       value: formatMoneyDisplay(tv) || UNAVAILABLE,
       valueAmount: tv,
       release: clauseAmount(clausesOf(p, 'standard')[0]),
