@@ -1579,3 +1579,21 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 /* Role descriptions sheet */
 .role-desc + .role-desc { margin-top: 14px; }
 .role-desc-name { margin: 0 0 4px; font-size: 16px; font-weight: 750; color: var(--text); }
+/* Filters · role filter (one position) */
+.frole { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--border); }
+.frole .fsub { margin: 0; }
+.frole-picks { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.frole-col { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.frole-phase { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.frole-col .role-pick { min-height: 44px; }
+.frole-conds { gap: 8px; }
+.frole-main { grid-template-columns: minmax(0, 1fr) auto 3.2rem; }
+.frole-attr { display: flex; flex-direction: column; min-width: 0; font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
+.frole-where { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.frole-where.both { color: var(--accent); }
+.frole-cond .fcond-val:disabled { opacity: 0.5; }
+.fchip-role { border-color: rgba(247, 134, 30, 0.55); border-radius: 14px; padding-top: 4px; padding-bottom: 4px; }
+/* Filters: room for the live match count on Apply */
+.sheet-filters .sheet-actions .btn:first-child { flex: 2 1 0; flex-direction: column; gap: 0; padding-left: 10px; padding-right: 10px; line-height: 1.2; }
+.sheet-filters .apply-count { white-space: nowrap; font-size: 13px; font-weight: 650; }
+.sheet-filters .apply-dot { display: none; }
