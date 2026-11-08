@@ -79,7 +79,7 @@ export function useCatalogue(raw) {
  * Normalise a raw catalogue into
  *   { version, status, source, schemaVersion, positions: [{ code, catCode, label, short, phases }],
  *     roles: Map(id → role), issues: [text] }
- * role = { id, name, phase, position (app code), attrs: [attrDef] }
+ * role = { id, name, phase, position (app code), attrs: [attrDef], description }
  * attrDef = { key, catKey, label, block, mapped, tendency, tier: 'key'|'supporting', weight }
  * Entries that can't be used are skipped and described in `issues`.
  */
@@ -126,7 +126,8 @@ export function normaliseCatalogue(raw) {
         const kw = supporting.length ? 2 : 1;
         const attrs = [...new Set(key)].map((k) => attrDef(k, 'key', kw))
           .concat([...new Set(supporting)].filter((k) => !key.includes(k)).map((k) => attrDef(k, 'supporting', 1)));
-        const role = { id, name, phase, position: code, attrs };
+        const description = typeof r?.description === 'string' ? r.description.trim() : '';
+        const role = { id, name, phase, position: code, attrs, description };
         roles.set(id, role);
         phases[phase].push(role);
       }
@@ -238,23 +239,4 @@ export function scoreBreakdown(s) {
   }
   if (s.excluded.length) lines.push(`${s.excluded.join(', ')} ${s.excluded.length === 1 ? 'is a tendency' : 'are tendencies'}: shown, but not scored.`);
   return lines;
-}
-
-/** Text for the info control (profile radar and Comparison). */
-export function roleInfoContent(cat) {
-  const src = cat?.source;
-  return {
-    score: [
-      'Role attributes /100 is a SquadLab score from the role’s listed key attributes, using the same snapshot as the rest of the page.',
-      'Each listed attribute counts equally: their mean is multiplied by 5, so 18, 16 and 14 give 80/100. If a catalogue adds supporting attributes, key attributes count twice and supporting once.',
-      'Tendencies such as Rushing Out are shown on the chart and in the table but are not scored. If a scored value is missing, the score is unavailable.',
-      'Positional familiarity is shown separately and is not part of the score.',
-    ],
-    catalogue: cat?.error ? cat.error : [
-      `${cat.status === 'provisional' ? 'Provisional role catalogue' : 'Role catalogue'}${src?.publisher ? ` · ${src.publisher}` : ''}`,
-      `Version ${cat.version}${src?.retrieved ? ` · retrieved ${src.retrieved}` : ''}`,
-    ].join('\n'),
-    url: src?.url || null,
-    issues: cat?.issues || [],
-  };
 }
