@@ -32,6 +32,42 @@ function draftRole(r) {
 }
 const emptyRole = (position = null) => ({ position, in_possession: null, out_of_possession: null, conds: [] });
 
+/**
+ * Number field with − and + buttons (hold to repeat). An empty or invalid field
+ * starts from `start`; values stay within min–max. Typing still works.
+ * @param {object} o  value (string), min, max, start, label, placeholder, disabled, onInput(string)
+ */
+function stepper(o) {
+  const input = h('input', {
+    type: 'text', inputmode: 'numeric', pattern: '[0-9]*', class: 'finput fstep-val', value: o.value,
+    placeholder: o.placeholder || '', disabled: !!o.disabled, 'aria-label': o.label,
+    oninput: (e) => o.onInput(e.target.value.trim()),
+  });
+  const step = (dir) => {
+    const n = Number(input.value);
+    const next = input.value.trim() === '' || !Number.isInteger(n) ? o.start : Math.min(o.max, Math.max(o.min, n + dir));
+    if (String(next) === input.value) return;
+    input.value = String(next);
+    o.onInput(input.value);
+  };
+  const btn = (dir) => {
+    let timer = null, count = 0;
+    const stop = () => { clearTimeout(timer); timer = null; };
+    const repeat = () => { step(dir); count++; timer = setTimeout(repeat, count > 8 ? 45 : 90); };
+    return h('button', {
+      type: 'button', class: 'fstep-btn', disabled: !!o.disabled, tabindex: '-1',
+      'aria-label': `${dir < 0 ? 'Decrease' : 'Increase'} ${o.label}`,
+      onpointerdown: (e) => { e.preventDefault(); step(dir); count = 0; timer = setTimeout(repeat, 420); },
+      onpointerup: stop, onpointerleave: stop, onpointercancel: stop,
+      onclick: (e) => { if (e.detail === 0) step(dir); }, // keyboard activation
+    }, dir < 0 ? '−' : '+');
+  };
+  return h('div', { class: `fstep${o.disabled ? ' disabled' : ''}` }, btn(-1), input, btn(1));
+}
+
+const ATTR_START = 10; // new attribute conditions and empty fields start here
+const RANGE_START = { age: [18, 30], ca: [100, 150], pa: [100, 150] };
+
 const toggleIn = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 const strOf = (v) => (v === null || v === undefined ? '' : String(v));
 const numOrNull = (v) => (String(v).trim() === '' ? null : Number(v));
@@ -148,18 +184,18 @@ export function openFilterSheet(o) {
       const phases = req.get(c.key)?.phases || [];
       const where = phases.length === 2 ? 'Both phases' : PHASES.find((ph) => ph.id === phases[0])?.label || '';
       const label = ATTR_CHOICE[c.key].label;
-      const value = h('input', {
-        type: 'text', inputmode: 'numeric', pattern: '[0-9]*', class: 'finput fcond-val', value: c.value,
-        disabled: !c.op, 'aria-label': `${label} value (${ATTR_SCALE.min}–${ATTR_SCALE.max})`, placeholder: c.op ? `${ATTR_SCALE.min}–${ATTR_SCALE.max}` : '—',
-        oninput: (e) => { c.value = e.target.value.trim(); updateErrors(); },
+      const value = stepper({
+        value: c.value, min: ATTR_SCALE.min, max: ATTR_SCALE.max, start: c.tendency ? ATTR_START : ROLE_DEFAULT_MIN,
+        disabled: !c.op, label: `${label} value (${ATTR_SCALE.min}–${ATTR_SCALE.max})`, placeholder: c.op ? '' : '—',
+        onInput: (v) => { c.value = v; updateErrors(); },
       });
       const op = h('select', {
         class: 'select select-sm fcond-op', 'aria-label': `${label} operator`,
         onchange: (e) => {
           c.op = e.target.value;
           if (!c.op) c.value = '';
+          else if (c.value === '') c.value = String(ATTR_START);
           render();
-          if (c.op) setTimeout(() => body.querySelector(`.frole-cond[data-key="${c.key}"] .fcond-val`)?.focus(), 30);
         },
       },
         c.tendency ? h('option', { value: '', selected: !c.op }, 'Not set') : null,
@@ -193,10 +229,10 @@ export function openFilterSheet(o) {
 
   function rangeSection(k) {
     const r = RANGES[k];
-    const input = (i, label) => h('input', {
-      type: 'text', inputmode: 'numeric', pattern: '[0-9]*', class: 'finput', value: d.ranges[k][i],
-      placeholder: i === 0 ? 'Min' : 'Max', 'aria-label': `${r.label} ${label}`,
-      oninput: (e) => { d.ranges[k][i] = e.target.value.trim(); updateErrors(); },
+    const input = (i, label) => stepper({
+      value: d.ranges[k][i], min: r.min, max: r.max, start: RANGE_START[k]?.[i] ?? r.min,
+      placeholder: i === 0 ? 'Min' : 'Max', label: `${r.label} ${label}`,
+      onInput: (v) => { d.ranges[k][i] = v; updateErrors(); },
     });
     return h('div', { class: 'frange' },
       h('span', { class: 'frange-label' }, r.label),
@@ -237,10 +273,10 @@ export function openFilterSheet(o) {
         }, ATTR_CHOICE[c.key]?.label || 'Choose…'),
         h('select', { class: 'select select-sm fcond-op', 'aria-label': 'Operator', onchange: (e) => { c.op = e.target.value; updateErrors(); } },
           OPERATORS.map((op) => h('option', { value: op.id, selected: op.id === c.op }, op.label))),
-        h('input', {
-          type: 'text', inputmode: 'numeric', pattern: '[0-9]*', class: 'finput fcond-val', value: c.value,
-          'aria-label': `Value (${ATTR_SCALE.min}–${ATTR_SCALE.max})`, placeholder: `${ATTR_SCALE.min}–${ATTR_SCALE.max}`,
-          oninput: (e) => { c.value = e.target.value.trim(); updateErrors(); },
+        stepper({
+          value: c.value, min: ATTR_SCALE.min, max: ATTR_SCALE.max, start: ATTR_START,
+          label: `${ATTR_CHOICE[c.key]?.label || 'Attribute'} value (${ATTR_SCALE.min}–${ATTR_SCALE.max})`,
+          onInput: (v) => { c.value = v; updateErrors(); },
         }),
         h('button', { type: 'button', class: 'chip-x', 'aria-label': `Remove condition ${i + 1}`, onclick: () => { d.attrs.splice(i, 1); render(); } }, '×')),
       h('p', { class: 'ferror', dataset: { err: `attr${i}` }, role: 'alert', hidden: true })));
@@ -250,13 +286,9 @@ export function openFilterSheet(o) {
         type: 'button', class: 'tool-btn fadd',
         onclick: async () => {
           const key = await pickAttribute({ title: 'Add condition' });
-          if (key) { d.attrs.push({ key, op: 'gte', value: '' }); render(); focusLastValue(); }
+          if (key) { d.attrs.push({ key, op: 'gte', value: String(ATTR_START) }); render(); }
         },
       }, '+ Add condition'));
-  }
-
-  function focusLastValue() {
-    setTimeout(() => { const all = body.querySelectorAll('.fcond-val'); all[all.length - 1]?.focus(); }, 30);
   }
 
   function updateErrors() {
