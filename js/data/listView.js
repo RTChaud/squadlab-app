@@ -127,13 +127,18 @@ export const DEFAULT_MIN_FAM = 15;
 // Contract & transfer filters:
 //   expiry: null | 6 | 12 | 18 (months from the row's snapshot date, both ends inclusive)
 //   salary / tvalue: [min | null, max | null] in GBP (monthly salary, transfer value)
-//   clause: null | { type: 'standard' | 'foreign' | 'relegation', max: GBP | null, status: 'any' | 'active' }
+//   clause: null | { type: 'any' | 'standard' | 'foreign' | 'relegation', max: GBP | null, status: 'any' | 'active' }
+//   ('any' looks across every decoded clause of the three types)
 export const EXPIRY_CHOICES = [6, 12, 18];
 export const MONEY_RANGES = {
   salary: { label: 'Monthly salary', chip: 'Salary' },
   tvalue: { label: 'Transfer value', chip: 'Value' },
 };
 export { CLAUSE_TYPES };
+export const CLAUSE_FILTERS = [{ id: 'any', label: 'Any' }, ...CLAUSE_TYPES];
+const clausesFor = (p, type) => (type === 'any'
+  ? [...new Set(CLAUSE_TYPES.flatMap((t) => clausesOf(p, t.id)))]
+  : clausesOf(p, type));
 const MONEY_MAX = 1e13;
 const moneyOrNull = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= MONEY_MAX ? toPence(v) : null);
 
@@ -212,7 +217,7 @@ export function sanitizeFilters(raw) {
     f[k] = [lo, hi];
   }
   const cl = raw.clause;
-  f.clause = cl && CLAUSE_TYPES.some((t) => t.id === cl.type)
+  f.clause = cl && CLAUSE_FILTERS.some((t) => t.id === cl.type)
     ? { type: cl.type, max: moneyOrNull(cl.max), status: cl.type === 'relegation' && cl.status === 'active' ? 'active' : 'any' }
     : null;
   return f;
@@ -377,7 +382,7 @@ export function matchesFilters(row, f) {
   if (f.clause) {
     const { type, max, status } = f.clause;
     // One clause of the chosen type must satisfy the maximum and status together.
-    const ok = clausesOf(row.p, type).some((cl) => {
+    const ok = clausesFor(row.p, type).some((cl) => {
       const v = clauseValue(cl);
       return (max === null || (v !== null && toPence(v) <= max)) && (status !== 'active' || clauseStatus(cl) === 'active');
     });
@@ -441,8 +446,8 @@ export function filterChips(f, tagName) {
     chips.push({ id: k, text, label: moneyRangeText(MONEY_RANGES[k].label, f[k]), remove: () => ({ ...clone(), [k]: [null, null] }) });
   }
   if (f.clause) {
-    const t = CLAUSE_TYPES.find((x) => x.id === f.clause.type);
-    const what = `${t.label} clause${f.clause.status === 'active' ? ' (active)' : ''}`;
+    const t = CLAUSE_FILTERS.find((x) => x.id === f.clause.type);
+    const what = t.id === 'any' ? 'Any clause' : `${t.label} clause${f.clause.status === 'active' ? ' (active)' : ''}`;
     const text = f.clause.max === null ? what : `${what} ≤ ${formatMoney(f.clause.max)}`;
     chips.push({ id: 'clause', text, label: `Release clause: ${text}`, remove: () => ({ ...clone(), clause: null }) });
   }
