@@ -373,11 +373,24 @@ export const deleteLineup = (id) => saveLineups(Lineups.deleteLineup(state.lineu
 
 export const getRadarPrefs = (key) => Radar.playerRadarPrefs(state.radar, key);
 
-/** Save one phase's { position, role } for a player's Position/role radar. */
-export async function saveRadarRole(key, phase, sel) {
+/**
+ * Save the profile's role explorer state for a player: patch may set
+ * rolePos (selected position), roleTab (phase shown), and/or
+ * role: { position, phase, id } (id null clears that position + phase).
+ * Saved without re-rendering, like the radar selection.
+ */
+export async function saveRoleExplorer(key, patch) {
   if (!state.career || !key) return;
   const current = Radar.playerRadarPrefs(state.radar, key);
-  const next = Radar.sanitizeRadarPrefs({ players: { ...state.radar.players, [key]: { ...current, roles: { ...current.roles, [phase]: sel } } } });
+  const roleByPos = Object.fromEntries(Object.entries(current.roleByPos || {}).map(([k, v]) => [k, { ...v }]));
+  if (patch.role) {
+    const { position, phase, id } = patch.role;
+    roleByPos[position] = { ...(roleByPos[position] || {}), [phase]: id || undefined };
+  }
+  const player = { ...current, roleByPos };
+  if ('rolePos' in patch) player.rolePos = patch.rolePos;
+  if ('roleTab' in patch) player.roleTab = patch.roleTab;
+  const next = Radar.sanitizeRadarPrefs({ players: { ...state.radar.players, [key]: player } });
   state.radar = next;
   await db.setSetting(radarKey(state.career), next);
 }
