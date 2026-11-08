@@ -1,6 +1,6 @@
 // Role explorer on the player profile, under the Position familiarity grid.
 //
-// Tap a position tile → two columns for that position: In Possession (left)
+// Tap a position tile (tap it again to close) → two columns for that position: In Possession (left)
 // and Out of Possession (right), each with a role dropdown (options sorted by
 // the player's Role attributes /100, highest first) and the chosen role's
 // score. Both role radars sit side by side underneath; a phase switch shows
@@ -83,10 +83,11 @@ export function RoleExplorer(p, playerKey) {
   const panel = h('div', { class: 'role-explorer', 'aria-live': 'polite' });
   const pitch = FamiliarityPitch(p, {
     selected: pos,
+    // Tapping the selected tile again closes the roles section (back to the hint).
     onSelect: (code) => {
-      pos = code;
-      pitch.setSelected(code);
-      saveRoleExplorer(playerKey, { rolePos: code });
+      pos = code === pos ? null : code;
+      pitch.setSelected(pos);
+      saveRoleExplorer(playerKey, { rolePos: pos });
       draw();
     },
   });
