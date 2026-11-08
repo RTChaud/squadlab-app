@@ -1526,7 +1526,6 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .role-attr-col .attr-list { grid-template-columns: minmax(0, 1fr); padding: 0; }
 .role-attr-col .attr { padding: 0 2px 0 4px; }
 .role-attr-col .attr-name, .role-attr-col button.attr-name { font-size: 13.5px; }
-.role-attr-col .role-breakdown p { font-size: 12px; overflow-wrap: anywhere; }
 
 /* Group summary: net of the leads above. */
 .cmp-sum-list { padding-top: 0; }
@@ -1566,3 +1565,14 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .cp-player-name { grid-column: 1; font-size: 15px; font-weight: 700; overflow-wrap: break-word; }
 .cp-player-meta { grid-column: 1; font-size: 12.5px; color: var(--muted); }
 .cp-taken { grid-column: 2; grid-row: 1 / span 2; font-size: 12px; font-weight: 650; color: var(--muted); }
+
+/* Comparison · Position / role: shared grid (both players' familiarity per tile), then each phase. */
+.ptile-pair { flex-direction: column; align-items: stretch; justify-content: center; gap: 1px; padding: 4px 8px; background: var(--surface-2); border-color: var(--border); }
+.ptile-pair .ptile-code { text-align: center; }
+.ptile-pvs { display: flex; justify-content: space-between; gap: 4px; }
+.ptile-pv { min-width: 0; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; color: rgb(var(--fam-c, 233, 235, 239)); }
+.ptile-pv.fnone { color: var(--muted); font-weight: 600; }
+.ptile-pv.f1 { color: rgb(var(--fam-c)); font-weight: 650; }
+.cmp-roles { display: flex; flex-direction: column; gap: 12px; }
+.cmp-roles-head { margin: 0; font-size: 16px; font-weight: 750; }
+.cmp-roles .cmp-phase { display: flex; flex-direction: column; gap: 10px; }
