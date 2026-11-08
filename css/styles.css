@@ -1715,6 +1715,7 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .ct-row:last-child { border-bottom: 0; }
 .ct-label { display: flex; flex-direction: column; gap: 2px; margin: 0; font-size: 14px; font-weight: 600; color: var(--text-2); }
 .ct-note { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.ct-indicative .ct-main { font-weight: 650; color: var(--text-2); }
 .ct-value { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; margin: 0; text-align: right; }
 .ct-main { font-size: 15px; font-weight: 750; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ct-main.ct-none { color: var(--muted); }
