@@ -1,19 +1,22 @@
-// AI Analysis on Comparison: one button that sends the comparison being shown
-// to the Worker and opens the report in a sheet.
+// AI Analysis and Copy for ChatGPT, on Comparison and on the player page: one
+// button that sends what is shown to the Worker and opens the report in a
+// sheet, and one that copies the same data as a ChatGPT prompt.
 //
-// Requests and reports are keyed by the comparison's signature (both players,
-// their snapshots, position and roles). A report is only ever shown for the
-// signature it was requested for, so changing a player or role can't show an
-// earlier answer. One request per signature runs at a time: closing the sheet
-// while it loads and tapping again re-attaches to it. Reports are kept for the
-// session, so reopening the same comparison doesn't ask again. The Worker's
-// access code is asked for once per device, and again if it's refused.
+// Requests and reports are keyed by a signature (Comparison: both players,
+// their snapshots, position and roles; player page: the player, his snapshot
+// and the whole squad context sent). A report is only ever shown or copied for
+// the signature it was requested for, so changing a player, role, lineup or
+// snapshot can't show an earlier answer. One request per signature runs at a
+// time: closing the sheet while it loads and tapping again re-attaches to it.
+// Reports are kept for the session. The Worker's access code is asked for once
+// per device, and again if it's refused.
 
 import { h } from '../dom.js';
 import { openSheet } from './sheet.js';
 import { toast } from './feedback.js';
-import { buildChatPrompt } from '../../data/chatPrompt.js';
-import { requestComparison, AnalysisError, getAccessCode, setAccessCode, shortNames, verdictKind, plainReportText } from '../../data/aiClient.js';
+import { buildChatPrompt, buildPlayerChatPrompt } from '../../data/chatPrompt.js';
+import { playerReportView } from './playerReport.js';
+import { requestComparison, requestPlayerReport, AnalysisError, getAccessCode, setAccessCode, shortNames, verdictKind, plainReportText } from '../../data/aiClient.js';
 
 const cache = new Map();   // signature → report (session)
 const CACHE_MAX = 12;
@@ -26,12 +29,17 @@ function remember(sig, report) {
 }
 
 /** The request for this signature: the running one, or a new one (cancelling a different one). */
+const isPlayer = (req) => req.kind === 'player';
+/** The report as drawn in the sheet: Comparison's, or the player page's. */
+const viewOf = (report, req) => (isPlayer(req) ? playerReportView(report, req.payload) : reportView(report, req));
+
 function start(req) {
   if (inflight?.signature === req.signature) return inflight.promise;
   inflight?.controller.abort();
   const controller = new AbortController();
   const entry = { signature: req.signature, controller, promise: null };
-  entry.promise = requestComparison(req.payload, { signal: controller.signal })
+  const send = isPlayer(req) ? requestPlayerReport : requestComparison;
+  entry.promise = send(req.payload, { signal: controller.signal })
     .then((report) => { remember(req.signature, report); return report; })
     .finally(() => { if (inflight === entry) inflight = null; });
   inflight = entry;
@@ -99,7 +107,7 @@ function errorView(err, req) {
   const copy = h('button', { type: 'button', class: 'btn btn-secondary btn-block ai-copy-in', onclick: () => copyForChat(req) }, 'Copy for ChatGPT');
   if (err?.code === 'ai_daily_limit') {
     return h('div', { class: 'ai-error ai-error-limit', role: 'alert' },
-      h('p', { class: 'ai-text' }, 'Daily AI allowance reached. Copy this comparison to continue in ChatGPT.'), copy);
+      h('p', { class: 'ai-text' }, isPlayer(req) ? 'Daily AI allowance reached. Copy this player to continue in ChatGPT.' : 'Daily AI allowance reached. Copy this comparison to continue in ChatGPT.'), copy);
   }
   const msg = err instanceof AnalysisError ? err.message : 'Something went wrong.';
   return h('div', { class: 'ai-error', role: 'alert' }, h('p', { class: 'ai-error-title' }, 'Analysis failed'), h('p', { class: 'ai-text' }, msg), copy);
@@ -112,7 +120,8 @@ function errorView(err, req) {
 
 /** The prompt for this comparison, with its report when there is one. */
 export function chatPromptFor(req) {
-  return buildChatPrompt(req.payload, cache.get(req.signature) || null);
+  const report = cache.get(req.signature) || null;
+  return isPlayer(req) ? buildPlayerChatPrompt(req.payload, report) : buildChatPrompt(req.payload, report);
 }
 
 /** Legacy copy for browsers without the async clipboard (must run inside the tap). */
@@ -190,11 +199,11 @@ function openReport(req) {
   };
   const run = () => {
     const cached = cache.get(req.signature);
-    if (cached) { show(reportView(cached, req), [copyAction, closeAction]); return; }
+    if (cached) { show(viewOf(cached, req), [copyAction, closeAction]); return; }
     if (!getAccessCode()) { askCode(false); return; }
     show(loadingView(), [closeAction]);
     start(req).then(
-      (report) => show(reportView(report, req), [copyAction, closeAction]),
+      (report) => show(viewOf(report, req), [copyAction, closeAction]),
       (err) => {
         if (err?.code === 'cancelled') return;
         if (err?.code === 'unauthorized' || err?.code === 'no_code') { setAccessCode(''); askCode(err.code === 'unauthorized'); return; }
@@ -207,7 +216,8 @@ function openReport(req) {
 
 /**
  * @param {object} o
- *   getRequest() → { payload, signature, names: { A, B }, basisText } | null
+ *   getRequest() → { payload, signature, basisText, kind?: 'player', names?: { A, B } } | null
+ *   (kind 'player': the player page's report; otherwise a comparison)
  *   (null: two distinct players aren't selected)
  */
 export function AiAnalysisButton(o) {
