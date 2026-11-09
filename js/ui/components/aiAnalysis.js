@@ -6,11 +6,12 @@
 // signature it was requested for, so changing a player or role can't show an
 // earlier answer. One request per signature runs at a time: closing the sheet
 // while it loads and tapping again re-attaches to it. Reports are kept for the
-// session, so reopening the same comparison doesn't ask again.
+// session, so reopening the same comparison doesn't ask again. The Worker's
+// access code is asked for once per device, and again if it's refused.
 
 import { h } from '../dom.js';
 import { openSheet } from './sheet.js';
-import { requestComparison, AnalysisError } from '../../data/aiClient.js';
+import { requestComparison, AnalysisError, getAccessCode, setAccessCode } from '../../data/aiClient.js';
 
 const cache = new Map();   // signature → report (session)
 const CACHE_MAX = 12;
@@ -77,6 +78,20 @@ function errorView(err) {
   return h('div', { class: 'ai-error', role: 'alert' }, h('p', { class: 'ai-error-title' }, 'Analysis failed'), h('p', { class: 'ai-text' }, msg));
 }
 
+/** Access code field; `onSave(code)` runs with the trimmed code. */
+function codeView(refused, onSave) {
+  const input = h('input', {
+    type: 'password', class: 'picker-search ai-code-input', id: 'ai-code', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false',
+    enterkeyhint: 'go', onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } },
+  });
+  const submit = () => { const v = input.value.trim(); if (v) onSave(v); else input.focus(); };
+  const el = h('form', { class: 'field ai-code', onsubmit: (e) => { e.preventDefault(); submit(); } },
+    h('label', { class: 'field-label', for: 'ai-code' }, 'Access code'),
+    input,
+    refused ? h('p', { class: 'ai-code-err', role: 'alert' }, 'That access code wasn’t accepted.') : null);
+  return { el, submit, focus: () => input.focus() };
+}
+
 function openReport(req) {
   const body = h('div', { class: 'ai-body' });
   let open = true;
@@ -90,13 +105,23 @@ function openReport(req) {
   const closeAction = { label: 'Close', kind: 'secondary', onClick: (close) => close() };
 
   const show = (node, actions) => { if (!open) return; body.replaceChildren(node); s.setActions(actions); };
+  const askCode = (refused) => {
+    const v = codeView(refused, (code) => { setAccessCode(code); run(); });
+    show(v.el, [{ label: 'Save and analyse', onClick: () => v.submit() }, closeAction]);
+    if (open) v.focus();
+  };
   const run = () => {
     const cached = cache.get(req.signature);
     if (cached) { show(reportView(cached, req), [closeAction]); return; }
+    if (!getAccessCode()) { askCode(false); return; }
     show(loadingView(), [closeAction]);
     start(req).then(
       (report) => show(reportView(report, req), [closeAction]),
-      (err) => { if (err?.code !== 'cancelled') show(errorView(err), [{ label: 'Retry', onClick: () => run() }, closeAction]); },
+      (err) => {
+        if (err?.code === 'cancelled') return;
+        if (err?.code === 'unauthorized' || err?.code === 'no_code') { setAccessCode(''); askCode(err.code === 'unauthorized'); return; }
+        show(errorView(err), [{ label: 'Retry', onClick: () => run() }, closeAction]);
+      },
     );
   };
   run();
