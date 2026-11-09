@@ -15,9 +15,11 @@
 // shaded and the gap drawn as a bar (same scale on every row, full at 8 points).
 // Players, mode and selected attributes are remembered per career; values are
 // each player's latest recorded ones ("Last recorded" in the header if older).
+// AI Analysis (below the players) sends the comparison being shown — in
+// Position / role mode with its position and roles — for a recruitment verdict.
 
 import { h, icon, DASH } from '../dom.js';
-import { getPlayerProfile, getCompare, setCompareSide, setCompareView, getModel } from '../../store.js';
+import { getPlayerProfile, getCompare, setCompareSide, setCompareView, getModel, listLineups } from '../../store.js';
 import {
   ATTRIBUTE_GROUPS, HIDDEN_ATTRS, PERSONALITY_ATTRS, attrBand, attributeDirection, intOrNull,
 } from '../../data/attributes.js';
@@ -26,7 +28,7 @@ import {
 } from '../../data/radar.js';
 import { profileNameOf, persistentId } from '../../data/players.js';
 import { describePositions } from '../../data/positions.js';
-import { formatGameDate } from '../../data/snapshot.js';
+import { formatGameDate, resolveTeams } from '../../data/snapshot.js';
 import { openPlayerPicker } from '../components/playerPicker.js';
 import { openAttributeInfo } from '../components/attributeInfoSheet.js';
 import { RadarCompareChart } from '../components/radarChart.js';
@@ -38,6 +40,8 @@ import {
 } from '../../data/roles.js';
 import { formatPositions } from '../../data/positions.js';
 import { linkWithFrom } from '../../router.js';
+import { buildComparisonRequest } from '../../data/comparisonRequest.js';
+import { AiAnalysisButton } from '../components/aiAnalysis.js';
 
 const SIDES = ['left', 'right'];
 const openState = new Map(); // group key → open (session), so re-renders keep what you opened
@@ -357,11 +361,30 @@ export async function CompareView() {
     playerHead('right', R, sel.left));
 
   const present = [L, R].filter(Boolean);
+  const cat = await loadRoleCatalogue();
+
+  // Built when tapped, from what Comparison is showing at that moment (roles change in place).
+  const getRequest = () => {
+    if (!L || !R || sel.left === sel.right) return null;
+    const req = buildComparisonRequest(L, R, {
+      compare: getCompare(), cat, model, lineups: listLineups(),
+      teamLabelOf: (squad, m) => resolveTeams(m).find((t) => t.squad && t.squad.id === squad.id)?.label || null,
+    });
+    const pos = req.basis.position;
+    const roles = PHASES.map((ph) => req.basis.roles[ph.id]?.name).filter(Boolean);
+    return {
+      ...req,
+      names: { A: L.name, B: R.name },
+      basisText: [`${L.name} vs ${R.name}`, pos ? pos.short : null, roles.length ? roles.join(' / ') : null].filter(Boolean).join(' · '),
+    };
+  };
+  const aiBtn = AiAnalysisButton({ getRequest });
+
   const page = (...kids) => ({
     title: 'Comparison',
     subtitle: model ? formatGameDate(model.gameDate) : '',
     back: '#/',
-    body: h('div', { class: 'stack cmp' }, header, ...kids),
+    body: h('div', { class: 'stack cmp' }, header, aiBtn, ...kids),
   });
 
   if (!present.length) {
@@ -373,7 +396,6 @@ export async function CompareView() {
   // Mode and selected attributes are kept in the store (not re-rendered by it),
   // so picking an attribute updates the radar and table here, in place.
   let mode = sel.mode;
-  const cat = await loadRoleCatalogue();
   let keys = [...sel.selected];
   const pickerSlot = h('div', { class: 'cmp-picker' });
   const content = h('div', { class: 'cmp-content' });
