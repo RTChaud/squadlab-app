@@ -1584,6 +1584,12 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .ai-price { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 6px 0 0; font-size: 15px; }
 .ai-price dt { color: var(--muted); font-weight: 650; }
 .ai-price dd { margin: 0; color: var(--text); font-weight: 750; overflow-wrap: anywhere; }
+.ai-phase-inputs { margin-top: 2px; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.ai-suggest { margin-top: 10px; padding: 10px 12px; border-radius: var(--radius-sm); border: 1px dashed var(--border); }
+.ai-suggest-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin: 0; font-size: 15px; font-weight: 750; color: var(--text); }
+.ai-suggest-head .ai-pick-note { margin-left: 2px; }
+.ai-tag-first { margin-left: 0; margin-right: 2px; }
+.ai-suggest .ai-text { margin-top: 4px; font-size: 14px; }
 .cmp-mode-label { flex: none; font-size: 14px; font-weight: 650; color: var(--text-2); }
 .cmp-mode { flex: 1 1 auto; min-width: 0; max-width: 260px; }
 .cmp-picker:empty { display: none; }
