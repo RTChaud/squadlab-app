@@ -1564,6 +1564,26 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .ai-error .ai-text { margin-top: 4px; }
 .ai-code { margin: 0; }
 .ai-code-err { margin: 0; font-size: 14px; font-weight: 650; color: var(--danger); }
+/* Player page: AI Analysis | Copy for ChatGPT under Development / Contract / Tags, and its reports. */
+.profile-ai { gap: 8px; }
+.ai-headline-lg { margin-top: 2px; font-size: 17px; font-weight: 750; line-height: 1.35; color: var(--text); }
+.ai-pick-note { margin-left: 8px; font-size: 13px; font-weight: 650; color: var(--muted); }
+.ai-tag { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; vertical-align: 2px; color: var(--accent); background: var(--accent-soft); }
+.ai-alt b { color: var(--text); font-weight: 700; }
+.ai-muted { color: var(--muted); }
+.ai-chips { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.ai-chip { display: inline-flex; gap: 6px; align-items: baseline; padding: 5px 10px; border-radius: 999px; background: var(--surface-2); font-size: 13px; font-weight: 700; color: var(--text); }
+.ai-chip span { font-weight: 600; color: var(--muted); }
+.ai-priorities { list-style: none; counter-reset: pri; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.ai-priority { counter-increment: pri; display: flex; flex-direction: column; padding: 10px 12px 10px 40px; position: relative; border-radius: var(--radius-sm); background: var(--surface-2); }
+.ai-priority::before { content: counter(pri); position: absolute; left: 12px; top: 10px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #17120c; background: var(--accent); }
+.ai-priority-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 15px; font-weight: 750; color: var(--text); }
+.ai-priority-head b { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ai-priority-hist { margin-top: 2px; font-size: 13px; font-weight: 650; color: var(--text-2); }
+.ai-priority .ai-text { margin-top: 4px; font-size: 14px; }
+.ai-price { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 6px 0 0; font-size: 15px; }
+.ai-price dt { color: var(--muted); font-weight: 650; }
+.ai-price dd { margin: 0; color: var(--text); font-weight: 750; overflow-wrap: anywhere; }
 .cmp-mode-label { flex: none; font-size: 14px; font-weight: 650; color: var(--text-2); }
 .cmp-mode { flex: 1 1 auto; min-width: 0; max-width: 260px; }
 .cmp-picker:empty { display: none; }
