@@ -1544,6 +1544,10 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .ai-phase .ai-text { margin-top: 4px; font-size: 14px; }
 .ai-phase-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; font-weight: 650; color: var(--muted); }
 .ai-phase-head b { font-size: 14px; font-weight: 750; color: var(--text); text-align: right; overflow-wrap: anywhere; }
+.ai-phase-role { margin-top: 2px; font-size: 13px; color: var(--text-2); overflow-wrap: anywhere; }
+.ai-phase-scores { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; font-size: 13px; color: var(--muted); }
+.ai-phase-scores span { overflow-wrap: anywhere; }
+.ai-phase-scores b { margin-left: 4px; font-weight: 750; color: var(--text); font-variant-numeric: tabular-nums; }
 .ai-evidence { margin: 6px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.45; color: var(--text-2); overflow-wrap: anywhere; }
 .ai-evidence li::marker { color: var(--accent); font-weight: 750; }
 .ai-loading { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 120px; font-size: 15px; font-weight: 650; color: var(--text-2); }
