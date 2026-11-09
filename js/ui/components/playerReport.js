@@ -13,20 +13,22 @@ const PHASES = ['in_possession', 'out_of_possession'];
 const score = (v) => (typeof v === 'number' && Number.isFinite(v) ? String(Math.round(v * 10) / 10) : '–');
 const sec = (label, ...kids) => h('section', { class: 'ai-sec', 'aria-label': label }, h('p', { class: 'ai-kicker' }, label), ...kids);
 
-function phaseCard(ph, roleName, scoreValue, explanation) {
+function phaseCard(ph, roleName, scoreValue, explanation, inputs = null) {
+  const list = inputs ? Object.entries(inputs).filter(([, v]) => v !== null && v !== undefined) : [];
   return h('li', { class: 'ai-phase' },
     h('span', { class: 'ai-phase-head' }, PHASE_LABEL[ph], scoreValue !== undefined ? h('b', {}, score(scoreValue)) : null),
     roleName ? h('span', { class: 'ai-phase-role' }, roleName) : null,
+    list.length ? h('span', { class: 'ai-phase-inputs' }, `Score inputs: ${list.map(([k, v]) => `${k} ${v}`).join(' · ')}`) : null,
     explanation ? h('span', { class: 'ai-text' }, explanation) : null);
 }
 
-/** The best role score shown for a role at a position, from the request. */
-function roleScoreAt(payload, position, ph, roleName) {
+/** The role's SquadLab score and its inputs at a position, from the request. */
+function roleAt(payload, position, ph, roleName) {
   const pos = payload.positions.find((x) => x.position === position);
   const r = pos?.best_roles?.[ph]?.find((x) => x.name === roleName);
-  if (r) return r.squadlab_role_score_out_of_100;
+  if (r) return { score: r.squadlab_role_score_out_of_100, inputs: r.key_attributes };
   const a = (payload.lineup_assignments || []).find((x) => x.position === position && x.role_fit?.[ph]?.role === roleName);
-  return a ? a.role_fit[ph].squadlab_role_score_out_of_100 : undefined;
+  return a ? { score: a.role_fit[ph].squadlab_role_score_out_of_100, inputs: a.role_fit[ph].key_attributes } : { score: undefined, inputs: null };
 }
 
 export function developmentView(report, payload) {
@@ -42,13 +44,17 @@ export function developmentView(report, payload) {
         bp.needs_retraining ? h('span', { class: 'ai-tag' }, 'Needs retraining') : null),
       h('p', { class: 'ai-text' }, bp.explanation),
       PHASES.some((ph) => bp[ph]) ? h('ul', { class: 'ai-phases' }, PHASES.filter((ph) => bp[ph]).map((ph) =>
-        phaseCard(ph, bp[ph].role, roleScoreAt(payload, bp.position, ph, bp[ph].role), bp[ph].explanation))) : null,
+        { const at = roleAt(payload, bp.position, ph, bp[ph].role); return phaseCard(ph, bp[ph].role, at.score, bp[ph].explanation, at.inputs); })) : null,
       bp.alternative ? h('p', { class: 'ai-text ai-alt' }, h('b', {}, 'Alternative: '), bp.alternative) : null),
     sec('Fit in Your Lineups',
       places.length
         ? h('ul', { class: 'ai-chips' }, places.map((a) => h('li', { class: 'ai-chip' }, `${a.lineup} · ${a.slot}`, h('span', {}, a.position))))
         : h('p', { class: 'ai-text ai-muted' }, 'Not in First, Backup or Future XI'),
-      h('p', { class: 'ai-text' }, report.lineup_fit)),
+      h('p', { class: 'ai-text' }, report.lineup_fit),
+      !places.length && report.suggested_slot ? h('div', { class: 'ai-suggest' },
+        h('p', { class: 'ai-suggest-head' }, h('span', { class: 'ai-tag ai-tag-first' }, 'Recommendation'), `${report.suggested_slot.lineup} · ${report.suggested_slot.slot}`,
+          report.suggested_slot.position ? h('span', { class: 'ai-pick-note' }, report.suggested_slot.position) : null),
+        h('p', { class: 'ai-text' }, report.suggested_slot.explanation)) : null),
     sec('Development Priorities',
       h('ol', { class: 'ai-priorities' }, report.priorities.map((x) => h('li', { class: 'ai-priority' },
         h('span', { class: 'ai-priority-head' }, x.attribute, h('b', {}, String(x.current))),
@@ -74,7 +80,7 @@ export function recruitmentView(report, payload) {
         fit && (fit.his_familiarity ?? 0) < 15 ? h('span', { class: 'ai-tag' }, 'Needs retraining') : null),
       h('p', { class: 'ai-text' }, bf.explanation),
       PHASES.some((ph) => bf[ph]) ? h('ul', { class: 'ai-phases' }, PHASES.filter((ph) => bf[ph]).map((ph) =>
-        phaseCard(ph, fit?.his_role_fit?.[ph]?.role || null, fit?.his_role_fit?.[ph] ? fit.his_role_fit[ph].squadlab_role_score_out_of_100 : undefined, bf[ph]))) : null),
+        phaseCard(ph, fit?.his_role_fit?.[ph]?.role || null, fit?.his_role_fit?.[ph] ? fit.his_role_fit[ph].squadlab_role_score_out_of_100 : undefined, bf[ph], fit?.his_role_fit?.[ph]?.key_attributes || null))) : null),
     report.competition.length ? sec('Competition',
       h('ul', { class: 'ai-phases' }, report.competition.map((c) => {
         const cp = clubPlayer(c.name);
