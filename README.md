@@ -8,7 +8,7 @@ Personal Football Manager companion. Static site with no build step or backend, 
 3. Go to Settings → Pages → Source: *Deploy from a branch* → `main` / `(root)` → Save.
 4. Open `https://USERNAME.github.io/squadlab/`. On iPhone, use Share → Add to Home Screen.
 
-Imported extracts are stored only in this browser's IndexedDB. They are never uploaded. The one exception is **AI Analysis** on Comparison: tapping it sends the two compared players' data (and the selected position and roles) to the SquadLab Worker, which forwards it to the AI provider.
+Imported extracts are stored only in this browser's IndexedDB. They are never uploaded. The one exception is **AI Analysis** on Comparison: tapping it sends the two compared players' data (and the selected position and roles) to the SquadLab Worker, which forwards it to the AI provider. The Worker asks for its access code once per device; the code stays in that browser and isn't part of app backups.
 
 ## Data
 The **Data** button in the header opens:
@@ -57,7 +57,5 @@ js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, de
                        attributeInfoSheet.js, playerPicker.js, radarAttributePicker.js, roleControls.js, roleExplorer.js, contractSheet.js,
                        aiAnalysis.js (AI Analysis button + report sheet)
 js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js, lineups.js, lineup.js, lineupPicker.js, compare.js, tactic.js (position + roles → Find matching players)
-worker/compareRoute.js  Cloudflare Worker route for POST /compare + CORS (called from the Worker's fetch handler)
-worker/compare.js      /compare: request validation, provider call, report validation
-worker/comparePrompt.js  fixed analyst instructions + report schema (Worker only)
+worker/worker.js       Cloudflare Worker (paste into the dashboard's Edit code): POST /compare with access code, rate limit, fixed analyst instructions, report checks
 ```
