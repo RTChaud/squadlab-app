@@ -270,7 +270,7 @@ async function callModel(env, messages, fetchImpl) {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'x-api-key': env.ANTHROPIC_API_KEY,
+      'x-api-key': String(env.ANTHROPIC_API_KEY).trim(),
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
@@ -316,11 +316,31 @@ async function sha256(text) {
 }
 
 /** Constant-time check of "Authorization: Bearer <code>" against the ACCESS_CODE secret. */
+const accessCode = (env) => String(env.ACCESS_CODE || '').trim();
+
+/** Which settings are in place (names only, never values). Shown when /compare is opened in a browser. */
+function setupStatus(env) {
+  const code = accessCode(env);
+  return {
+    ACCESS_CODE: !code ? 'missing' : code.length < 16 ? 'too short (needs 16+ characters)' : 'ok',
+    ANTHROPIC_API_KEY: String(env.ANTHROPIC_API_KEY || '').trim() ? 'ok' : 'missing',
+    RATE_LIMIT: env.RATE_LIMIT && typeof env.RATE_LIMIT.get === 'function' ? 'ok' : 'missing (KV namespace binding)',
+    ALLOWED_ORIGINS: String(env.ALLOWED_ORIGINS || DEFAULT_ORIGINS),
+  };
+}
+
+/** The not_configured error, naming what is missing. */
+function notConfigured(env) {
+  const s = setupStatus(env);
+  const bad = ['ACCESS_CODE', 'ANTHROPIC_API_KEY', 'RATE_LIMIT'].filter((k) => s[k] !== 'ok').map((k) => `${k} ${s[k]}`);
+  return new CompareError(500, 'not_configured', `The analysis service isn’t configured: ${bad.join('; ') || 'unknown'}.`);
+}
+
 async function checkAccess(request, env) {
-  if (!env.ACCESS_CODE || String(env.ACCESS_CODE).length < 16) throw new CompareError(500, 'not_configured', 'The analysis service isn’t configured.');
+  if (accessCode(env).length < 16) throw notConfigured(env);
   const m = /^Bearer\s+(.+)$/.exec(request.headers.get('Authorization') || '');
   const given = await sha256(m ? m[1].trim() : '');
-  const want = await sha256(String(env.ACCESS_CODE));
+  const want = await sha256(accessCode(env));
   const same = crypto.subtle.timingSafeEqual ? crypto.subtle.timingSafeEqual(given, want) : given.every((b, i) => b === want[i]);
   if (!m || !same) throw new CompareError(401, 'unauthorized', 'Access code not accepted.');
 }
@@ -334,7 +354,7 @@ const burst = new Map(); // minute key → count, this instance only
 
 async function checkRate(env) {
   const kv = env.RATE_LIMIT;
-  if (!kv || typeof kv.get !== 'function') throw new CompareError(500, 'not_configured', 'The analysis service isn’t configured.');
+  if (!kv || typeof kv.get !== 'function') throw notConfigured(env);
   const perMin = Number(env.RATE_PER_MINUTE) > 0 ? Number(env.RATE_PER_MINUTE) : DEFAULT_PER_MINUTE;
   const perDay = Number(env.RATE_PER_DAY) > 0 ? Number(env.RATE_PER_DAY) : DEFAULT_PER_DAY;
   const now = new Date().toISOString();
@@ -356,6 +376,7 @@ async function checkRate(env) {
 
 async function handleCompare(request, env) {
   try {
+    if (request.method === 'GET') return json(200, { ok: false, note: 'Use POST for analyses. Setup check:', setup: setupStatus(env) });
     if (request.method !== 'POST') throw new CompareError(405, 'method_not_allowed', 'Use POST.');
     await checkAccess(request, env);
     const raw = await request.text();
@@ -363,7 +384,7 @@ async function handleCompare(request, env) {
     let body;
     try { body = JSON.parse(raw); } catch { bad('The body is not valid JSON.'); }
     validateRequest(body);
-    if (!env.ANTHROPIC_API_KEY) throw new CompareError(500, 'not_configured', 'The analysis service isn’t configured.');
+    if (!String(env.ANTHROPIC_API_KEY || '').trim()) throw notConfigured(env);
     await checkRate(env); // counted only once the request is valid and allowed
     const report = await analyse(body, env);
     return json(200, { ok: true, comparison_id: body.comparison_id, prompt_version: PROMPT_VERSION, report });
