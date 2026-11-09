@@ -78,3 +78,51 @@ export async function requestComparison(payload, { signal, code = getAccessCode(
   if (!report) throw new AnalysisError('The analysis came back incomplete.', 'invalid');
   return report;
 }
+
+// ---- Report wording ----------------------------------------------------------------------
+// The Worker already writes names and plain phase words; this second pass makes
+// sure no placeholder ("Player A", "B's") or identifier (in_possession) can
+// reach the page, whatever comes back.
+
+const NAME_PARTICLES = new Set(['de', 'da', 'do', 'dos', 'das', 'di', 'del', 'della', 'van', 'von', 'der', 'den', 'le', 'la', 'du', 'ten', 'ter', 'el', 'al', 'bin', 'ben']);
+
+/** Surname for sentences: last word plus particles ("De Ketelaere"); a single name stays whole. */
+export function surnameOf(full) {
+  const t = String(full || '').trim().split(/\s+/);
+  if (t.length < 2) return t[0] || '';
+  let i = t.length - 1;
+  while (i > 0 && NAME_PARTICLES.has(t[i - 1].toLowerCase())) i--;
+  return t.slice(i).join(' ');
+}
+
+/** { A, B } short names for the report; full names when the surnames are the same. */
+export function shortNames(payload) {
+  const [a, b] = payload.players;
+  const sa = surnameOf(a.name), sb = surnameOf(b.name);
+  return sa.toLowerCase() === sb.toLowerCase() ? { A: a.name, B: b.name } : { A: sa, B: sb };
+}
+
+/** 'squad' (both at the club), 'mixed' (one target) or 'recruitment' (two targets). */
+export function verdictKind(payload) {
+  const own = payload.players.filter((p) => p.at_manager_club).length;
+  return own === 2 ? 'squad' : own === 1 ? 'mixed' : 'recruitment';
+}
+
+const VERB_AFTER = '(?:and|or|vs|versus|is|has|had|was|offers|scores|scored|leads|edges|wins|costs|would|should|could|outscores|holds|brings|gives|provides|remains|fits|looks|needs|matches|trails)';
+
+/** Text with identifiers turned into words and A/B placeholders into names. */
+export function plainReportText(s, names) {
+  if (typeof s !== 'string') return s;
+  const a = names.A, b = names.B;
+  return s
+    .replace(/\bin_possession\b/g, 'in possession').replace(/\bout_of_possession\b/g, 'out of possession')
+    .replace(/\bsquadlab_role_score_out_of_100\b/g, 'role score')
+    .replace(/\b(?:recruitment_verdict|better_today|by_phase|would_change|asking_price|role_fit|key_attributes)\b/g, (m) => m.replace(/_/g, ' '))
+    .replace(/\b[Pp]layer\s+A\b/g, a).replace(/\b[Pp]layer\s+B\b/g, b)
+    .replace(/\bA(['’])s\b/g, `${a}$1s`).replace(/\bB(['’])s\b/g, `${b}$1s`)
+    .replace(/\s*\(\s*[AB]\s*\)/g, '')
+    .replace(/(^|[^\w£'’-])B(?![\w'’-])/g, `$1${b}`)
+    .replace(new RegExp(`\\bA(?=\\s+${VERB_AFTER}\\b)`, 'g'), a)
+    .replace(/\b(than|over|to|with|and|or|vs|versus|for|from)\s+A(?=[\s.,;:!?)]|$)(?!\s+[a-z])/g, `$1 ${a}`)
+    .replace(/\s+/g, ' ').trim();
+}
