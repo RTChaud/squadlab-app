@@ -1553,6 +1553,8 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .ai-error { padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-2); }
 .ai-error-title { margin: 0; font-size: 15px; font-weight: 750; color: var(--danger); }
 .ai-error .ai-text { margin-top: 4px; }
+.ai-code { margin: 0; }
+.ai-code-err { margin: 0; font-size: 14px; font-weight: 650; color: var(--danger); }
 .cmp-mode-label { flex: none; font-size: 14px; font-weight: 650; color: var(--text-2); }
 .cmp-mode { flex: 1 1 auto; min-width: 0; max-width: 260px; }
 .cmp-picker:empty { display: none; }
