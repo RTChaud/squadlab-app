@@ -8,13 +8,15 @@
 // change that.
 //
 // Everything comes from data SquadLab already holds: the player record, the
-// role catalogue and SquadLab role scores, First / Backup / Future XI, roles
-// saved on his profile or on the Tactic screen, and his development history.
+// role catalogue and SquadLab role scores, First / Backup / Future XI, the
+// role pair saved for each formation slot on the Lineups page (the career's
+// tactical setup), and his development history. A phase without a saved role
+// is never presented as one.
 // Nothing is estimated: missing values are null and a missing fee stays missing.
 // Pure: no DOM, no store; the caller passes the context in.
 
 import { PHASES, rolesFor, roleScore, familiarityAt } from './roles.js';
-import { SLOTS, DEFAULT_LINEUPS } from './lineups.js';
+import { SLOTS, SLOT_BY_ID, DEFAULT_LINEUPS } from './lineups.js';
 import { ATTR_BY_KEY, HIDDEN_ATTRS, PERSONALITY_ATTRS, intOrNull } from './attributes.js';
 import { ATTRIBUTE_INFO } from './attributeInfo.js';
 import { profileNameOf, isClubOwned, findInSnapshot, persistentId } from './players.js';
@@ -28,7 +30,6 @@ const RETRAIN_MARGIN = 0;     // an unfamiliar position is worth a mention when 
 const MAX_FAMILIAR = 3;
 const MAX_RETRAIN = 1;
 const TOP_ROLES = 3;
-const MAX_INTERNAL = 3;       // extra club players per position for recruitment, beyond the lineups
 
 const round2 = (v) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v * 100) / 100 : null);
 const paOf = (p) => { const v = intOrNull(p?.ability?.potential); return v !== null && v > 0 ? v : null; };
@@ -117,34 +118,36 @@ function positionBlock(cat, p, x) {
   };
 }
 
+export const SAVED_SOURCE = 'saved for this slot';
+export const GENERAL_SOURCE = 'not set for this slot; his best role here, for general positional fit only';
+
 /**
- * The roles to assess at a position: saved on this player's profile for that
- * position, else saved on the Tactic screen for it, else none (the caller uses
- * his best roles and says so).
+ * The roles to assess in a formation slot: the pair saved for that slot on the
+ * Lineups page (shared by First, Backup and Future XI). A phase that isn't set
+ * uses the given player's best role at the position, labelled as general
+ * positional fit, never as a saved role.
  */
-function savedRoles(cat, code, rolePrefs, tactic) {
+function slotAssessed(cat, slotRoles, slotId, refPlayer) {
+  const code = SLOT_BY_ID[slotId].fam;
+  const saved = slotRoles?.[slotId] || {};
   const out = {};
-  const mine = rolePrefs?.roleByPos?.[code] || {};
   for (const ph of PHASES) {
-    const list = rolesFor(cat, code, ph.id);
-    const own = mine[ph.id] ? list.find((r) => r.id === mine[ph.id]) : null;
-    const tac = tactic?.position === code && tactic[ph.id] ? list.find((r) => r.id === tactic[ph.id]) : null;
-    out[ph.id] = own ? { role: own, source: 'saved on his profile for this position' }
-      : tac ? { role: tac, source: 'saved on the Tactic screen for this position' } : null;
+    const role = saved[ph.id] ? rolesFor(cat, code, ph.id).find((r) => r.id === saved[ph.id]) : null;
+    if (role) { out[ph.id] = { role, source: SAVED_SOURCE }; continue; }
+    const top = refPlayer ? rankedRoles(cat, refPlayer, code, ph.id)[0] : null;
+    out[ph.id] = top ? { role: top.role, source: GENERAL_SOURCE } : null;
   }
   return out;
 }
 
-/** Saved roles, or his best role per phase, labelled. */
-function assessedRoles(cat, p, code, rolePrefs, tactic, bestSource) {
-  const saved = savedRoles(cat, code, rolePrefs, tactic);
-  const out = {};
-  for (const ph of PHASES) {
-    if (saved[ph.id]) { out[ph.id] = saved[ph.id]; continue; }
-    const top = rankedRoles(cat, p, code, ph.id)[0];
-    out[ph.id] = top ? { role: top.role, source: bestSource } : null;
-  }
-  return out;
+/** The saved role pair for a slot, by phase: { name, ... } or null when not set. */
+function savedPair(cat, slotRoles, slotId) {
+  const code = SLOT_BY_ID[slotId].fam;
+  return Object.fromEntries(PHASES.map((ph) => {
+    const id = slotRoles?.[slotId]?.[ph.id];
+    const role = id ? rolesFor(cat, code, ph.id).find((r) => r.id === id) : null;
+    return [ph.id, role || null];
+  }));
 }
 
 const fitFor = (p, assessed, code, cat = null) => Object.fromEntries(PHASES.filter((ph) => assessed[ph.id]).map((ph) => [ph.id, {
@@ -166,7 +169,7 @@ function attributeDefinitions(cat, codes) {
 }
 
 /** Who holds each formation slot at the positions in play (First / Backup / Future XI), for slot suggestions. */
-function formationSlots(cat, codes, lineups, data, selfKey, playerKeyOf) {
+function formationSlots(cat, codes, lineups, data, selfKey, slotRoles) {
   const out = [];
   for (const code of codes) {
     const slots = SLOTS.filter((s) => s.fam === code);
@@ -175,7 +178,8 @@ function formationSlots(cat, codes, lineups, data, selfKey, playerKeyOf) {
     out.push({
       position: pos?.short || code,
       slots: slots.map((s) => {
-        const row = { slot: s.id };
+        const saved = savedPair(cat, slotRoles, s.id);
+        const row = { slot: s.id, roles: Object.fromEntries(PHASES.map((ph) => [ph.id, saved[ph.id]?.name || null])) };
         for (const d of DEFAULT_LINEUPS) {
           const key = lineups.find((l) => l.id === d.id)?.slots[s.id] || null;
           const occ = key ? findInSnapshot(data, key) : null;
@@ -218,75 +222,99 @@ function developmentHistory(history, gameDate) {
   };
 }
 
-function personBrief(p, code, assessed, places) {
+function personBrief(p, code, assessed, places, cat) {
   return {
     name: profileNameOf(p).main,
     age: intOrNull(p.age), ca: caOf(p), pa: paOf(p),
     familiarity: familiarityAt(p, code),
     lineup_places: places.map((x) => `${x.lineup} ${x.slot}`),
-    role_fit: fitFor(p, assessed, code),
+    role_fit: fitFor(p, assessed, code, null),
   };
 }
 
+/** Club players already at this position, best on these roles first (possible depth or internal successors). */
+function internalOptions(cat, data, code, assessed, exclude, n) {
+  return (data.players || [])
+    .filter((p) => isClubOwned(p, data) && !exclude.has(persistentId(p)) && (familiarityAt(p, code) || 0) >= 12)
+    .map((p) => {
+      const scores = Object.values(fitFor(p, assessed, code)).map((f) => f.squadlab_role_score_out_of_100).filter((v) => typeof v === 'number');
+      return { p, avg: scores.length ? scores.reduce((s, v) => s + v, 0) / scores.length : 0 };
+    })
+    .sort((a, b) => b.avg - a.avg || (paOf(b.p) || 0) - (paOf(a.p) || 0))
+    .slice(0, n)
+    .map((x) => x.p);
+}
+
 /**
- * Recruitment: for each of the target's main positions, the lineup places
- * there and the club players he'd compete with (lineup occupants first, then
- * the strongest other club players at that position).
+ * Recruitment: every formation slot at the target's main positions, each
+ * judged on the role pair saved for that slot (so RDM and LDM can differ),
+ * with the starter, backup and future option in that slot and the strongest
+ * other club players there, all scored on the same roles.
  */
 function squadFit(cat, target, positions, ctx) {
   const data = ctx.model.raw;
   const lineups = ctx.lineups || [];
   const out = [];
-  const keyOf = (p) => ctx.playerKeyOf(p);
   for (const x of positions) {
     const code = x.pos.code;
-    const slots = SLOTS.filter((s) => s.fam === code);
-    const assessed = assessedRoles(cat, target, code, null, ctx.tactic, 'his best role here (no role saved)');
-    const competitors = [];
-    const seen = new Set([persistentId(target)]);
-    const empty = [];
-    for (const d of DEFAULT_LINEUPS) {
-      const l = lineups.find((y) => y.id === d.id);
-      if (!l) continue;
-      for (const s of slots) {
-        const key = l.slots[s.id];
-        if (!key) { empty.push(`${l.name} ${s.id}`); continue; }
-        const p = findInSnapshot(data, key);
+    for (const s of SLOTS.filter((sl) => sl.fam === code)) {
+      const assessed = slotAssessed(cat, ctx.slotRoles, s.id, target);
+      const saved = savedPair(cat, ctx.slotRoles, s.id);
+      const seen = new Set([persistentId(target)]);
+      const players = [];
+      const holders = {};
+      for (const d of DEFAULT_LINEUPS) {
+        const key = lineups.find((y) => y.id === d.id)?.slots[s.id] || null;
+        const p = key ? findInSnapshot(data, key) : null;
+        holders[d.name] = !key ? null : p ? profileNameOf(p).main : 'a player not in this snapshot';
         if (!p || seen.has(persistentId(p))) continue;
         seen.add(persistentId(p));
-        competitors.push({ ...personBrief(p, code, assessed, placesOf(lineups, key)), at_club: isClubOwned(p, data) });
+        players.push({ ...personBrief(p, code, assessed, placesOf(lineups, key), cat), at_club: isClubOwned(p, data) });
       }
+      for (const p of internalOptions(cat, data, code, assessed, seen, 2)) {
+        seen.add(persistentId(p));
+        players.push({ ...personBrief(p, code, assessed, placesOf(lineups, ctx.playerKeyOf(p)), cat), at_club: true });
+      }
+      out.push({
+        slot: s.id,
+        position: x.pos.short, name: x.pos.label,
+        his_familiarity: x.familiarity,
+        saved_roles: Object.fromEntries(PHASES.map((ph) => [ph.id, saved[ph.id] ? { name: saved[ph.id].name, ...phaseDescription(cat, saved[ph.id]) } : null])),
+        his_role_fit: fitFor(target, assessed, code, cat),
+        holders,
+        club_players: players,
+      });
     }
-    // Other club players who can play there: possible depth or internal successors.
-    const others = (data.players || [])
-      .filter((p) => isClubOwned(p, data) && !seen.has(persistentId(p)) && (familiarityAt(p, code) || 0) >= 12)
-      .map((p) => {
-        const fit = fitFor(p, assessed, code);
-        const scores = Object.values(fit).map((f) => f.squadlab_role_score_out_of_100).filter((v) => typeof v === 'number');
-        return { p, avg: scores.length ? scores.reduce((s, v) => s + v, 0) / scores.length : 0 };
-      })
-      .sort((a, b) => b.avg - a.avg || (paOf(b.p) || 0) - (paOf(a.p) || 0))
-      .slice(0, MAX_INTERNAL);
-    for (const { p } of others) {
-      seen.add(persistentId(p));
-      competitors.push({ ...personBrief(p, code, assessed, placesOf(lineups, keyOf(p))), at_club: true, not_in_default_lineups: true });
-    }
-    out.push({
-      position: x.pos.short, name: x.pos.label,
-      lineup_slots: slots.map((s) => s.id),
-      his_familiarity: x.familiarity,
-      assessed_roles: Object.fromEntries(PHASES.filter((ph) => assessed[ph.id]).map((ph) => [ph.id, { name: assessed[ph.id].role.name, source: assessed[ph.id].source }])),
-      his_role_fit: fitFor(target, assessed, code, cat),
-      empty_lineup_places: empty,
-      club_players: competitors,
-    });
   }
   return out;
 }
 
+/** Development: his First / Backup / Future XI places with the slot's saved roles and his scores on them. */
+function assignmentBlocks(cat, p, places, slotRoles) {
+  const topTier = places.length ? Math.min(...places.map((x) => DEFAULT_LINEUPS.findIndex((d) => d.id === x.lineupId))) : -1;
+  return places.map((x) => {
+    const pos = cat.positions.find((y) => y.code === x.code);
+    const saved = savedPair(cat, slotRoles, x.slot);
+    const assessed = Object.fromEntries(PHASES.map((ph) => [ph.id, saved[ph.id] ? { role: saved[ph.id], source: SAVED_SOURCE } : null]));
+    const unset = PHASES.filter((ph) => !saved[ph.id]).map((ph) => ph.id);
+    const block = {
+      lineup: x.lineup, slot: x.slot, position: pos?.short || x.code,
+      primary: DEFAULT_LINEUPS.findIndex((d) => d.id === x.lineupId) === topTier,
+      familiarity: familiarityAt(p, x.code),
+      role_fit: fitFor(p, assessed, x.code, cat),
+      unset_phases: unset,
+    };
+    if (unset.length) {
+      // Roles he could be given there; anything chosen from these is a suggestion, not a saved role.
+      block.candidate_roles = Object.fromEntries(unset.map((ph) => [ph, rankedRoles(cat, p, x.code, ph).slice(0, TOP_ROLES).map(({ role }) => roleEntry(cat, p, role, x.code))]));
+    }
+    return block;
+  });
+}
+
 /**
  * @param {object} res  { player, model, current } — the snapshot the page shows
- * @param {object} ctx  { cat, lineups, tactic, rolePrefs, history, playerKeyOf(p), teamLabelOf(squad, model) }
+ * @param {object} ctx  { cat, lineups, slotRoles, history, playerKeyOf(p), teamLabelOf(squad, model) }
  * @returns {{ payload, signature, id, type, name }}
  */
 export function buildPlayerRequest(res, ctx) {
@@ -310,12 +338,8 @@ export function buildPlayerRequest(res, ctx) {
     positions: positions.map((x) => positionBlock(cat, p, x)),
   };
   if (type === 'development') {
-    payload.lineup_assignments = places.map((x) => {
-      const pos = cat.positions.find((y) => y.code === x.code);
-      const assessed = assessedRoles(cat, p, x.code, ctx.rolePrefs, ctx.tactic, 'his best role here (no role saved)');
-      return { lineup: x.lineup, slot: x.slot, position: pos?.short || x.code, familiarity: familiarityAt(p, x.code), role_fit: fitFor(p, assessed, x.code, cat) };
-    });
-    payload.formation_slots = formationSlots(cat, positions.map((x) => x.pos.code), ctx.lineups || [], model.raw, key, ctx.playerKeyOf);
+    payload.lineup_assignments = assignmentBlocks(cat, p, places, ctx.slotRoles);
+    payload.formation_slots = formationSlots(cat, positions.map((x) => x.pos.code), ctx.lineups || [], model.raw, key, ctx.slotRoles);
     payload.development_history = developmentHistory(ctx.history, model.gameDate);
   } else {
     // His best positions that the lineups use (4-2-3-1), plus one he'd need retraining for.

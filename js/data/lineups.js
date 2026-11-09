@@ -7,8 +7,14 @@
 //
 // Shape (pure functions below return a NEW state):
 //   { lineups: [ { id, name, kind: 'default'|'custom', tier?, createdAt,
-//                  slots: { GK: playerKey|null, RB: …, … } } ] }
+//                  slots: { GK: playerKey|null, RB: …, … } } ],
+//     slotRoles: { GK: { in_possession: roleId|null, out_of_possession: roleId|null }, RB: …, … } }
 // playerKey = "<careerId>:<persistent player ID>" (see players.js).
+// slotRoles is the career's tactical setup: one In Possession and one Out of
+// Possession role per formation slot, shared by First XI, Backup XI and Future
+// XI and kept whoever is (or isn't) in the slot. Role ids are the role
+// catalogue's stable ids ("<position>:<phase>:<role>"); older data without
+// slotRoles loads with every role unset.
 
 // ---- Formation (definition only — rendering lives in the lineup view) ------
 
@@ -45,6 +51,23 @@ export const isDefault = (id) => DEFAULT_IDS.has(id);
 
 const emptySlots = () => Object.fromEntries(SLOT_IDS.map((id) => [id, null]));
 
+export const ROLE_PHASES = ['in_possession', 'out_of_possession'];
+export const emptySlotRoles = () => Object.fromEntries(SLOT_IDS.map((id) => [id, { in_possession: null, out_of_possession: null }]));
+
+/** A stored role id is kept only when it belongs to that slot's position and phase. */
+export const validSlotRole = (slotId, phase, roleId) => typeof roleId === 'string' && !!SLOT_BY_ID[slotId] && roleId.startsWith(`${SLOT_BY_ID[slotId].fam}:${phase}:`) && roleId.length <= 120;
+
+export function sanitizeSlotRoles(raw) {
+  const out = emptySlotRoles();
+  if (raw && typeof raw === 'object') {
+    for (const id of SLOT_IDS) for (const ph of ROLE_PHASES) {
+      const v = raw[id]?.[ph];
+      if (validSlotRole(id, ph, v)) out[id][ph] = v;
+    }
+  }
+  return out;
+}
+
 export function normalizeLineupName(raw) {
   return String(raw ?? '').replace(/\s+/g, ' ').trim();
 }
@@ -79,12 +102,29 @@ export function sanitizeLineups(raw, careerId) {
     seen.add(l.id);
     customs.push({ id: l.id, name, kind: 'custom', createdAt: l.createdAt ?? null, slots: cleanSlots(l.slots) });
   }
-  return { lineups: [...defaults, ...customs] };
+  return { lineups: [...defaults, ...customs], slotRoles: sanitizeSlotRoles(raw?.slotRoles) };
 }
 
 export const emptyLineups = (careerId) => sanitizeLineups(null, careerId);
 
-const replaceLineup = (state, id, fn) => ({ lineups: state.lineups.map((l) => (l.id === id ? fn(l) : l)) });
+const replaceLineup = (state, id, fn) => ({ ...state, lineups: state.lineups.map((l) => (l.id === id ? fn(l) : l)) });
+
+/**
+ * Set or clear one slot's roles for the three default lineups. `roles` may
+ * hold either phase; a phase given as null is cleared, one left out is kept.
+ */
+export function setSlotRoles(state, slotId, roles) {
+  if (!SLOT_BY_ID[slotId]) throw new Error(`Unknown slot ${slotId}`);
+  const current = state.slotRoles?.[slotId] || { in_possession: null, out_of_possession: null };
+  const next = { ...current };
+  for (const ph of ROLE_PHASES) {
+    if (!(ph in (roles || {}))) continue;
+    const v = roles[ph];
+    if (v !== null && !validSlotRole(slotId, ph, v)) throw new Error(`That role doesn't belong to ${slotId}.`);
+    next[ph] = v;
+  }
+  return { ...state, slotRoles: { ...emptySlotRoles(), ...(state.slotRoles || {}), [slotId]: next } };
+}
 
 /** Put a player in one slot (replacing whoever was there). Other slots are untouched. */
 export function assignSlot(state, lineupId, slotId, playerKey) {
@@ -101,7 +141,7 @@ export function createLineup(state, rawName, slots = null) {
   const name = normalizeLineupName(rawName);
   if (!name) throw new Error('Enter a lineup name.');
   const lineup = { id: newId(), name, kind: 'custom', createdAt: new Date().toISOString(), slots: { ...emptySlots(), ...(slots || {}) } };
-  return { state: { lineups: [...state.lineups, lineup] }, lineup };
+  return { state: { ...state, lineups: [...state.lineups, lineup] }, lineup };
 }
 
 export function renameLineup(state, id, rawName) {
@@ -120,7 +160,7 @@ export function duplicateLineup(state, id, rawName) {
 
 export function deleteLineup(state, id) {
   if (isDefault(id)) throw new Error('Default lineups cannot be deleted.');
-  return { lineups: state.lineups.filter((l) => l.id !== id) };
+  return { ...state, lineups: state.lineups.filter((l) => l.id !== id) };
 }
 
 // ---- Squad slot (derived from the three default lineups only) -------------

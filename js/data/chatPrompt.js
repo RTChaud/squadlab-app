@@ -201,16 +201,27 @@ function positionsSection(payload) {
 }
 
 function lineupSection(payload) {
-  const out = ['MY LINEUP PLACES (First XI, Backup XI, Future XI; 4-2-3-1)'];
-  if (!payload.lineup_assignments?.length) { out.push('None. Base the lineup assessment on his profile.'); return out.join('\n'); }
-  for (const a of payload.lineup_assignments) out.push(`${a.lineup} ${a.slot} at ${a.position}, familiarity ${unknown(a.familiarity)}. ${roleLine(a.role_fit)}`);
+  const out = ['MY LINEUP PLACES (First XI, Backup XI, Future XI in a 4-2-3-1; each slot has one saved role pair shared by all three)'];
+  if (!payload.lineup_assignments?.length) { out.push('None. Assess him from his profile.'); return out.join('\n'); }
+  const primary = payload.lineup_assignments.filter((a) => a.primary);
+  out.push(`Primary job: ${primary.map((a) => `${a.lineup} ${a.slot}`).join(' and ')}.`);
+  for (const a of payload.lineup_assignments) {
+    out.push('');
+    out.push(`${a.lineup} ${a.slot} at ${a.position}${a.primary ? ' (primary job)' : ''}, familiarity ${unknown(a.familiarity)}`);
+    for (const ph of PHASES_TXT) {
+      const f = a.role_fit?.[ph];
+      if (f) { out.push(`${PHASE_LABEL[ph]}: ${f.role} (saved for this slot): score ${score(f.squadlab_role_score_out_of_100)}; score inputs ${list(f.key_attributes)}. ${dutyText(f)}`); continue; }
+      const cands = a.candidate_roles?.[ph] || [];
+      out.push(`${PHASE_LABEL[ph]}: not set for this slot.${a.primary && cands.length ? ` Possible roles (any you pick is a suggestion, not my setup): ${cands.map((r) => `${r.name} ${score(r.squadlab_role_score_out_of_100)} (score inputs ${list(r.key_attributes)})`).join('; ')}` : ''}`);
+    }
+  }
   return out.join('\n');
 }
 
 function formationSection(payload) {
   if (!payload.formation_slots?.length) return null;
   const out = ['FORMATION SLOTS AT HIS POSITIONS (current First / Backup / Future XI holders)'];
-  for (const f of payload.formation_slots) for (const sl of f.slots) out.push(`${sl.slot} at ${f.position}: First XI ${sl['First XI'] || 'empty'}, Backup XI ${sl['Backup XI'] || 'empty'}, Future XI ${sl['Future XI'] || 'empty'}`);
+  for (const f of payload.formation_slots) for (const sl of f.slots) out.push(`${sl.slot} at ${f.position}: First XI ${sl['First XI'] || 'empty'}, Backup XI ${sl['Backup XI'] || 'empty'}, Future XI ${sl['Future XI'] || 'empty'}${sl.roles ? `; saved roles: ${PHASES_TXT.map((ph) => `${PHASE_LABEL[ph]} ${sl.roles[ph] || 'not set'}`).join(', ')}` : ''}`);
   return out.join('\n');
 }
 
@@ -228,17 +239,24 @@ function historySection(payload) {
 }
 
 function squadFitSection(payload) {
-  const out = ['MY SQUAD AT HIS POSITIONS (lineups use a 4-2-3-1; everyone scored on the same roles)'];
-  if (!payload.squad_fit?.length) { out.push('None of his positions has a slot in my lineups.'); return out.join('\n'); }
+  const out = ['MY SQUAD, SLOT BY SLOT (4-2-3-1; each slot has its own saved role pair, shared by First, Backup and Future XI; everyone in a slot is scored on the same roles)'];
+  if (!payload.squad_fit?.length) { out.push('None of his positions has a slot in my formation.'); return out.join('\n'); }
   for (const s of payload.squad_fit) {
     out.push('');
-    out.push(`${s.position} (${s.name}), lineup slots ${s.lineup_slots.join(', ') || 'none'}. His familiarity ${unknown(s.his_familiarity)}.`);
-    out.push(`Roles assessed: ${PHASES_TXT.filter((ph) => s.assessed_roles?.[ph]).map((ph) => `${PHASE_LABEL[ph]} ${s.assessed_roles[ph].name} (${s.assessed_roles[ph].source})`).join('; ') || 'none'}`);
-    out.push(`${payload.player.name}: ${roleLine(s.his_role_fit) || 'no role scores'}`);
-    for (const c of s.club_players) {
-      out.push(`${c.name} (${c.lineup_places?.length ? c.lineup_places.join(', ') : 'not in First, Backup or Future XI'}; age ${unknown(c.age)}, CA ${unknown(c.ca)}, PA ${unknown(c.pa)}, familiarity ${unknown(c.familiarity)}): ${roleLine(c.role_fit) || 'no role scores'}`);
+    out.push(`${s.slot} (${s.position}, ${s.name}). His familiarity ${unknown(s.his_familiarity)}.`);
+    for (const ph of PHASES_TXT) {
+      const f = s.his_role_fit?.[ph];
+      if (!f) continue;
+      out.push(s.saved_roles?.[ph]
+        ? `${PHASE_LABEL[ph]}: ${f.role} (saved for ${s.slot}). ${dutyText(f)} ${payload.player.name}: score ${score(f.squadlab_role_score_out_of_100)}; score inputs ${list(f.key_attributes)}`
+        : `${PHASE_LABEL[ph]}: not set for ${s.slot}, so this is general positional fit using ${f.role}. ${payload.player.name}: score ${score(f.squadlab_role_score_out_of_100)}; score inputs ${list(f.key_attributes)}`);
     }
-    if (s.empty_lineup_places?.length) out.push(`Empty lineup places: ${s.empty_lineup_places.join(', ')} (an empty place alone doesn't prove a squad gap).`);
+    out.push(`Holders: First XI ${s.holders?.['First XI'] || 'empty'}, Backup XI ${s.holders?.['Backup XI'] || 'empty'}, Future XI ${s.holders?.['Future XI'] || 'empty'}`);
+    for (const c of s.club_players) {
+      out.push(`${c.name} (${c.lineup_places?.length ? c.lineup_places.join(', ') : 'not in First, Backup or Future XI'}; age ${unknown(c.age)}, CA ${unknown(c.ca)}, PA ${unknown(c.pa)}, familiarity ${unknown(c.familiarity)}): ${PHASES_TXT.filter((ph) => c.role_fit?.[ph]).map((ph) => `${PHASE_LABEL[ph]} ${score(c.role_fit[ph].squadlab_role_score_out_of_100)} (${list(c.role_fit[ph].key_attributes)})`).join('; ') || 'no role scores'}`);
+    }
+    const empty = Object.entries(s.holders || {}).filter(([, v]) => !v).map(([k]) => k);
+    if (empty.length) out.push(`Empty in ${empty.join(', ')} (an empty place alone doesn't prove a squad gap).`);
   }
   return out.join('\n');
 }
@@ -256,6 +274,10 @@ export function playerReportText(report, payload) {
     out.push('');
     out.push(`Fit in My Lineups: ${report.lineup_fit}`);
     if (report.suggested_slot) out.push(`Suggested slot (recommendation; he has no lineup place): ${report.suggested_slot.lineup} ${report.suggested_slot.slot}. ${report.suggested_slot.explanation}`);
+    for (const ph of PHASES_TXT) {
+      const x = report.suggested_roles?.[ph];
+      if (x) out.push(`Suggested ${PHASE_LABEL[ph]} role (a suggestion; not set for ${x.lineup} ${x.slot}): ${x.role}. ${x.explanation}`);
+    }
     out.push('');
     out.push('Development Priorities:');
     report.priorities.forEach((x, i) => {
@@ -269,7 +291,7 @@ export function playerReportText(report, payload) {
     out.push(report.headline);
     out.push(report.explanation);
     out.push('');
-    out.push(`Best Fit: ${bf.position}${bf.slot ? `, ${bf.slot} slot` : ''}. ${bf.explanation}`);
+    out.push(`Best Fit: ${bf.slot ? `${bf.slot} (${bf.position})` : bf.position}. ${bf.explanation}`);
     if (bf.in_possession) out.push(`In Possession: ${bf.in_possession}`);
     if (bf.out_of_possession) out.push(`Out of Possession: ${bf.out_of_possession}`);
     if (report.competition.length) {
@@ -296,8 +318,8 @@ export function buildPlayerChatPrompt(payload, report = null) {
   const club = payload.manager_club;
   const parts = [];
   const ask = dev
-    ? `give me a development report: where he is best (position and roles in and out of possession, from his familiarity and attributes, flagging any position that would need retraining); how he fits my First XI, Backup XI and Future XI places (if I've picked him away from his best position, explain the trade-off and develop him for the job he has; if he has no place, say so and, if the evidence supports it, suggest one specific slot from the formation slots, labelled as a recommendation); and two or three development priorities ranked by what improving each would help him do in that role, with his current value and the specific action it affects. A low number alone is not a reason, and an attribute outside the role score can still come first if his job needs it. If a priority depends on a tactical instruction that isn't in the data, make it conditional. Lead with one concrete takeaway.`
-    : `give me a recruitment report: his best fit in my squad, comparing him by name with the club players listed for that position; a verdict (immediate upgrade, depth, development signing or pass) naming who he'd compete with or displace; and price advice. The asking price is the assumed transfer fee: say pay it, only buy below a ceiling (give a number only when the data supports it, and explain it) or pass. If the fee is unknown, still give the footballing verdict and say what would make the deal worthwhile. An empty lineup place alone doesn't prove a squad gap, so check the club players who can already play there.`;
+    ? `give me a development report: his best natural fit (position and roles in and out of possession, from his familiarity and attributes, flagging any position that would need retraining); the job I've given him, led by his First XI place if he has one, then Backup XI, then Future XI, with the roles saved for that slot, kept distinct from his best natural fit (if he holds more than one slot at that level, name them and explain any difference that matters; if a phase isn't set, label any role you propose as a suggestion; if he has no place, say so, assess him from his profile and, if the evidence supports it, suggest one specific slot, labelled as a recommendation); and two or three development priorities for that job, considering both phases, ranked by what improving each would help him do there, with his current value and the specific action it affects. A low number alone is not a reason, and an attribute outside the role score can still come first if his job needs it. If a priority depends on a tactical instruction that isn't in the data, make it conditional. Lead with one concrete takeaway.`
+    : `give me a recruitment report: his best fit in the tactic I actually use, judging him slot by slot on each slot's saved roles and his familiarity in both phases (slots at the same position can have different jobs; where a role isn't set, say that part is general positional fit), leading with his best slot and its roles and comparing him by name with that slot's starter, backup and future option and the other club players listed; a verdict (immediate upgrade, depth, development signing or pass) naming who he'd compete with or displace; and price advice. The asking price is the assumed transfer fee: say pay it, only buy below a ceiling (give a number only when the data supports it, and explain it) or pass. If the fee is unknown, still give the footballing verdict and say what would make the deal worthwhile. An empty lineup place alone doesn't prove a squad gap, so check the club players who can already play there.`;
   parts.push(`I manage ${club || 'a club'} in Football Manager. ${dev ? `${p.name} is one of my players.` : `${p.name} is an external player I'm considering.`} Using the SquadLab data below, if I've added a specific question under "My follow-up question" at the end, answer it using this data. If that section is blank, ${ask}${report ? ' A SquadLab report is included: check its reasoning against the data.' : ''}
 
 Ground every claim in the figures, treat SquadLab role scores as evidence and explain the attributes behind them, and only add caveats that matter to the decision.
