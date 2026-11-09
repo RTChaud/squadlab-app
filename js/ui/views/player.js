@@ -4,7 +4,11 @@ import { h, icon, orDash, DASH } from '../dom.js';
 import {
   getPlayerProfile, tagsForPlayer, playerKeyOf, squadSlotsFor,
   getChangePrefs, setChangePrefs, earlierObservations, getPlayerAt,
+  getPlayerHistory, listLineups, getTactic, getRadarPrefs,
 } from '../../store.js';
+import { AiAnalysisButton, CopyForChatButton } from '../components/aiAnalysis.js';
+import { buildPlayerRequest } from '../../data/playerRequest.js';
+import { loadRoleCatalogue } from '../../data/roles.js';
 import { openTagSheet } from '../components/tagSheet.js';
 import { openAttributeInfo } from '../components/attributeInfoSheet.js';
 import { RoleExplorer } from '../components/roleExplorer.js';
@@ -282,11 +286,36 @@ function actionRow(p, devHref, model, current) {
   );
 }
 
+/**
+ * AI Analysis | Copy for ChatGPT, under Development / Contract / Tags. The
+ * report type follows club membership (Development Report for the club's
+ * players, Recruitment Report otherwise); the request is built at tap time
+ * from the shown snapshot, so lineup or role changes are always included.
+ */
+function aiRow(p, model, current, cat, history) {
+  const getRequest = () => {
+    if (!cat || cat.error || !cat.positions?.length) return null;
+    const key = playerKeyOf(p);
+    const req = buildPlayerRequest({ player: p, model, current }, {
+      cat, history,
+      lineups: listLineups(), tactic: getTactic(),
+      rolePrefs: key ? getRadarPrefs(key) : null,
+      playerKeyOf,
+      teamLabelOf: (squad, m) => resolveTeams(m).find((t) => t.squad && t.squad.id === squad.id)?.label || null,
+    });
+    return {
+      kind: 'player', payload: req.payload, signature: req.signature,
+      basisText: `${req.name} · ${req.type === 'development' ? 'Development Report' : 'Recruitment Report'}`,
+    };
+  };
+  return h('div', { class: 'ai-actions profile-ai' }, AiAnalysisButton({ getRequest }), CopyForChatButton({ getRequest }));
+}
+
 // ---- View -----------------------------------------------------------------------------
 
 export async function PlayerView({ pid, query }) {
   const back = backTarget(query, '#/');
-  const [res] = await Promise.all([getPlayerProfile(pid), loadNations()]);
+  const [res, cat, history] = await Promise.all([getPlayerProfile(pid), loadRoleCatalogue(), getPlayerHistory(pid), loadNations()]);
   if (!res || !res.player) {
     return {
       title: 'Player', back,
@@ -326,6 +355,7 @@ export async function PlayerView({ pid, query }) {
           ` Showing their last recorded data, from ${formatGameDate(model.gameDate)}.`)),
       headEl,
       actionRow(p, devHref, model, current),
+      aiRow(p, model, current, cat, history),
       details(p, model, current, backHere),
       familiaritySection(p),
       RadarSection(p, playerKeyOf(p)),
