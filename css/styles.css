@@ -1123,6 +1123,11 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .pslot-note { font-size: 10px; font-weight: 600; line-height: 1.2; color: #e0a43c; }
 .pslot-add { display: inline-flex; align-items: center; gap: 3px; font-size: 13px; font-weight: 700; color: var(--accent); }
 .pslot-add .icon { display: inline-block; width: 14px; height: 14px; }
+.pslot-roles { flex-shrink: 0; max-width: 100%; padding: 1px 5px; border-radius: 999px; font-size: 10px; font-weight: 800; line-height: 1.4; text-align: center; color: var(--text-2); background: rgba(255, 255, 255, 0.07); white-space: nowrap; overflow: hidden; text-overflow: clip; }
+.slot-roles { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0 0 4px; font-size: 15px; }
+.slot-roles dt { color: var(--muted); font-weight: 650; }
+.slot-roles dd { margin: 0; color: var(--text); font-weight: 700; }
+.slot-roles dd.muted { color: var(--muted); font-weight: 600; }
 
 @media (min-width: 620px) {
   .pitch-field { padding: 20px 18px; gap: 18px; }
@@ -1590,6 +1595,15 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .ai-suggest-head .ai-pick-note { margin-left: 2px; }
 .ai-tag-first { margin-left: 0; margin-right: 2px; }
 .ai-suggest .ai-text { margin-top: 4px; font-size: 14px; }
+.ai-suggest-item + .ai-suggest-item { margin-top: 10px; }
+.ai-jobs { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ai-job { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--surface-2); }
+.ai-job.primary { box-shadow: inset 3px 0 0 var(--accent); }
+.ai-job-head { display: flex; gap: 8px; align-items: baseline; font-size: 14px; font-weight: 750; color: var(--text); }
+.ai-job-head span { font-weight: 600; color: var(--muted); }
+.ai-job-roles { display: flex; flex-direction: column; font-size: 13px; color: var(--muted); }
+.ai-job-roles b { color: var(--text-2); font-weight: 700; }
+.ai-job-roles i { font-style: normal; color: var(--muted); }
 .cmp-mode-label { flex: none; font-size: 14px; font-weight: 650; color: var(--text-2); }
 .cmp-mode { flex: 1 1 auto; min-width: 0; max-width: 260px; }
 .cmp-picker:empty { display: none; }
