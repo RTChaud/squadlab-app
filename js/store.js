@@ -357,6 +357,9 @@ async function saveLineups(next) {
 
 export const assignLineupSlot = (id, slot, key) => saveLineups(Lineups.assignSlot(state.lineups, id, slot, key));
 export const clearLineupSlot = (id, slot) => saveLineups(Lineups.clearSlot(state.lineups, id, slot));
+/** The career's saved role pair per formation slot (shared by First, Backup and Future XI). */
+export const getSlotRoles = () => state.lineups.slotRoles || Lineups.emptySlotRoles();
+export const setSlotRoles = (slot, roles) => saveLineups(Lineups.setSlotRoles(state.lineups, slot, roles));
 export async function createLineup(name) {
   const r = Lineups.createLineup(state.lineups, name);
   await saveLineups(r.state);
