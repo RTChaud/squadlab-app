@@ -8,7 +8,7 @@ Personal Football Manager companion. Static site with no build step or backend, 
 3. Go to Settings → Pages → Source: *Deploy from a branch* → `main` / `(root)` → Save.
 4. Open `https://USERNAME.github.io/squadlab/`. On iPhone, use Share → Add to Home Screen.
 
-Imported extracts are stored only in this browser's IndexedDB. They are never uploaded.
+Imported extracts are stored only in this browser's IndexedDB. They are never uploaded. The one exception is **AI Analysis** on Comparison: tapping it sends the two compared players' data (and the selected position and roles) to the SquadLab Worker, which forwards it to the AI provider.
 
 ## Data
 The **Data** button in the header opens:
@@ -48,10 +48,16 @@ js/data/roles.js       role catalogue loading/validation, position + attribute m
 js/data/listView.js    Squad/Shortlists columns, filters (incl. Tactic → filters), sorting, change columns, saved views
 js/data/money.js       GBP formatting (two decimals, display rounded up: next £1,000 below £1m, next £100,000 from £1m), weekly → monthly salary, typed amounts
 js/data/contract.js    Contract data shared by the Contract sheet, table columns and filters: expiry, salary, value, clauses (FM26 codes 0, 27, 1 and 55 read only in the tested FM26 format)
+js/data/comparisonRequest.js  AI Analysis: builds the structured comparison (players, position/roles, fees, benchmarks) sent to the Worker
+js/data/aiClient.js    AI Analysis: Worker URL, the /compare call, response checks
 js/ui/dom.js           DOM helper + icons
 js/ui/dataMenu.js      Data menu and import/export/reset flows
 js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js, tagSheet.js, promptSheet.js, radarChart.js, radarSection.js,
                        playerBrowser.js, playerTable.js, filterSheet.js, viewSheet.js, attributePicker.js, familiarityPitch.js,
-                       attributeInfoSheet.js, playerPicker.js, radarAttributePicker.js, roleControls.js, roleExplorer.js, contractSheet.js
+                       attributeInfoSheet.js, playerPicker.js, radarAttributePicker.js, roleControls.js, roleExplorer.js, contractSheet.js,
+                       aiAnalysis.js (AI Analysis button + report sheet)
 js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js, lineups.js, lineup.js, lineupPicker.js, compare.js, tactic.js (position + roles → Find matching players)
+worker/compareRoute.js  Cloudflare Worker route for POST /compare + CORS (called from the Worker's fetch handler)
+worker/compare.js      /compare: request validation, provider call, report validation
+worker/comparePrompt.js  fixed analyst instructions + report schema (Worker only)
 ```
