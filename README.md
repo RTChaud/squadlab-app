@@ -42,7 +42,7 @@ js/data/players.js     persistent player identity (player_key), metrics, history
 js/data/nations.js     reads data/fm-nation-mapping.json to show nationalities
 js/data/flags.js       nation → flag emoji
 js/data/tags.js        player tags (app data, kept in backups)
-js/data/lineups.js     4-2-3-1 slot definitions, default/custom lineups, Squad slot ranks
+js/data/lineups.js     4-2-3-1 slot definitions, default/custom lineups, Squad slot ranks, saved role pair per slot (shared by First / Backup / Future XI)
 js/data/radar.js       radar overviews, selectable attributes, radar preferences
 js/data/roles.js       role catalogue loading/validation, position + attribute mapping, Role attributes /100 score
 js/data/listView.js    Squad/Shortlists columns, filters (incl. Tactic → filters), sorting, change columns, saved views
@@ -51,13 +51,13 @@ js/data/contract.js    Contract data shared by the Contract sheet, table columns
 js/data/comparisonRequest.js  AI Analysis: builds the structured comparison (players, position/roles, fees, benchmarks) sent to the Worker
 js/data/aiClient.js    AI Analysis: Worker URL, the /compare call, response checks, report wording
 js/data/chatPrompt.js  Copy for ChatGPT: the comparison or player (and its report) as one plain-text prompt, built locally
-js/data/playerRequest.js  AI Analysis on the player page: Development / Recruitment Report data (positions, roles, lineups, history, club alternatives)
+js/data/playerRequest.js  AI Analysis on the player page: Development / Recruitment Report data (positions, roles, lineup jobs and slot roles, history, club alternatives)
 js/ui/dom.js           DOM helper + icons
 js/ui/dataMenu.js      Data menu and import/export/reset flows
 js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js, tagSheet.js, promptSheet.js, radarChart.js, radarSection.js,
                        playerBrowser.js, playerTable.js, filterSheet.js, viewSheet.js, attributePicker.js, familiarityPitch.js,
                        attributeInfoSheet.js, playerPicker.js, radarAttributePicker.js, roleControls.js, roleExplorer.js, contractSheet.js,
                        aiAnalysis.js (AI Analysis + Copy for ChatGPT buttons, report sheet), playerReport.js (Development / Recruitment Report views)
-js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js, lineups.js, lineup.js, lineupPicker.js, compare.js, tactic.js (position + roles → Find matching players)
+js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js, lineups.js, lineup.js (pitch + slot roles), lineupPicker.js, compare.js, tactic.js (position + roles → Find matching players)
 worker/worker.js       Cloudflare Worker (paste into the dashboard's Edit code): POST /compare with access code, rate limit, fixed analyst instructions, report checks
 ```
