@@ -6,6 +6,7 @@
 
 export const WORKER_URL = 'https://squadlab-worker.romain-96d.workers.dev';
 export const COMPARE_ENDPOINT = `${WORKER_URL}/compare`;
+export const PLAYER_ENDPOINT = `${WORKER_URL}/player`;
 const TIMEOUT_MS = 90_000;
 const CODE_KEY = 'squadlab:ai-access-code';
 
@@ -39,13 +40,8 @@ export function validReport(r) {
   return r;
 }
 
-/**
- * POST the comparison; resolves the validated report. The response must carry
- * the same comparison_id that was sent, so an answer can never be shown for a
- * different comparison. `signal` cancels the request. Errors carry the
- * Worker's code (e.g. 'unauthorized', 'rate_limited', 'daily_limit').
- */
-export async function requestComparison(payload, { signal, code = getAccessCode() } = {}) {
+/** POST to the Worker; resolves the validated report. The response must echo the id that was sent. */
+async function post(endpoint, payload, idField, validator, { signal, code = getAccessCode() } = {}) {
   if (!code) throw new AnalysisError('Enter the access code.', 'no_code');
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(new AnalysisError('The analysis took too long.', 'timeout')), TIMEOUT_MS);
@@ -53,7 +49,7 @@ export async function requestComparison(payload, { signal, code = getAccessCode(
   signal?.addEventListener('abort', onAbort, { once: true });
   let res;
   try {
-    res = await fetch(COMPARE_ENDPOINT, {
+    res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${code}` },
       body: JSON.stringify(payload),
@@ -73,10 +69,53 @@ export async function requestComparison(payload, { signal, code = getAccessCode(
     const msg = body?.error?.message;
     throw new AnalysisError(typeof msg === 'string' && msg.length < 200 ? msg : `The analysis service returned an error (${res.status}).`, body?.error?.code || 'http');
   }
-  if (body.comparison_id !== payload.comparison_id) throw new AnalysisError('The analysis didn’t match this comparison.', 'mismatch');
-  const report = validReport(body.report);
+  if (body[idField] !== payload[idField]) throw new AnalysisError('The analysis didn’t match this request.', 'mismatch');
+  const report = validator(body.report, payload);
   if (!report) throw new AnalysisError('The analysis came back incomplete.', 'invalid');
   return report;
+}
+
+/**
+ * POST the comparison; resolves the validated report. The response must carry
+ * the same comparison_id that was sent, so an answer can never be shown for a
+ * different comparison. `signal` cancels the request. Errors carry the
+ * Worker's code (e.g. 'unauthorized', 'rate_limited', 'ai_daily_limit').
+ */
+export function requestComparison(payload, opts) {
+  return post(COMPARE_ENDPOINT, payload, 'comparison_id', validReport, opts);
+}
+
+const VERDICTS = new Set(['immediate_upgrade', 'depth', 'development', 'pass']);
+const ADVICE = new Set(['pay_asking_price', 'buy_below_ceiling', 'pass', 'fee_unknown']);
+const optText = (v, max) => v === null || v === undefined || text(v, max);
+
+/** A Development or Recruitment Report from /player, checked again here. Returns the report or null. */
+export function validPlayerReport(r, payload) {
+  if (!r || typeof r !== 'object' || r.report_type !== payload?.report_type) return null;
+  if (r.report_type === 'development') {
+    const bp = r.best_position;
+    if (!text(r.takeaway, 400) || !bp || !text(bp.position, 20) || !text(bp.explanation, 800) || !optText(bp.alternative, 500)) return null;
+    for (const ph of PHASE_IDS) if (bp[ph] !== null && bp[ph] !== undefined && !(text(bp[ph].role, 80) && text(bp[ph].explanation, 600))) return null;
+    if (!text(r.lineup_fit, 1200) || !optText(r.outlook, 500)) return null;
+    if (!Array.isArray(r.priorities) || r.priorities.length < 1 || r.priorities.length > 3) return null;
+    if (!r.priorities.every((x) => x && text(x.attribute, 40) && Number.isInteger(x.current) && text(x.why, 800))) return null;
+    return r;
+  }
+  if (r.report_type === 'recruitment') {
+    const bf = r.best_fit, pr = r.price;
+    if (!VERDICTS.has(r.verdict) || !text(r.headline, 400) || !text(r.explanation, 1200)) return null;
+    if (!bf || !text(bf.position, 20) || !text(bf.explanation, 800) || !optText(bf.in_possession, 600) || !optText(bf.out_of_possession, 600)) return null;
+    if (!Array.isArray(r.competition) || r.competition.length > 3 || !r.competition.every((c) => c && text(c.name, 120) && text(c.comparison, 800))) return null;
+    if (!pr || !ADVICE.has(pr.advice) || !text(pr.explanation, 800) || !(pr.ceiling === null || (typeof pr.ceiling === 'number' && pr.ceiling > 0))) return null;
+    if (!Array.isArray(r.evidence) || r.evidence.length < 1 || r.evidence.length > 3 || !r.evidence.every((e) => text(e, 600))) return null;
+    return r;
+  }
+  return null;
+}
+
+/** POST one player's data to /player; resolves the validated report. */
+export function requestPlayerReport(payload, opts) {
+  return post(PLAYER_ENDPOINT, payload, 'report_id', validPlayerReport, opts);
 }
 
 // ---- Report wording ----------------------------------------------------------------------

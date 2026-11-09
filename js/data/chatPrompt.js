@@ -154,3 +154,144 @@ How to read the data: attributes, positional familiarity and hidden attributes r
   parts.push('MY FOLLOW-UP QUESTION\n');
   return parts.join('\n\n');
 }
+
+// ---- Player page: Development / Recruitment Report ------------------------------------------
+
+const VERDICT_TEXT = { immediate_upgrade: 'Immediate upgrade', depth: 'Adds depth', development: 'Development signing', pass: 'Pass' };
+
+/** £60.5m / £369k: how fees and ceilings read in the reports. */
+export function shortMoney(amount) {
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) return null;
+  const a = Math.abs(amount);
+  if (a >= 1e6) return `£${String(Math.round(a / 1e5) / 10)}m`;
+  if (a >= 1e3) return `£${Math.round(a / 1e3)}k`;
+  return `£${Math.round(a)}`;
+}
+
+/** Price advice as words. */
+export function adviceText(price, payload) {
+  const ask = payload.player.asking_price;
+  if (price.advice === 'pay_asking_price') return ask.status === 'available' ? `Pay the asking price (${shortMoney(ask.amount)})` : 'Pay the asking price';
+  if (price.advice === 'buy_below_ceiling') return price.ceiling ? `Only buy below ${shortMoney(price.ceiling)}` : 'Only buy below a lower fee';
+  if (price.advice === 'fee_unknown') return 'Asking price unknown';
+  return 'Pass at this price';
+}
+
+export const verdictText = (v) => VERDICT_TEXT[v] || v;
+
+const roleLine = (fit) => PHASES_TXT.filter((ph) => fit?.[ph]).map((ph) => `${PHASE_LABEL[ph]} ${fit[ph].role}${fit[ph].role_source ? ` (${fit[ph].role_source})` : ''}: score ${score(fit[ph].squadlab_role_score_out_of_100)}; ${list(fit[ph].key_attributes)}`).join(' | ');
+const PHASES_TXT = ['in_possession', 'out_of_possession'];
+
+function positionsSection(payload) {
+  const out = ['POSITIONS (familiarity out of 20; his best SquadLab role scores out of 100)'];
+  for (const x of payload.positions) {
+    out.push('');
+    out.push(`${x.position} (${x.name}): familiarity ${unknown(x.familiarity)}${x.needs_retraining ? ', would need retraining' : ''}`);
+    for (const ph of PHASES_TXT) {
+      const roles = x.best_roles?.[ph] || [];
+      if (roles.length) out.push(`${PHASE_LABEL[ph]}: ${roles.map((r) => `${r.name} ${score(r.squadlab_role_score_out_of_100)} (${list(r.key_attributes)})`).join('; ')}`);
+    }
+    if (x.position_attributes && Object.keys(x.position_attributes).length) out.push(`Attributes that matter at ${x.position} (lowest first): ${list(x.position_attributes)}`);
+  }
+  return out.join('\n');
+}
+
+function lineupSection(payload) {
+  const out = ['MY LINEUP PLACES (First XI, Backup XI, Future XI; 4-2-3-1)'];
+  if (!payload.lineup_assignments?.length) { out.push('None. Base the lineup assessment on his profile.'); return out.join('\n'); }
+  for (const a of payload.lineup_assignments) out.push(`${a.lineup} ${a.slot} at ${a.position}, familiarity ${unknown(a.familiarity)}. ${roleLine(a.role_fit)}`);
+  return out.join('\n');
+}
+
+function historySection(payload) {
+  const h = payload.development_history;
+  if (!h) return 'DEVELOPMENT HISTORY\nOnly one snapshot, so no observed changes.';
+  const ch = Object.entries(h.changed_attributes || {}).map(([k, v]) => `${k} ${v.from} → ${v.to}`).join(', ');
+  return `DEVELOPMENT HISTORY\n${h.snapshots} snapshots from ${dateText(h.from_date)} to ${dateText(h.to_date)}. CA ${unknown(h.ca?.from)} → ${unknown(h.ca?.to)}. Changed attributes: ${ch || 'none'}.`;
+}
+
+function squadFitSection(payload) {
+  const out = ['MY SQUAD AT HIS POSITIONS (lineups use a 4-2-3-1; everyone scored on the same roles)'];
+  if (!payload.squad_fit?.length) { out.push('None of his positions has a slot in my lineups.'); return out.join('\n'); }
+  for (const s of payload.squad_fit) {
+    out.push('');
+    out.push(`${s.position} (${s.name}), lineup slots ${s.lineup_slots.join(', ') || 'none'}. His familiarity ${unknown(s.his_familiarity)}.`);
+    out.push(`Roles assessed: ${PHASES_TXT.filter((ph) => s.assessed_roles?.[ph]).map((ph) => `${PHASE_LABEL[ph]} ${s.assessed_roles[ph].name} (${s.assessed_roles[ph].source})`).join('; ') || 'none'}`);
+    out.push(`${payload.player.name}: ${roleLine(s.his_role_fit) || 'no role scores'}`);
+    for (const c of s.club_players) {
+      out.push(`${c.name} (${c.lineup_places?.length ? c.lineup_places.join(', ') : 'not in First, Backup or Future XI'}; age ${unknown(c.age)}, CA ${unknown(c.ca)}, PA ${unknown(c.pa)}, familiarity ${unknown(c.familiarity)}): ${roleLine(c.role_fit) || 'no role scores'}`);
+    }
+    if (s.empty_lineup_places?.length) out.push(`Empty lineup places: ${s.empty_lineup_places.join(', ')} (an empty place alone doesn't prove a squad gap).`);
+  }
+  return out.join('\n');
+}
+
+/** The Development or Recruitment Report as it reads on screen. */
+export function playerReportText(report, payload) {
+  const out = [];
+  if (report.report_type === 'development') {
+    const bp = report.best_position;
+    out.push(`Development Report: ${report.takeaway}`);
+    out.push('');
+    out.push(`Best Position: ${bp.position}${bp.needs_retraining ? ' (would need retraining)' : ''}. ${bp.explanation}`);
+    for (const ph of PHASES_TXT) if (bp[ph]) out.push(`${PHASE_LABEL[ph]}: ${bp[ph].role}. ${bp[ph].explanation}`);
+    if (bp.alternative) out.push(`Alternative: ${bp.alternative}`);
+    out.push('');
+    out.push(`Fit in My Lineups: ${report.lineup_fit}`);
+    out.push('');
+    out.push('Development Priorities:');
+    report.priorities.forEach((x, i) => {
+      const h = x.history ? ` (${x.history.from} → ${x.history.to} between ${dateText(x.history.from_date)} and ${dateText(x.history.to_date)})` : '';
+      out.push(`${i + 1}. ${x.attribute}, currently ${x.current}${h}. ${x.why}`);
+    });
+    if (report.outlook) { out.push(''); out.push(`Outlook: ${report.outlook}`); }
+  } else {
+    const bf = report.best_fit;
+    out.push(`Recruitment Report: ${verdictText(report.verdict)}`);
+    out.push(report.headline);
+    out.push(report.explanation);
+    out.push('');
+    out.push(`Best Fit: ${bf.position}${bf.slot ? `, ${bf.slot} slot` : ''}. ${bf.explanation}`);
+    if (bf.in_possession) out.push(`In Possession: ${bf.in_possession}`);
+    if (bf.out_of_possession) out.push(`Out of Possession: ${bf.out_of_possession}`);
+    if (report.competition.length) {
+      out.push('');
+      out.push('Competition:');
+      for (const c of report.competition) out.push(`- ${c.name}: ${c.comparison}`);
+    }
+    out.push('');
+    out.push(`Price: ${adviceText(report.price, payload)}. ${report.price.explanation}`);
+    out.push('');
+    out.push('Evidence:');
+    report.evidence.forEach((e, i) => out.push(`${i + 1}. ${e}`));
+  }
+  return out.join('\n');
+}
+
+/**
+ * @param {object} payload  buildPlayerRequest(...).payload
+ * @param {object|null} report  SquadLab's report for exactly this player and context, or null
+ */
+export function buildPlayerChatPrompt(payload, report = null) {
+  const dev = payload.report_type === 'development';
+  const p = payload.player;
+  const club = payload.manager_club;
+  const parts = [];
+  const ask = dev
+    ? `give me a development report: where he is best (position and roles in and out of possession, from his familiarity and attributes, flagging any position that would need retraining), how he fits my First XI, Backup XI and Future XI places (if I've picked him away from his best position, explain the trade-off and develop him for the job he has), and two or three ranked development priorities with his current values and what improving each would help him do. Focus on what limits him in the role, not just his lowest numbers. Use the development history when it's there. Lead with one concrete takeaway.`
+    : `give me a recruitment report: his best fit in my squad, comparing him by name with the club players listed for that position; a verdict (immediate upgrade, depth, development signing or pass) naming who he'd compete with or displace; and price advice. The asking price is the assumed transfer fee: say pay it, only buy below a ceiling (give a number only when the data supports it, and explain it) or pass. If the fee is unknown, still give the footballing verdict and say what would make the deal worthwhile. An empty lineup place alone doesn't prove a squad gap, so check the club players who can already play there.`;
+  parts.push(`I manage ${club || 'a club'} in Football Manager. ${dev ? `${p.name} is one of my players.` : `${p.name} is an external player I'm considering.`} Using the SquadLab data below, if I've added a specific question under "My follow-up question" at the end, answer it using this data. If that section is blank, ${ask}${report ? ' A SquadLab report is included: check its reasoning against the data.' : ''}
+
+Ground every claim in the figures, treat SquadLab role scores as evidence and explain the attributes behind them, treat PA as a ceiling rather than a promise, and only add caveats that matter to the decision.
+
+How to read the data: attributes, positional familiarity and hidden attributes run from 1 to 20 (15+ familiarity means he can play the position now). CA and PA run up to 200. A SquadLab role score is the average of the role's key attributes multiplied by 5, out of 100. Money is in GBP.`);
+  parts.push(['CONTEXT', `My club: ${unknown(club)}`, `In-game date of the data: ${dateText(payload.game_date)}`, `${p.name}: ${statusOf(p, club)}`, `Report: ${dev ? 'Development Report (my player)' : 'Recruitment Report (external player)'}`].join('\n'));
+  parts.push(playerSection(p, { position: null }, club));
+  parts.push(positionsSection(payload));
+  if (dev) { parts.push(lineupSection(payload)); parts.push(historySection(payload)); }
+  else parts.push(squadFitSection(payload));
+  if (payload.budget?.display) parts.push(`BUDGET\nTransfer budget: ${payload.budget.display}`);
+  if (report) parts.push(`EXISTING SQUADLAB ANALYSIS\n(SquadLab's AI report for exactly this player, data and squad context. It is separate from the data above: check its conclusions against those figures.)\n\n${playerReportText(report, payload)}`);
+  parts.push('MY FOLLOW-UP QUESTION\n');
+  return parts.join('\n\n');
+}

@@ -23,7 +23,7 @@ const str = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
 const paOf = (p) => { const v = intOrNull(p?.ability?.potential); return v !== null && v > 0 ? v : null; };
 const caOf = (p) => { const v = intOrNull(p?.ability?.current); return v !== null && v >= 0 ? v : null; };
 
-function money(amount) {
+export function money(amount) {
   return typeof amount === 'number' && Number.isFinite(amount) ? { amount: round2(amount), display: formatMoneyDisplay(amount) } : null;
 }
 
@@ -55,7 +55,7 @@ function familiarity(p) {
 }
 
 /** The club the manager runs, its nation (from one of its own players), for clause applicability. */
-function managerClub(model) {
+export function managerClub(model) {
   const club = model?.club || {};
   const own = (model?.raw?.players || []).find((p) => p.club_uid === club.uid && Number.isInteger(p.club_nation_id));
   return { name: str(club.name), uid: Number.isInteger(club.uid) ? club.uid : null, nationId: own ? own.club_nation_id : null };
@@ -91,7 +91,7 @@ function squadOf(p, model, teamLabelOf) {
 }
 
 /** Role evidence for one player in one phase: familiarity is per position, values per role attribute. */
-function roleFit(p, role, posCode) {
+export function roleFit(p, role, posCode) {
   const s = roleScore(role, p);
   const val = (tier) => Object.fromEntries(role.attrs.filter((a) => a.tier === tier).map((a) => [a.tendency ? `${a.label} (tendency)` : a.label, roleValue(p, a)]));
   const fit = { squadlab_role_score_out_of_100: s.value === null ? null : round2(s.value), key_attributes: val('key') };
@@ -131,7 +131,7 @@ export function comparisonId(signature) {
   return `cmp_${(h >>> 0).toString(36)}_${signature.length.toString(36)}`;
 }
 
-function playerBlock(res, label, ctx, basis, club) {
+export function playerBlock(res, label, ctx, basis, club) {
   const p = res.player;
   const own = isClubOwned(p, res.model.raw);
   const ask = askingPrice(p);
@@ -177,7 +177,7 @@ function playerBlock(res, label, ctx, basis, club) {
   return block;
 }
 
-function roleBlock(role) {
+export function roleBlock(role) {
   const list = (tier) => role.attrs.filter((a) => a.tier === tier).map((a) => (a.tendency ? `${a.label} (tendency)` : a.label));
   const out = { name: role.name, key_attributes: list('key') };
   if (role.description) out.description = role.description;
