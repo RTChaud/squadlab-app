@@ -1528,6 +1528,11 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 /* AI Analysis (Comparison) */
 .ai-btn { gap: 8px; }
 .ai-btn-mark { font-size: 15px; line-height: 1; }
+.ai-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ai-actions .btn { min-width: 0; padding-left: 8px; padding-right: 8px; font-size: 15px; white-space: nowrap; }
+.ai-copy-in { margin-top: 12px; }
+.ai-error-limit .ai-text { margin-top: 0; color: var(--text); font-weight: 650; }
+.ai-copy-text { display: block; width: 100%; min-height: 46vh; margin-top: 10px; padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical; -webkit-user-select: text; user-select: text; }
 .ai-basis { font-size: 13px; font-weight: 650; color: var(--text-2); overflow-wrap: anywhere; }
 .ai-body { display: flex; flex-direction: column; }
 .ai-report { display: flex; flex-direction: column; gap: 14px; }
