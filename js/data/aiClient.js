@@ -1,10 +1,21 @@
 // AI Analysis: the call to SquadLab's Cloudflare Worker. The Worker holds the
 // provider key and the fixed analyst instructions; the app only sends the
 // structured comparison and receives a validated structured report.
+// Every call carries the Worker's access code (entered once per device, kept in
+// this browser only — never in app backups).
 
 export const WORKER_URL = 'https://squadlab-worker.romain-96d.workers.dev';
 export const COMPARE_ENDPOINT = `${WORKER_URL}/compare`;
 const TIMEOUT_MS = 90_000;
+const CODE_KEY = 'squadlab:ai-access-code';
+
+/** The access code saved on this device, or ''. */
+export function getAccessCode() {
+  try { return localStorage.getItem(CODE_KEY) || ''; } catch { return ''; }
+}
+export function setAccessCode(code) {
+  try { if (code) localStorage.setItem(CODE_KEY, code); else localStorage.removeItem(CODE_KEY); } catch { /* private mode: asked again next time */ }
+}
 
 export class AnalysisError extends Error {
   constructor(message, code = 'error') { super(message); this.code = code; }
@@ -31,9 +42,11 @@ export function validReport(r) {
 /**
  * POST the comparison; resolves the validated report. The response must carry
  * the same comparison_id that was sent, so an answer can never be shown for a
- * different comparison. `signal` cancels the request.
+ * different comparison. `signal` cancels the request. Errors carry the
+ * Worker's code (e.g. 'unauthorized', 'rate_limited', 'daily_limit').
  */
-export async function requestComparison(payload, { signal } = {}) {
+export async function requestComparison(payload, { signal, code = getAccessCode() } = {}) {
+  if (!code) throw new AnalysisError('Enter the access code.', 'no_code');
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(new AnalysisError('The analysis took too long.', 'timeout')), TIMEOUT_MS);
   const onAbort = () => ctrl.abort(signal.reason);
@@ -42,7 +55,7 @@ export async function requestComparison(payload, { signal } = {}) {
   try {
     res = await fetch(COMPARE_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${code}` },
       body: JSON.stringify(payload),
       signal: ctrl.signal,
     });
