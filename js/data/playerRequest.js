@@ -16,6 +16,7 @@
 import { PHASES, rolesFor, roleScore, familiarityAt } from './roles.js';
 import { SLOTS, DEFAULT_LINEUPS } from './lineups.js';
 import { ATTR_BY_KEY, HIDDEN_ATTRS, PERSONALITY_ATTRS, intOrNull } from './attributes.js';
+import { ATTRIBUTE_INFO } from './attributeInfo.js';
 import { profileNameOf, isClubOwned, findInSnapshot, persistentId } from './players.js';
 import { isNaturalGoalkeeper } from './radar.js';
 import { playerBlock, managerClub, roleFit, comparisonId } from './comparisonRequest.js';
@@ -82,10 +83,29 @@ function positionAttributes(cat, p, code) {
   return Object.fromEntries([...seen.entries()].sort((a, b) => a[1] - b[1]));
 }
 
+/**
+ * A role's description for its own phase. Some catalogue entries repeat the
+ * in-possession text for the out-of-possession role of the same name (e.g.
+ * AM (C) Attacking Midfielder); then that phase's duties aren't described and
+ * the description is withheld rather than misapplied.
+ */
+export function phaseDescription(cat, role) {
+  const d = role.description || '';
+  if (!d) return { description: null, description_note: 'No description in the role catalogue.' };
+  if (role.phase === 'out_of_possession') {
+    const twin = rolesFor(cat, role.position, 'in_possession').find((r) => r.name === role.name && r.description === d);
+    if (twin) return { description: null, description_note: 'The role catalogue only repeats the in-possession description for this role, so its out-of-possession duties are not described.' };
+  }
+  return { description: d };
+}
+
+/** A role with its phase description and this player's SquadLab score inputs. */
+const roleEntry = (cat, p, role, code) => ({ name: role.name, ...phaseDescription(cat, role), ...roleFit(p, role, code) });
+
 function positionBlock(cat, p, x) {
   const roles = {};
   for (const ph of PHASES) {
-    roles[ph.id] = x.best[ph.id].slice(0, TOP_ROLES).map(({ role }) => ({ name: role.name, ...roleFit(p, role, x.pos.code) }));
+    roles[ph.id] = x.best[ph.id].slice(0, TOP_ROLES).map(({ role }) => roleEntry(cat, p, role, x.pos.code));
   }
   return {
     position: x.pos.short,
@@ -127,9 +147,46 @@ function assessedRoles(cat, p, code, rolePrefs, tactic, bestSource) {
   return out;
 }
 
-const fitFor = (p, assessed, code) => Object.fromEntries(PHASES.filter((ph) => assessed[ph.id]).map((ph) => [ph.id, {
-  role: assessed[ph.id].role.name, role_source: assessed[ph.id].source, ...roleFit(p, assessed[ph.id].role, code),
+const fitFor = (p, assessed, code, cat = null) => Object.fromEntries(PHASES.filter((ph) => assessed[ph.id]).map((ph) => [ph.id, {
+  role: assessed[ph.id].role.name, role_source: assessed[ph.id].source,
+  ...(cat ? phaseDescription(cat, assessed[ph.id].role) : {}),
+  ...roleFit(p, assessed[ph.id].role, code),
 }]));
+
+// Attributes whose meaning is most often confused, always defined for the model.
+const CORE_DEFINITIONS = ['positioning', 'off_the_ball', 'work_rate', 'acceleration', 'pace', 'anticipation', 'decisions', 'teamwork', 'stamina'];
+
+/** SquadLab's attribute definitions (attributeInfo.js) for the attributes in play, by label. */
+function attributeDefinitions(cat, codes) {
+  const keys = new Set(CORE_DEFINITIONS);
+  for (const code of codes) for (const ph of PHASES) for (const role of rolesFor(cat, code, ph.id)) for (const a of role.attrs) if (a.mapped && !a.tendency) keys.add(a.key);
+  const out = {};
+  for (const k of keys) { const label = ATTR_BY_KEY[k]?.label; if (label && ATTRIBUTE_INFO[k]) out[label] = ATTRIBUTE_INFO[k]; }
+  return out;
+}
+
+/** Who holds each formation slot at the positions in play (First / Backup / Future XI), for slot suggestions. */
+function formationSlots(cat, codes, lineups, data, selfKey, playerKeyOf) {
+  const out = [];
+  for (const code of codes) {
+    const slots = SLOTS.filter((s) => s.fam === code);
+    if (!slots.length) continue;
+    const pos = cat.positions.find((y) => y.code === code);
+    out.push({
+      position: pos?.short || code,
+      slots: slots.map((s) => {
+        const row = { slot: s.id };
+        for (const d of DEFAULT_LINEUPS) {
+          const key = lineups.find((l) => l.id === d.id)?.slots[s.id] || null;
+          const occ = key ? findInSnapshot(data, key) : null;
+          row[d.name] = !key ? null : key === selfKey ? 'him' : occ ? profileNameOf(occ).main : 'a player not in this snapshot';
+        }
+        return row;
+      }),
+    });
+  }
+  return out;
+}
 
 /** Every First / Backup / Future XI place of a player key. */
 function placesOf(lineups, key) {
@@ -219,7 +276,7 @@ function squadFit(cat, target, positions, ctx) {
       lineup_slots: slots.map((s) => s.id),
       his_familiarity: x.familiarity,
       assessed_roles: Object.fromEntries(PHASES.filter((ph) => assessed[ph.id]).map((ph) => [ph.id, { name: assessed[ph.id].role.name, source: assessed[ph.id].source }])),
-      his_role_fit: fitFor(target, assessed, code),
+      his_role_fit: fitFor(target, assessed, code, cat),
       empty_lineup_places: empty,
       club_players: competitors,
     });
@@ -256,8 +313,9 @@ export function buildPlayerRequest(res, ctx) {
     payload.lineup_assignments = places.map((x) => {
       const pos = cat.positions.find((y) => y.code === x.code);
       const assessed = assessedRoles(cat, p, x.code, ctx.rolePrefs, ctx.tactic, 'his best role here (no role saved)');
-      return { lineup: x.lineup, slot: x.slot, position: pos?.short || x.code, familiarity: familiarityAt(p, x.code), role_fit: fitFor(p, assessed, x.code) };
+      return { lineup: x.lineup, slot: x.slot, position: pos?.short || x.code, familiarity: familiarityAt(p, x.code), role_fit: fitFor(p, assessed, x.code, cat) };
     });
+    payload.formation_slots = formationSlots(cat, positions.map((x) => x.pos.code), ctx.lineups || [], model.raw, key, ctx.playerKeyOf);
     payload.development_history = developmentHistory(ctx.history, model.gameDate);
   } else {
     // His best positions that the lineups use (4-2-3-1), plus one he'd need retraining for.
@@ -266,6 +324,7 @@ export function buildPlayerRequest(res, ctx) {
       .concat(inFormation.filter((x) => (x.familiarity || 0) < FAMILIAR).slice(0, 1));
     payload.squad_fit = squadFit(cat, p, fitPositions, { ...ctx, model });
   }
+  payload.attribute_definitions = attributeDefinitions(cat, positions.map((x) => x.pos.code));
   const signature = `player:${JSON.stringify({ ...payload, report_id: null })}`;
   const id = comparisonId(signature).replace(/^cmp_/, 'ply_');
   payload.report_id = id;

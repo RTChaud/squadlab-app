@@ -179,7 +179,9 @@ export function adviceText(price, payload) {
 
 export const verdictText = (v) => VERDICT_TEXT[v] || v;
 
-const roleLine = (fit) => PHASES_TXT.filter((ph) => fit?.[ph]).map((ph) => `${PHASE_LABEL[ph]} ${fit[ph].role}${fit[ph].role_source ? ` (${fit[ph].role_source})` : ''}: score ${score(fit[ph].squadlab_role_score_out_of_100)}; ${list(fit[ph].key_attributes)}`).join(' | ');
+/** A phase's duties as the role catalogue describes them, or a plain note that they aren't. */
+const dutyText = (r) => (r?.description ? `Duties: ${r.description}` : 'Duties for this phase are not described in the role catalogue, so keep to the score and its inputs.');
+const roleLine = (fit) => PHASES_TXT.filter((ph) => fit?.[ph]).map((ph) => `${PHASE_LABEL[ph]} ${fit[ph].role}${fit[ph].role_source ? ` (${fit[ph].role_source})` : ''}: score ${score(fit[ph].squadlab_role_score_out_of_100)}; score inputs ${list(fit[ph].key_attributes)}${'description' in fit[ph] ? `. ${dutyText(fit[ph])}` : ''}`).join(' | ');
 const PHASES_TXT = ['in_possession', 'out_of_possession'];
 
 function positionsSection(payload) {
@@ -189,7 +191,9 @@ function positionsSection(payload) {
     out.push(`${x.position} (${x.name}): familiarity ${unknown(x.familiarity)}${x.needs_retraining ? ', would need retraining' : ''}`);
     for (const ph of PHASES_TXT) {
       const roles = x.best_roles?.[ph] || [];
-      if (roles.length) out.push(`${PHASE_LABEL[ph]}: ${roles.map((r) => `${r.name} ${score(r.squadlab_role_score_out_of_100)} (${list(r.key_attributes)})`).join('; ')}`);
+      if (!roles.length) continue;
+      out.push(`${PHASE_LABEL[ph]}:`);
+      for (const r of roles) out.push(`- ${r.name}: score ${score(r.squadlab_role_score_out_of_100)}; score inputs ${list(r.key_attributes)}. ${dutyText(r)}`);
     }
     if (x.position_attributes && Object.keys(x.position_attributes).length) out.push(`Attributes that matter at ${x.position} (lowest first): ${list(x.position_attributes)}`);
   }
@@ -203,9 +207,22 @@ function lineupSection(payload) {
   return out.join('\n');
 }
 
+function formationSection(payload) {
+  if (!payload.formation_slots?.length) return null;
+  const out = ['FORMATION SLOTS AT HIS POSITIONS (current First / Backup / Future XI holders)'];
+  for (const f of payload.formation_slots) for (const sl of f.slots) out.push(`${sl.slot} at ${f.position}: First XI ${sl['First XI'] || 'empty'}, Backup XI ${sl['Backup XI'] || 'empty'}, Future XI ${sl['Future XI'] || 'empty'}`);
+  return out.join('\n');
+}
+
+function definitionsSection(payload) {
+  const defs = payload.attribute_definitions || {};
+  if (!Object.keys(defs).length) return null;
+  return ['ATTRIBUTE DEFINITIONS (SquadLab)', ...Object.entries(defs).map(([k, v]) => `${k}: ${v}`)].join('\n');
+}
+
 function historySection(payload) {
   const h = payload.development_history;
-  if (!h) return 'DEVELOPMENT HISTORY\nOnly one snapshot, so no observed changes.';
+  if (!h) return 'DEVELOPMENT HISTORY\nOnly one snapshot, so no observed changes. Treat this as his current baseline.';
   const ch = Object.entries(h.changed_attributes || {}).map(([k, v]) => `${k} ${v.from} → ${v.to}`).join(', ');
   return `DEVELOPMENT HISTORY\n${h.snapshots} snapshots from ${dateText(h.from_date)} to ${dateText(h.to_date)}. CA ${unknown(h.ca?.from)} → ${unknown(h.ca?.to)}. Changed attributes: ${ch || 'none'}.`;
 }
@@ -238,6 +255,7 @@ export function playerReportText(report, payload) {
     if (bp.alternative) out.push(`Alternative: ${bp.alternative}`);
     out.push('');
     out.push(`Fit in My Lineups: ${report.lineup_fit}`);
+    if (report.suggested_slot) out.push(`Suggested slot (recommendation; he has no lineup place): ${report.suggested_slot.lineup} ${report.suggested_slot.slot}. ${report.suggested_slot.explanation}`);
     out.push('');
     out.push('Development Priorities:');
     report.priorities.forEach((x, i) => {
@@ -278,19 +296,27 @@ export function buildPlayerChatPrompt(payload, report = null) {
   const club = payload.manager_club;
   const parts = [];
   const ask = dev
-    ? `give me a development report: where he is best (position and roles in and out of possession, from his familiarity and attributes, flagging any position that would need retraining), how he fits my First XI, Backup XI and Future XI places (if I've picked him away from his best position, explain the trade-off and develop him for the job he has), and two or three ranked development priorities with his current values and what improving each would help him do. Focus on what limits him in the role, not just his lowest numbers. Use the development history when it's there. Lead with one concrete takeaway.`
+    ? `give me a development report: where he is best (position and roles in and out of possession, from his familiarity and attributes, flagging any position that would need retraining); how he fits my First XI, Backup XI and Future XI places (if I've picked him away from his best position, explain the trade-off and develop him for the job he has; if he has no place, say so and, if the evidence supports it, suggest one specific slot from the formation slots, labelled as a recommendation); and two or three development priorities ranked by what improving each would help him do in that role, with his current value and the specific action it affects. A low number alone is not a reason, and an attribute outside the role score can still come first if his job needs it. If a priority depends on a tactical instruction that isn't in the data, make it conditional. Lead with one concrete takeaway.`
     : `give me a recruitment report: his best fit in my squad, comparing him by name with the club players listed for that position; a verdict (immediate upgrade, depth, development signing or pass) naming who he'd compete with or displace; and price advice. The asking price is the assumed transfer fee: say pay it, only buy below a ceiling (give a number only when the data supports it, and explain it) or pass. If the fee is unknown, still give the footballing verdict and say what would make the deal worthwhile. An empty lineup place alone doesn't prove a squad gap, so check the club players who can already play there.`;
   parts.push(`I manage ${club || 'a club'} in Football Manager. ${dev ? `${p.name} is one of my players.` : `${p.name} is an external player I'm considering.`} Using the SquadLab data below, if I've added a specific question under "My follow-up question" at the end, answer it using this data. If that section is blank, ${ask}${report ? ' A SquadLab report is included: check its reasoning against the data.' : ''}
 
-Ground every claim in the figures, treat SquadLab role scores as evidence and explain the attributes behind them, treat PA as a ceiling rather than a promise, and only add caveats that matter to the decision.
+Ground every claim in the figures, treat SquadLab role scores as evidence and explain the attributes behind them, and only add caveats that matter to the decision.
+
+Use the attribute definitions below and don't stretch them. In particular: Positioning is defensive positioning (where he places himself when defending, such as screening passing lanes or covering space), so only recommend it for a concrete defensive responsibility; Off the Ball is attacking movement (finding pockets, offering passing options, moving after releasing the ball); Work Rate is the urgency and effort he puts into his duties (sustained pressing, recovery runs), not speed, which is Acceleration and Pace.
+
+Keep In Possession and Out of Possession distinct, and describe each phase's duties only from that role's description for that phase. A SquadLab score just averages its score inputs: an input such as Passing or First Touch in an out-of-possession score is not an out-of-possession duty. Where a phase's duties aren't described, stick to the score and its inputs.
+
+Use age, CA, PA and any observed development history for the outlook. PA is a ceiling, not a promise: with a single snapshot, describe the current baseline and don't predict whether or when he'll reach it. Contract length only tells us how long he's signed for.
 
 How to read the data: attributes, positional familiarity and hidden attributes run from 1 to 20 (15+ familiarity means he can play the position now). CA and PA run up to 200. A SquadLab role score is the average of the role's key attributes multiplied by 5, out of 100. Money is in GBP.`);
   parts.push(['CONTEXT', `My club: ${unknown(club)}`, `In-game date of the data: ${dateText(payload.game_date)}`, `${p.name}: ${statusOf(p, club)}`, `Report: ${dev ? 'Development Report (my player)' : 'Recruitment Report (external player)'}`].join('\n'));
   parts.push(playerSection(p, { position: null }, club));
   parts.push(positionsSection(payload));
-  if (dev) { parts.push(lineupSection(payload)); parts.push(historySection(payload)); }
+  if (dev) { parts.push(lineupSection(payload)); const f = formationSection(payload); if (f) parts.push(f); parts.push(historySection(payload)); }
   else parts.push(squadFitSection(payload));
   if (payload.budget?.display) parts.push(`BUDGET\nTransfer budget: ${payload.budget.display}`);
+  const defs = definitionsSection(payload);
+  if (defs) parts.push(defs);
   if (report) parts.push(`EXISTING SQUADLAB ANALYSIS\n(SquadLab's AI report for exactly this player, data and squad context. It is separate from the data above: check its conclusions against those figures.)\n\n${playerReportText(report, payload)}`);
   parts.push('MY FOLLOW-UP QUESTION\n');
   return parts.join('\n\n');

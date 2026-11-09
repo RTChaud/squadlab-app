@@ -97,6 +97,8 @@ export function validPlayerReport(r, payload) {
     if (!text(r.takeaway, 400) || !bp || !text(bp.position, 20) || !text(bp.explanation, 800) || !optText(bp.alternative, 500)) return null;
     for (const ph of PHASE_IDS) if (bp[ph] !== null && bp[ph] !== undefined && !(text(bp[ph].role, 80) && text(bp[ph].explanation, 600))) return null;
     if (!text(r.lineup_fit, 1200) || !optText(r.outlook, 500)) return null;
+    const ss = r.suggested_slot;
+    if (!(ss === null || ss === undefined || (text(ss.lineup, 20) && text(ss.slot, 8) && text(ss.explanation, 500)))) return null;
     if (!Array.isArray(r.priorities) || r.priorities.length < 1 || r.priorities.length > 3) return null;
     if (!r.priorities.every((x) => x && text(x.attribute, 40) && Number.isInteger(x.current) && text(x.why, 800))) return null;
     return r;
