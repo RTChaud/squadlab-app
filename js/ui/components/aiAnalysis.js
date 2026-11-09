@@ -11,6 +11,8 @@
 
 import { h } from '../dom.js';
 import { openSheet } from './sheet.js';
+import { toast } from './feedback.js';
+import { buildChatPrompt } from '../../data/chatPrompt.js';
 import { requestComparison, AnalysisError, getAccessCode, setAccessCode, shortNames, verdictKind, plainReportText } from '../../data/aiClient.js';
 
 const cache = new Map();   // signature → report (session)
@@ -93,9 +95,64 @@ function loadingView() {
     h('span', {}, 'Analysing…'));
 }
 
-function errorView(err) {
+function errorView(err, req) {
+  const copy = h('button', { type: 'button', class: 'btn btn-secondary btn-block ai-copy-in', onclick: () => copyForChat(req) }, 'Copy for ChatGPT');
+  if (err?.code === 'ai_daily_limit') {
+    return h('div', { class: 'ai-error ai-error-limit', role: 'alert' },
+      h('p', { class: 'ai-text' }, 'Daily AI allowance reached. Copy this comparison to continue in ChatGPT.'), copy);
+  }
   const msg = err instanceof AnalysisError ? err.message : 'Something went wrong.';
-  return h('div', { class: 'ai-error', role: 'alert' }, h('p', { class: 'ai-error-title' }, 'Analysis failed'), h('p', { class: 'ai-text' }, msg));
+  return h('div', { class: 'ai-error', role: 'alert' }, h('p', { class: 'ai-error-title' }, 'Analysis failed'), h('p', { class: 'ai-text' }, msg), copy);
+}
+
+// ---- Copy for ChatGPT ------------------------------------------------------------------
+// Built locally from the same request payload; makes no network request. The
+// report is included only when one exists for this exact comparison (cache is
+// keyed by the comparison's signature: players, snapshots, position, roles).
+
+/** The prompt for this comparison, with its report when there is one. */
+export function chatPromptFor(req) {
+  return buildChatPrompt(req.payload, cache.get(req.signature) || null);
+}
+
+/** Legacy copy for browsers without the async clipboard (must run inside the tap). */
+function execCopy(text) {
+  const ta = h('textarea', { readonly: true, 'aria-hidden': 'true', style: 'position:fixed;top:0;left:0;opacity:0;pointer-events:none;' });
+  ta.value = text;
+  document.body.append(ta);
+  ta.focus(); ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch { ok = false; }
+  ta.remove();
+  return ok;
+}
+
+/** The prompt in a selectable box, when the clipboard can't be used. */
+function showPrompt(text) {
+  const box = h('textarea', { class: 'ai-copy-text', readonly: true, spellcheck: 'false', 'aria-label': 'Prompt for ChatGPT' });
+  box.value = text;
+  const selectAll = () => { box.focus(); box.setSelectionRange(0, text.length); };
+  openSheet({
+    title: 'Copy for ChatGPT',
+    content: [h('p', { class: 'ai-basis' }, 'Select the text, then copy it.'), box],
+    actions: [
+      { label: 'Select all', onClick: () => { selectAll(); if (execCopy(text)) toast('Copied to clipboard'); } },
+      { label: 'Close', kind: 'secondary', onClick: (close) => close() },
+    ],
+  });
+}
+
+/** Copies the prompt for this comparison; falls back to showing it. */
+export function copyForChat(req) {
+  if (!req) return;
+  const text = chatPromptFor(req);
+  const clip = navigator.clipboard;
+  if (clip?.writeText) {
+    clip.writeText(text).then(() => toast('Copied to clipboard'), () => showPrompt(text));
+    return;
+  }
+  if (execCopy(text)) toast('Copied to clipboard');
+  else showPrompt(text);
 }
 
 /** Access code field; `onSave(code)` runs with the trimmed code. */
@@ -123,6 +180,7 @@ function openReport(req) {
   });
   s.el.classList.add('ai-sheet');
   const closeAction = { label: 'Close', kind: 'secondary', onClick: (close) => close() };
+  const copyAction = { label: 'Copy for ChatGPT', kind: 'secondary', onClick: () => copyForChat(req) };
 
   const show = (node, actions) => { if (!open) return; body.replaceChildren(node); s.setActions(actions); };
   const askCode = (refused) => {
@@ -132,15 +190,15 @@ function openReport(req) {
   };
   const run = () => {
     const cached = cache.get(req.signature);
-    if (cached) { show(reportView(cached, req), [closeAction]); return; }
+    if (cached) { show(reportView(cached, req), [copyAction, closeAction]); return; }
     if (!getAccessCode()) { askCode(false); return; }
     show(loadingView(), [closeAction]);
     start(req).then(
-      (report) => show(reportView(report, req), [closeAction]),
+      (report) => show(reportView(report, req), [copyAction, closeAction]),
       (err) => {
         if (err?.code === 'cancelled') return;
         if (err?.code === 'unauthorized' || err?.code === 'no_code') { setAccessCode(''); askCode(err.code === 'unauthorized'); return; }
-        show(errorView(err), [{ label: 'Retry', onClick: () => run() }, closeAction]);
+        show(errorView(err, req), err?.code === 'ai_daily_limit' ? [closeAction] : [{ label: 'Retry', onClick: () => run() }, closeAction]);
       },
     );
   };
@@ -158,6 +216,15 @@ export function AiAnalysisButton(o) {
     type: 'button', class: 'btn btn-primary btn-block ai-btn', disabled: !ready,
     onclick: () => { const req = o.getRequest(); if (req) openReport(req); },
   }, h('span', { class: 'ai-btn-mark', 'aria-hidden': 'true' }, '✦'), 'AI Analysis');
+}
+
+/** Copy for ChatGPT, next to AI Analysis; enabled once two distinct players are selected. */
+export function CopyForChatButton(o) {
+  const ready = !!o.getRequest();
+  return h('button', {
+    type: 'button', class: 'btn btn-secondary btn-block ai-copy-btn', disabled: !ready,
+    onclick: () => copyForChat(o.getRequest()),
+  }, 'Copy for ChatGPT');
 }
 
 /** For tests: forget cached reports and any running request. */
