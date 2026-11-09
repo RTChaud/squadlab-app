@@ -503,7 +503,7 @@ async function analyse(body, env) {
 // Development Report, anyone else a Recruitment Report; the app decides and
 // sends report_type. Same access, rate limit, model and retry rules as /compare.
 
-const PLAYER_PROMPT_VERSION = 'player-2026-11-09b';
+const PLAYER_PROMPT_VERSION = 'player-2026-11-09c';
 
 const COMMON_RULES = `What the attributes mean (use ATTRIBUTE DEFINITIONS in KEY FACTS for the rest; never stretch a definition):
 - Positioning is defensive positioning: where he places himself when the team defends, e.g. screening passing lanes, covering space, picking up runners. It is not about finding attacking space.
@@ -529,26 +529,28 @@ Rules:
 const DEVELOPMENT_PROMPT = `You are SquadLab's football analyst writing a Development Report on one of the manager's own players in Football Manager. Answer: "Where is he best, and what should he develop next?"
 
 1. Best position and roles: his strongest position and his best in possession and out of possession roles there, judged on familiarity and the underlying attributes. Mention one credible alternative where useful, and make clear when a position looks promising on attributes but would need retraining.
-2. Fit in the lineups: use his First XI, Backup XI and Future XI places from KEY FACTS. If he is picked somewhere other than his strongest position, explain the trade-off and develop him for the job he actually has. Use the roles saved for that slot; when none is saved, say which role you are assessing. With no lineup place, say so plainly, and when the evidence supports it suggest one specific slot from FORMATION SLOTS (in suggested_slot, as a recommendation, naming who holds it now if anyone).
-3. Two or three development priorities, ranked by what improving the attribute would help him do in his assigned or recommended role. For each, name the specific action it affects in that role, using the attribute definitions. An attribute outside the role score can come first if the job needs it (for example, a screening defensive midfielder whose Positioning 13 limits how well he closes passing lanes). A low number alone is never a reason: an attribute his job doesn't use is not a priority, however low. If a priority depends on an instruction the data doesn't include, make it conditional.
+2. His assigned job: lead with his primary lineup place from KEY FACTS (First XI before Backup XI before Future XI) and the roles saved for that slot, and keep it distinct from his best natural fit in point 1. If he holds more than one slot at that level, name them and explain any difference that materially changes the advice. Mention lower-level places only where they matter. When a phase has no saved role, say it isn't set; any role you propose for it goes in suggested_roles and is a suggestion, never a saved role. With no lineup place, say so plainly, assess him from his profile, and when the evidence supports it suggest one specific slot from FORMATION SLOTS (in suggested_slot, as a recommendation, naming who holds it now if anyone).
+3. Two or three development priorities for the assigned job (or, with no lineup place, the recommended one), considering both phases, ranked by what improving the attribute would help him do there. For each, name the specific action it affects in that role, using the attribute definitions. An attribute outside the role score can come first if the job needs it (for example, a screening defensive midfielder whose Positioning 13 limits how well he closes passing lanes). A low number alone is never a reason: an attribute his job doesn't use is not a priority, however low. If a priority depends on an instruction the data doesn't include, make it conditional.
 4. Outlook: use age, CA, PA and the observed development history. With only one snapshot, describe the current baseline (CA against PA, age) and say nothing about whether or when he will reach his PA.
 Lead with one concrete takeaway, e.g. "Keep him at DM and prioritise Positioning so he can recover and screen the defence after pressing."
 
 ${COMMON_RULES}
 
 Output: reply with one JSON object and nothing else (no code fences, no text around it), exactly in this shape:
-{"takeaway":"...","best_position":{"position":"...","explanation":"...","in_possession":{"role":"...","explanation":"..."},"out_of_possession":{"role":"...","explanation":"..."},"alternative":"..." or null},"lineup_fit":"...","suggested_slot":{"lineup":"First XI|Backup XI|Future XI","slot":"...","explanation":"..."} or null,"priorities":[{"attribute":"...","why":"..."}],"outlook":"..." or null}
+{"takeaway":"...","best_position":{"position":"...","explanation":"...","in_possession":{"role":"...","explanation":"..."},"out_of_possession":{"role":"...","explanation":"..."},"alternative":"..." or null},"lineup_fit":"...","suggested_roles":{"in_possession":{"role":"...","explanation":"..."} or null,"out_of_possession":{"role":"...","explanation":"..."} or null},"suggested_slot":{"lineup":"First XI|Backup XI|Future XI","slot":"...","explanation":"..."} or null,"priorities":[{"attribute":"...","why":"..."}],"outlook":"..." or null}
 - takeaway: one sentence, at most 30 words.
 - best_position.position: a position code exactly as listed in KEY FACTS (e.g. "DM", "AM (C)"). Each explanation one or two sentences, true to that phase. role: a role name listed for that position in KEY FACTS.
 - alternative: one sentence naming one credible alternative position or role, or null.
+- best_position is his best natural fit; lineup_fit is about the job he has been given (his primary lineup place and its saved roles).
 - lineup_fit: two or three sentences.
+- suggested_roles: only for a phase with no saved role in his primary lineup place, a role from that phase's candidate list in KEY FACTS, with one sentence; otherwise null for that phase.
 - suggested_slot: only when he has no lineup place; a slot listed under FORMATION SLOTS; explanation one sentence. Otherwise null.
 - priorities: two or three, most important first. attribute: the attribute name exactly as in KEY FACTS. why: one or two sentences naming the action it affects. The app shows his current value and any observed change, so don't repeat those numbers unless they help the argument.
 - outlook: one sentence, or null.`;
 
 const RECRUITMENT_PROMPT = `You are SquadLab's football analyst writing a Recruitment Report on one external player in Football Manager for the manager's club. Answer: "Is he worth signing, whose place would he take, and how much should I spend?"
 
-1. Best fit: the lineup position and slot where he would add the most value, with his fit in possession and out of possession where roles are known. Compare him with the club players listed for that position (First XI, Backup XI, Future XI and other club players), by name, with the attribute or role-score differences that matter.
+1. Best fit in the tactic actually used: each formation slot under SQUAD FIT has its own saved role pair (slots at the same position, such as RDM and LDM, can have different jobs). Judge him on each slot's roles and his familiarity there, in both phases, and lead with the slot where he adds the most value and its actual roles. Where a phase's role isn't set, say that part rests on general positional fit. Compare him with that slot's starter, backup and future option and the other club players listed, by name, with the attribute or role-score differences that matter.
 2. Verdict: immediate_upgrade (better than the current starter now), depth (a useful option behind or alongside the starter), development (one for the future: younger, higher PA, not yet better), or pass. Name who he would compete with or displace. An empty lineup place alone does not prove a squad gap: check the club players already able to play there, including credible internal successors, before saying he fills a gap.
 3. Price advice: the asking price is the assumed transfer fee. advice is pay_asking_price, buy_below_ceiling (give a ceiling below the asking price, only when the fee and the squad evidence support a number, and explain it), pass, or fee_unknown when no asking price is known (then still give the footballing verdict and say what would make the deal worthwhile). Use a budget only if one is supplied. Monthly salary is his current pay. Use release clauses only where relevant and make any doubt about whether one applies clear.
 
@@ -557,7 +559,7 @@ ${COMMON_RULES}
 Output: reply with one JSON object and nothing else (no code fences, no text around it), exactly in this shape:
 {"verdict":"immediate_upgrade|depth|development|pass","headline":"...","explanation":"...","best_fit":{"position":"...","slot":"..." or null,"explanation":"...","in_possession":"..." or null,"out_of_possession":"..." or null},"competition":[{"name":"...","comparison":"..."}],"price":{"advice":"pay_asking_price|buy_below_ceiling|pass|fee_unknown","ceiling":null,"explanation":"..."},"evidence":["..."]}
 - headline: one sentence, at most 25 words. explanation: two or three sentences.
-- best_fit.position: a position code exactly as listed under SQUAD FIT in KEY FACTS; slot: one of that position's lineup slots, or null. explanation: one or two sentences; in_possession / out_of_possession: one sentence each on his fit in that phase's role, or null when no role is known.
+- best_fit.slot: a slot exactly as listed under SQUAD FIT (e.g. "RDM"); best_fit.position: that slot's position code. When SQUAD FIT lists no slots, slot is null and position is one of his positions. explanation: one or two sentences; in_possession / out_of_possession: one sentence each on his fit in that phase's role, or null when no role is known.
 - competition: zero to three club players named exactly as in KEY FACTS, each with one or two sentences comparing them with figures.
 - price.ceiling: a number in pounds (e.g. 45000000) only with buy_below_ceiling, otherwise null. explanation: one or two sentences.
 - evidence: one to three sentences, each with figures.`;
@@ -620,12 +622,16 @@ function validatePlayerRequest(body) {
   }
   if (body.report_type === 'development') {
     if (!Array.isArray(body.lineup_assignments) || body.lineup_assignments.length > 6) bad('lineup_assignments is invalid.');
-    body.lineup_assignments.forEach((a, i) => { if (!isObj(a) || typeof a.slot !== 'string' || typeof a.lineup !== 'string') bad(`lineup_assignments[${i}] is invalid.`); checkFit(a.role_fit, `lineup_assignments[${i}].role_fit`); });
+    body.lineup_assignments.forEach((a, i) => {
+      if (!isObj(a) || typeof a.slot !== 'string' || typeof a.lineup !== 'string' || !Array.isArray(a.unset_phases ?? [])) bad(`lineup_assignments[${i}] is invalid.`);
+      checkFit(a.role_fit, `lineup_assignments[${i}].role_fit`);
+      for (const [ph, list] of Object.entries(a.candidate_roles || {})) if (!PHASES.includes(ph) || !Array.isArray(list) || !list.every((r) => isObj(r) && typeof r.name === 'string')) bad(`lineup_assignments[${i}].candidate_roles is invalid.`);
+    });
     if (body.development_history !== null && !isObj(body.development_history)) bad('development_history is invalid.');
   } else {
-    if (!Array.isArray(body.squad_fit) || body.squad_fit.length > 4) bad('squad_fit is invalid.');
+    if (!Array.isArray(body.squad_fit) || body.squad_fit.length > 8) bad('squad_fit is invalid.');
     body.squad_fit.forEach((s, i) => {
-      if (!isObj(s) || typeof s.position !== 'string' || !Array.isArray(s.lineup_slots) || !Array.isArray(s.club_players) || s.club_players.length > 12) bad(`squad_fit[${i}] is invalid.`);
+      if (!isObj(s) || typeof s.slot !== 'string' || typeof s.position !== 'string' || !isObj(s.holders) || !Array.isArray(s.club_players) || s.club_players.length > 8) bad(`squad_fit[${i}] is invalid.`);
       checkFit(s.his_role_fit, `squad_fit[${i}].his_role_fit`);
       s.club_players.forEach((c, j) => { if (!isObj(c) || typeof c.name !== 'string') bad(`squad_fit[${i}].club_players[${j}] is invalid.`); checkFit(c.role_fit, `squad_fit[${i}].club_players[${j}].role_fit`); });
     });
@@ -689,20 +695,24 @@ function developmentFacts(body) {
   const short = playerCommonFacts(body, lines, money);
   lines.push('');
   if (body.lineup_assignments.length) {
-    lines.push('LINEUP PLACES:');
+    const primary = body.lineup_assignments.filter((a) => a.primary);
+    lines.push(`LINEUP PLACES (his assigned jobs; roles belong to the slot and are shared by First, Backup and Future XI). Primary job: ${primary.map((a) => `${a.lineup} ${a.slot}`).join(' and ')}${primary.length > 1 ? ' — he holds more than one slot at this level, so name them and explain any difference that matters' : ''}.`);
     for (const a of body.lineup_assignments) {
-      lines.push(`${a.lineup} ${a.slot} at ${a.position}, familiarity ${a.familiarity ?? 'unknown'}.`);
-      for (const ph of PHASES.filter((x) => a.role_fit?.[x])) {
-        const f = a.role_fit[ph];
-        lines.push(`  ${PHASE_LABEL[ph]}: ${f.role} (${f.role_source}), score ${scoreOf(a.role_fit, ph) ?? '?'}, score inputs ${attrsText(f.key_attributes)}. ${roleDuty(f)}`);
+      lines.push(`${a.primary ? 'PRIMARY ' : ''}${a.lineup} ${a.slot} at ${a.position}, familiarity ${a.familiarity ?? 'unknown'}.`);
+      for (const ph of PHASES) {
+        const f = a.role_fit?.[ph];
+        if (f) { lines.push(`  ${PHASE_LABEL[ph]}: ${f.role} (saved for this slot), score ${scoreOf(a.role_fit, ph) ?? '?'}, score inputs ${attrsText(f.key_attributes)}. ${roleDuty(f)}`); continue; }
+        const cands = a.candidate_roles?.[ph] || [];
+        lines.push(`  ${PHASE_LABEL[ph]}: not set for this slot.${a.primary && cands.length ? ` Candidates if you suggest one (a suggestion, not a saved role): ${cands.map((r) => `${r.name} ${r.squadlab_role_score_out_of_100 ?? '?'} (score inputs ${attrsText(r.key_attributes)}; ${r.description ? r.description : 'duties not described'})`).join('; ')}.` : ''}`);
       }
     }
+    lines.push(`Best natural fit by familiarity and scores: see POSITIONS (top: ${body.positions[0]?.position}). Keep it distinct from the primary job; base the priorities on the primary job.`);
     lines.push('He has a lineup place, so suggested_slot must be null.');
-  } else lines.push('LINEUP PLACES: none — he is not in the First, Backup or Future XI. Say so, and suggest a slot from FORMATION SLOTS only if the evidence supports it, labelled as a recommendation.');
+  } else lines.push('LINEUP PLACES: none — he is not in the First, Backup or Future XI. Say so, assess him from his profile, and suggest a slot from FORMATION SLOTS only if the evidence supports it, labelled as a recommendation. suggested_roles must be null.');
   if (body.formation_slots?.length) {
     lines.push('');
     lines.push('FORMATION SLOTS (4-2-3-1; current First / Backup / Future XI holders):');
-    for (const f of body.formation_slots) for (const sl of f.slots) lines.push(`  ${sl.slot} at ${f.position}: First XI ${sl['First XI'] || 'empty'}, Backup XI ${sl['Backup XI'] || 'empty'}, Future XI ${sl['Future XI'] || 'empty'}.`);
+    for (const f of body.formation_slots) for (const sl of f.slots) lines.push(`  ${sl.slot} at ${f.position}: First XI ${sl['First XI'] || 'empty'}, Backup XI ${sl['Backup XI'] || 'empty'}, Future XI ${sl['Future XI'] || 'empty'}${sl.roles ? `; saved roles ${PHASES.map((ph) => `${PHASE_LABEL[ph]} ${sl.roles[ph] || 'not set'}`).join(', ')}` : ''}.`);
   }
   const h = body.development_history;
   lines.push('');
@@ -732,21 +742,29 @@ function recruitmentFacts(body) {
   if (body.budget) money.push(shownAmount(body.budget));
   const names = [p.name];
   lines.push('');
-  lines.push('SQUAD FIT (the club lineups use a 4-2-3-1; scores compare everyone on the same roles):');
-  if (!body.squad_fit.length) lines.push('None of his positions has a lineup slot. Judge his fit from his profile.');
+  lines.push('SQUAD FIT (4-2-3-1; each slot has its own saved role pair, shared by First, Backup and Future XI; everyone in a slot is scored on the same roles):');
+  if (!body.squad_fit.length) lines.push('None of his positions has a slot in the formation. Judge his fit from his profile.');
   for (const s of body.squad_fit) {
     const phs = PHASES.filter((ph) => s.his_role_fit?.[ph]);
-    lines.push(`${s.position} (${s.name}), lineup slots ${s.lineup_slots.join(' and ') || 'none'}; his familiarity ${s.his_familiarity ?? 'unknown'}${(s.his_familiarity ?? 0) < 15 ? ' (would need retraining)' : ''}.`);
-    lines.push(`  Roles: ${phs.map((ph) => `${PHASE_LABEL[ph]} ${s.his_role_fit[ph].role} (${s.his_role_fit[ph].role_source}). ${roleDuty(s.his_role_fit[ph])}`).join(' ') || 'none known.'}`);
-    lines.push(`  ${short}: ${phs.map((ph) => `${PHASE_LABEL[ph].toLowerCase()} ${scoreOf(s.his_role_fit, ph) ?? '?'} (${attrsText(s.his_role_fit[ph].key_attributes)})`).join('; ')}.`);
+    lines.push(`${s.slot} (${s.position}, ${s.name}); his familiarity ${s.his_familiarity ?? 'unknown'}${(s.his_familiarity ?? 0) < 15 ? ' (would need retraining)' : ''}.`);
+    for (const ph of PHASES) {
+      const f = s.his_role_fit?.[ph];
+      const saved = s.saved_roles?.[ph];
+      if (!f) { lines.push(`  ${PHASE_LABEL[ph]}: no role available.`); continue; }
+      lines.push(saved
+        ? `  ${PHASE_LABEL[ph]}: ${f.role} (saved for ${s.slot}). ${roleDuty(f)} ${short} ${scoreOf(s.his_role_fit, ph) ?? '?'} (score inputs ${attrsText(f.key_attributes)}).`
+        : `  ${PHASE_LABEL[ph]}: not set for ${s.slot}; general positional fit only, using ${f.role}. ${short} ${scoreOf(s.his_role_fit, ph) ?? '?'} (score inputs ${attrsText(f.key_attributes)}).`);
+    }
+    lines.push(`  Holders: First XI ${s.holders['First XI'] || 'empty'}, Backup XI ${s.holders['Backup XI'] || 'empty'}, Future XI ${s.holders['Future XI'] || 'empty'}.`);
     for (const c of s.club_players) {
-      names.push(c.name);
+      if (!names.includes(c.name)) names.push(c.name);
       const where = c.lineup_places?.length ? c.lineup_places.join(', ') : 'not in First, Backup or Future XI';
       lines.push(`  ${c.name} (${where}; age ${c.age ?? '?'}, CA ${c.ca ?? '?'}, PA ${c.pa ?? '?'}, familiarity ${c.familiarity ?? '?'}): ${phs.map((ph) => `${PHASE_LABEL[ph].toLowerCase()} ${scoreOf(c.role_fit, ph) ?? '?'} (${short} ${fmtGap(scoreOf(s.his_role_fit, ph), scoreOf(c.role_fit, ph))}; ${attrsText(c.role_fit?.[ph]?.key_attributes)})`).join('; ')}.`);
     }
-    if (s.empty_lineup_places?.length) lines.push(`  Empty lineup places here: ${s.empty_lineup_places.join(', ')}. An empty place alone doesn't prove a gap: weigh the club players above.`);
+    const empty = Object.entries(s.holders).filter(([, v]) => !v).map(([k]) => k);
+    if (empty.length) lines.push(`  Empty in ${empty.join(', ')}. An empty place alone doesn't prove a gap: weigh the club players above.`);
   }
-  lines.push(`Valid positions for best_fit: ${body.squad_fit.map((s) => `${s.position} (slots ${s.lineup_slots.join(', ')})`).join('; ') || body.positions.map((x) => x.position).join(', ')}.`);
+  lines.push(`Valid slots for best_fit: ${body.squad_fit.map((s) => `${s.slot} (${s.position})`).join(', ') || `none; use a position from ${body.positions.map((x) => x.position).join(', ')} with slot null`}.`);
   lines.push(`Club players you may name in competition: ${names.slice(1).join(', ') || 'none'}.`);
   return { text: lines.join('\n'), money, short, names, askAmt };
 }
@@ -782,7 +800,15 @@ function validateDevelopment(r, body) {
   if (!(r.outlook === null || r.outlook === undefined || text(r.outlook, 50))) hard.push('outlook must be one sentence or null.');
   const ss = r.suggested_slot;
   if (!(ss === null || ss === undefined || (isObj(ss) && typeof ss.lineup === 'string' && typeof ss.slot === 'string' && text(ss.explanation, 50)))) hard.push('suggested_slot must be { lineup, slot, explanation } or null.');
+  const sr = r.suggested_roles;
+  if (!(sr === null || sr === undefined || (isObj(sr) && PHASES.every((ph) => sr[ph] === null || sr[ph] === undefined || (isObj(sr[ph]) && typeof sr[ph].role === 'string' && text(sr[ph].explanation, 50)))))) hard.push('suggested_roles must hold { role, explanation } or null per phase.');
   if (hard.length) return { hard, soft };
+  for (const ph of PHASES) {
+    if (!sr?.[ph]) continue;
+    const cands = suggestionCandidates(body, ph);
+    if (!cands.length) soft.push(`${PHASE_LABEL[ph]} already has a saved role in his primary slot (or he has no lineup place), so suggested_roles.${ph} must be null.`);
+    else if (!cands.some((n) => sameName(n, sr[ph].role))) soft.push(`suggested_roles.${ph}.role must be one of: ${cands.join(', ')}.`);
+  }
 
   const pos = body.positions.find((x) => normCode(x.position) === normCode(bp.position));
   if (!pos) hard.push(`best_position.position must be one of: ${body.positions.map((x) => x.position).join(', ')}.`);
@@ -802,10 +828,16 @@ function validateDevelopment(r, body) {
     if (body.lineup_assignments.length) soft.push('He already has a lineup place, so suggested_slot must be null.');
     else if (!slotIn(body, ss)) soft.push(`suggested_slot must be a lineup (First XI, Backup XI, Future XI) and a slot listed under FORMATION SLOTS (${(body.formation_slots || []).flatMap((f) => f.slots.map((x) => x.slot)).join(', ') || 'none, so null'}).`);
   }
-  const strings = [r.takeaway, bp.explanation, bp.alternative || '', r.lineup_fit, r.outlook || '', ss?.explanation || '', ...PHASES.map((ph) => bp[ph]?.explanation || ''), ...r.priorities.map((x) => x.why)];
+  const strings = [r.takeaway, bp.explanation, bp.alternative || '', r.lineup_fit, r.outlook || '', ss?.explanation || '', ...PHASES.map((ph) => bp[ph]?.explanation || ''), ...PHASES.map((ph) => sr?.[ph]?.explanation || ''), ...r.priorities.map((x) => x.why)];
   if (strings.some((x) => PA_PREDICTION.test(x))) soft.push('Don\'t predict whether or when he will reach his PA: PA is a ceiling.');
   if (strings.some((x) => PLAYER_IDS.test(x))) soft.push('Write "in possession" / "out of possession" and plain words, never field names or identifiers.');
   return { hard, soft };
+}
+
+/** Roles that may be suggested for a phase: the candidates for an unset phase of his primary slot. */
+function suggestionCandidates(body, ph) {
+  const a = body.lineup_assignments.find((x) => x.primary && (x.unset_phases || []).includes(ph));
+  return a ? (a.candidate_roles?.[ph] || []).map((r) => r.name) : [];
 }
 
 const LINK_PLAY = /\b(drop\w* (?:deep|back|in)|link\w* (?:up )?play|links? play|between the lines|creat\w*|build-?up|playmak\w*|dictat\w*|receiv\w*)\b/i;
@@ -823,6 +855,19 @@ function slotIn(body, ss) {
   const slot = String(ss.slot || '').toUpperCase().trim();
   const f = (body.formation_slots || []).find((x) => x.slots.some((y) => y.slot === slot));
   return lineup && f ? { lineup, slot, position: f.position, holder: f.slots.find((y) => y.slot === slot)[lineup] || null } : null;
+}
+
+/** Suggestions for unset phases of his primary slot only, with the slot they're for; anything else is dropped. */
+function suggestedRoles(sr, body, t) {
+  const out = {};
+  for (const ph of PHASES) {
+    const x = sr?.[ph];
+    const name = x ? suggestionCandidates(body, ph).find((n) => sameName(n, x.role)) : null;
+    if (!name) { out[ph] = null; continue; }
+    const a = body.lineup_assignments.find((y) => y.primary && (y.unset_phases || []).includes(ph));
+    out[ph] = { role: name, explanation: t(x.explanation), lineup: a.lineup, slot: a.slot };
+  }
+  return out.in_possession || out.out_of_possession ? out : null;
 }
 
 /** The Development Report as shown; current values and history come from the data, not the model. */
@@ -869,6 +914,7 @@ function finalDevelopment(r, body) {
     },
     lineup_fit: t(r.lineup_fit),
     suggested_slot: ss ? { ...ss, explanation: t(r.suggested_slot.explanation) } : null,
+    suggested_roles: suggestedRoles(r.suggested_roles, body, t),
     priorities,
     outlook: noPredict(r.outlook),
   };
@@ -889,10 +935,7 @@ function validateRecruitment(r, body, facts) {
   if (!Array.isArray(r.evidence) || r.evidence.length < 1 || r.evidence.length > 3 || !r.evidence.every((e) => text(e, 70))) hard.push('evidence must be one to three sentences.');
   if (hard.length) return { hard, soft };
 
-  const fits = body.squad_fit.length ? body.squad_fit.map((s) => ({ position: s.position, slots: s.lineup_slots })) : body.positions.map((x) => ({ position: x.position, slots: [] }));
-  const fit = fits.find((x) => normCode(x.position) === normCode(bf.position));
-  if (!fit) hard.push(`best_fit.position must be one of: ${fits.map((x) => x.position).join(', ')}.`);
-  else if (bf.slot !== null && bf.slot !== undefined && !fit.slots.includes(String(bf.slot).toUpperCase())) soft.push(`best_fit.slot must be one of ${fit.slots.join(', ') || 'none (use null)'}.`);
+  if (!bestFitOf(body, bf)) hard.push(body.squad_fit.length ? `best_fit.slot must be one of: ${body.squad_fit.map((s) => s.slot).join(', ')}.` : `best_fit.position must be one of: ${body.positions.map((x) => x.position).join(', ')}.`);
   const unknownNames = r.competition.filter((c) => !facts.names.slice(1).some((n) => sameName(n, c.name)));
   if (unknownNames.length) soft.push(`competition may only name these club players: ${facts.names.slice(1).join(', ') || 'none (use [])'}.`);
   if (facts.askAmt === null && pr.advice !== 'fee_unknown' && pr.advice !== 'pass') hard.push('The asking price is unknown: price.advice must be fee_unknown or pass.');
@@ -909,11 +952,20 @@ function validateRecruitment(r, body, facts) {
   return { hard, soft };
 }
 
+/** The squad-fit slot (or, with no formation slot, the position) the report leads with. */
+function bestFitOf(body, bf) {
+  if (body.squad_fit.length) {
+    const slot = String(bf?.slot || '').toUpperCase().trim();
+    return body.squad_fit.find((s) => s.slot === slot) || null;
+  }
+  const pos = body.positions.find((x) => normCode(x.position) === normCode(bf?.position));
+  return pos ? { slot: null, position: pos.position, name: pos.name } : null;
+}
+
 function finalRecruitment(r, body, facts) {
   const t = (s) => plainIds(clean(s));
-  const fits = body.squad_fit.length ? body.squad_fit : body.positions.map((x) => ({ position: x.position, name: x.name, lineup_slots: [] }));
-  const fit = fits.find((x) => normCode(x.position) === normCode(r.best_fit.position));
-  const slot = r.best_fit.slot && fit.lineup_slots.includes(String(r.best_fit.slot).toUpperCase()) ? String(r.best_fit.slot).toUpperCase() : null;
+  const fit = bestFitOf(body, r.best_fit);
+  const slot = fit.slot;
   const competition = r.competition
     .map((c) => ({ name: facts.names.slice(1).find((n) => sameName(n, c.name)), comparison: t(c.comparison) }))
     .filter((c) => c.name);
