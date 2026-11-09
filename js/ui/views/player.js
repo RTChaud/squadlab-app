@@ -4,7 +4,7 @@ import { h, icon, orDash, DASH } from '../dom.js';
 import {
   getPlayerProfile, tagsForPlayer, playerKeyOf, squadSlotsFor,
   getChangePrefs, setChangePrefs, earlierObservations, getPlayerAt,
-  getPlayerHistory, listLineups, getTactic, getRadarPrefs,
+  getPlayerHistory, listLineups, getSlotRoles,
 } from '../../store.js';
 import { AiAnalysisButton, CopyForChatButton } from '../components/aiAnalysis.js';
 import { buildPlayerRequest } from '../../data/playerRequest.js';
@@ -295,11 +295,9 @@ function actionRow(p, devHref, model, current) {
 function aiRow(p, model, current, cat, history) {
   const getRequest = () => {
     if (!cat || cat.error || !cat.positions?.length) return null;
-    const key = playerKeyOf(p);
     const req = buildPlayerRequest({ player: p, model, current }, {
       cat, history,
-      lineups: listLineups(), tactic: getTactic(),
-      rolePrefs: key ? getRadarPrefs(key) : null,
+      lineups: listLineups(), slotRoles: getSlotRoles(),
       playerKeyOf,
       teamLabelOf: (squad, m) => resolveTeams(m).find((t) => t.squad && t.squad.id === squad.id)?.label || null,
     });
