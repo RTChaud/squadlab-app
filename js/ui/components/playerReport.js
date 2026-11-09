@@ -48,9 +48,17 @@ export function developmentView(report, payload) {
       bp.alternative ? h('p', { class: 'ai-text ai-alt' }, h('b', {}, 'Alternative: '), bp.alternative) : null),
     sec('Fit in Your Lineups',
       places.length
-        ? h('ul', { class: 'ai-chips' }, places.map((a) => h('li', { class: 'ai-chip' }, `${a.lineup} · ${a.slot}`, h('span', {}, a.position))))
+        ? h('ul', { class: 'ai-jobs' }, places.map((a) => h('li', { class: `ai-job${a.primary ? ' primary' : ''}` },
+          h('span', { class: 'ai-job-head' }, `${a.lineup} · ${a.slot}`, h('span', {}, a.position)),
+          h('span', { class: 'ai-job-roles' }, PHASES.map((ph) => h('span', {}, `${PHASE_LABEL[ph]}: `, a.role_fit?.[ph] ? h('b', {}, a.role_fit[ph].role) : h('i', {}, 'Not set')))))))
         : h('p', { class: 'ai-text ai-muted' }, 'Not in First, Backup or Future XI'),
       h('p', { class: 'ai-text' }, report.lineup_fit),
+      report.suggested_roles ? h('div', { class: 'ai-suggest' }, PHASES.filter((ph) => report.suggested_roles[ph]).map((ph) => {
+        const x = report.suggested_roles[ph];
+        return h('div', { class: 'ai-suggest-item' },
+          h('p', { class: 'ai-suggest-head' }, h('span', { class: 'ai-tag ai-tag-first' }, 'Suggestion'), `${PHASE_LABEL[ph]}: ${x.role}`, h('span', { class: 'ai-pick-note' }, `${x.lineup} · ${x.slot}, not set`)),
+          h('p', { class: 'ai-text' }, x.explanation));
+      })) : null,
       !places.length && report.suggested_slot ? h('div', { class: 'ai-suggest' },
         h('p', { class: 'ai-suggest-head' }, h('span', { class: 'ai-tag ai-tag-first' }, 'Recommendation'), `${report.suggested_slot.lineup} · ${report.suggested_slot.slot}`,
           report.suggested_slot.position ? h('span', { class: 'ai-pick-note' }, report.suggested_slot.position) : null),
@@ -65,7 +73,7 @@ export function developmentView(report, payload) {
 
 export function recruitmentView(report, payload) {
   const bf = report.best_fit;
-  const fit = (payload.squad_fit || []).find((s) => s.position === bf.position);
+  const fit = (payload.squad_fit || []).find((s) => s.slot === bf.slot) || null;
   const clubPlayer = (name) => fit?.club_players.find((c) => c.name === name) || (payload.squad_fit || []).flatMap((s) => s.club_players).find((c) => c.name === name);
   const ask = payload.player.asking_price;
   const askText = ask.status === 'available' ? shortMoney(ask.amount) : 'Unknown';
@@ -76,11 +84,15 @@ export function recruitmentView(report, payload) {
       h('p', { class: 'ai-headline' }, report.headline),
       h('p', { class: 'ai-text' }, report.explanation)),
     sec('Best Fit',
-      h('p', { class: 'ai-pick ai-pick-sm' }, bf.position, bf.slot ? h('span', { class: 'ai-pick-note' }, `${bf.slot} slot`) : null,
+      h('p', { class: 'ai-pick ai-pick-sm' }, bf.slot || bf.position, h('span', { class: 'ai-pick-note' }, bf.slot ? bf.position : null),
         fit && (fit.his_familiarity ?? 0) < 15 ? h('span', { class: 'ai-tag' }, 'Needs retraining') : null),
       h('p', { class: 'ai-text' }, bf.explanation),
-      PHASES.some((ph) => bf[ph]) ? h('ul', { class: 'ai-phases' }, PHASES.filter((ph) => bf[ph]).map((ph) =>
-        phaseCard(ph, fit?.his_role_fit?.[ph]?.role || null, fit?.his_role_fit?.[ph] ? fit.his_role_fit[ph].squadlab_role_score_out_of_100 : undefined, bf[ph], fit?.his_role_fit?.[ph]?.key_attributes || null))) : null),
+      PHASES.some((ph) => bf[ph] || fit?.his_role_fit?.[ph]) ? h('ul', { class: 'ai-phases' }, PHASES.filter((ph) => bf[ph] || fit?.his_role_fit?.[ph]).map((ph) => {
+        const f = fit?.his_role_fit?.[ph];
+        const saved = !!fit?.saved_roles?.[ph];
+        const roleName = f ? (saved ? f.role : `${f.role} · general fit, role not set`) : null;
+        return phaseCard(ph, roleName, f ? f.squadlab_role_score_out_of_100 : undefined, bf[ph] || null, f?.key_attributes || null);
+      })) : null),
     report.competition.length ? sec('Competition',
       h('ul', { class: 'ai-phases' }, report.competition.map((c) => {
         const cp = clubPlayer(c.name);
