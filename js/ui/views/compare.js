@@ -41,7 +41,7 @@ import {
 import { formatPositions } from '../../data/positions.js';
 import { linkWithFrom } from '../../router.js';
 import { buildComparisonRequest } from '../../data/comparisonRequest.js';
-import { AiAnalysisButton } from '../components/aiAnalysis.js';
+import { AiAnalysisButton, CopyForChatButton } from '../components/aiAnalysis.js';
 
 const SIDES = ['left', 'right'];
 const openState = new Map(); // group key → open (session), so re-renders keep what you opened
@@ -378,7 +378,7 @@ export async function CompareView() {
       basisText: [`${L.name} vs ${R.name}`, pos ? pos.short : null, roles.length ? roles.join(' / ') : null].filter(Boolean).join(' · '),
     };
   };
-  const aiBtn = AiAnalysisButton({ getRequest });
+  const aiBtn = h('div', { class: 'ai-actions' }, AiAnalysisButton({ getRequest }), CopyForChatButton({ getRequest }));
 
   const page = (...kids) => ({
     title: 'Comparison',
