@@ -1268,7 +1268,7 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .bcount-n { font-size: 14px; font-weight: 650; color: var(--text-2); }
 .bcount-dev { font-size: 12px; color: var(--muted); }
 .bsort { display: flex; align-items: center; gap: 6px; margin-left: auto; }
-.bsort .select-sm { max-width: 11rem; }
+.bsort .select-sm { max-width: 13.5rem; }
 
 /* Table: rows are grids sharing one column template; Name is pinned. */
 /* overflow: clip rounds the corners without becoming a scroll container (keeps sticky headings). */
@@ -1827,3 +1827,17 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .fclause { display: flex; flex-direction: column; gap: 10px; padding-left: 10px; border-left: 2px solid var(--border); }
 .frow.fct-row { flex-direction: column; align-items: stretch; gap: 6px; }
 .frow.fct-row .select.select-sm { width: 100%; max-width: none; min-height: 40px; }
+
+/* Filters → Nationality: count + Clear, Search countries, checkbox list (☐ flag name). */
+.fnat-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 28px; }
+.fnat-count { font-size: 14px; font-weight: 650; color: var(--muted); }
+.fnat-clear { margin: 0; }
+.fnat-search { width: 100%; margin-top: 8px; }
+.fnat-list { display: flex; flex-direction: column; margin-top: 8px; max-height: 260px; overflow-y: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.fnat-row { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; font-size: 15px; color: var(--text); cursor: pointer; }
+.fnat-row + .fnat-row { border-top: 1px solid var(--border); }
+.fnat-row[hidden] { display: none; }
+.fnat-box { width: 20px; height: 20px; margin: 0; flex: 0 0 auto; accent-color: var(--accent); }
+.fnat-flag { width: 1.4em; flex: 0 0 auto; font-size: 18px; line-height: 1; text-align: center; }
+.fnat-name { min-width: 0; overflow-wrap: anywhere; }
+.fnat-none { margin-top: 8px; }
