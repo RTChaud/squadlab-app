@@ -19,6 +19,7 @@ import { resolveNation, loadNations } from '../../data/nations.js';
 import {
   buildRow, matchesSearch, matchesFilters, filterChips, activeFilterCount, sortRows, sortableKeys,
   columnDef, defaultConfig, sanitizeConfig, sameConfig, emptyFilters, buildDevContext, DEFAULT_VIEW_ID,
+  nationOptions, tacticPoolFilters,
 } from '../../data/listView.js';
 import { PlayerTable } from './playerTable.js';
 import { openFilterSheet } from './filterSheet.js';
@@ -49,7 +50,9 @@ export function browserRowContext(model, older = new Map()) {
     // Contract dates are measured from the row's own snapshot.
     gameDateOf: (p) => (older.has(p) ? older.get(p) : model.gameDate),
     nationsOf: (p) => [p.nation_id, ...(Array.isArray(p.second_nation_ids) ? p.second_nation_ids : [])]
-      .filter(Number.isInteger).map((id) => resolveNation(id, careerId)).filter(Boolean),
+      .filter(Number.isInteger).map((id) => resolveNation(id, careerId)).filter(Boolean)
+      .filter((n, i, all) => all.findIndex((x) => x.name === n.name) === i),
+    primaryNationOf: (p) => (Number.isInteger(p.nation_id) ? resolveNation(p.nation_id, careerId) : null),
   };
 }
 
@@ -58,7 +61,9 @@ export function browserRowContext(model, older = new Map()) {
  *   section 'squad' | 'shortlists' | 'tags', source (stable id of the selected squad/list/tag),
  *   sourceName, players (members; latest snapshot unless listed in `older`),
  *   older (Map player → game date, for members only found in an earlier snapshot),
- *   from (route to return to), emptyTitle, emptyText
+ *   from (route to return to), emptyTitle, emptyText,
+ *   nationPool: 'source' (default: every player in the selected squad/list/tag) or
+ *     'tactic' (Tactic results: the players at the filtered position and roles)
  */
 export async function PlayerBrowser(o) {
   const model = getModel();
@@ -91,6 +96,10 @@ export async function PlayerBrowser(o) {
     refresh();
   }
 
+  // ---- Nationality options: the view's player pool, not the filtered results ---------------
+  const poolRows = (f) => (o.nationPool === 'tactic' ? allRows.filter((r) => matchesFilters(r, tacticPoolFilters(f))) : allRows);
+  const countriesFor = (f) => nationOptions(poolRows(f));
+
   // ---- Controls ---------------------------------------------------------------------------
   const searchInput = h('input', {
     type: 'search', class: 'bsearch-input', placeholder: 'Search', 'aria-label': `Search ${o.sourceName}`,
@@ -108,6 +117,7 @@ export async function PlayerBrowser(o) {
     onclick: () => openFilterSheet({
       filters: config().filters,
       tags: listTags(),
+      nations: (filters) => countriesFor(filters),
       // Live match count for the draft: the selected squad/list and the current search.
       count: (filters) => allRows.filter((r) => (!ses.search.trim() || matchesSearch(r, ses.search)) && matchesFilters(r, filters)).length,
       onApply: (filters) => setConfig({ ...config(), filters }),
@@ -152,7 +162,16 @@ export async function PlayerBrowser(o) {
   let table = null;
 
   function refresh() {
-    const cfg = config();
+    let cfg = config();
+    // A new pool (other squad, shortlist, position or role) drops selected countries it doesn't contain.
+    if (cfg.filters.nations.length) {
+      const available = new Set(countriesFor(cfg.filters).map((n) => n.name));
+      const kept = cfg.filters.nations.filter((n) => available.has(n));
+      if (kept.length !== cfg.filters.nations.length) {
+        setListSection(o.section, { config: sanitizeConfig({ ...cfg, filters: { ...cfg.filters, nations: kept } }, o.section) });
+        cfg = config();
+      }
+    }
     const f = cfg.filters;
     const nFilters = activeFilterCount(f);
     filtersBtn.replaceChildren(...[icon('settings'), 'Filters', nFilters ? h('span', { class: 'count-badge' }, String(nFilters)) : null].filter(Boolean));
@@ -181,11 +200,21 @@ export async function PlayerBrowser(o) {
     ].filter(Boolean));
 
     // Count + sort
-    const sortKeys = sortableKeys(cfg.columns);
+    // Nationality has its own A–Z and Z–A entries; other keys use the direction button.
+    const sortKeys = sortableKeys(cfg.columns).filter((k) => k !== 'nat');
+    const sortValueOf = cfg.sort.key === 'nat' ? `nat:${cfg.sort.dir}` : cfg.sort.key;
     const sortSel = h('select', {
       class: 'select select-sm', 'aria-label': 'Sort by',
-      onchange: (e) => { const c = columnDef(e.target.value); setConfig({ ...cfg, sort: { key: c.id, dir: c.dir } }); },
-    }, sortKeys.map((k) => h('option', { value: k, selected: k === cfg.sort.key }, `Sort: ${k === 'xi' ? 'Squad slot' : columnDef(k).label}`)));
+      onchange: (e) => {
+        const v = e.target.value;
+        if (v.startsWith('nat:')) { setConfig({ ...cfg, sort: { key: 'nat', dir: v.slice(4) } }); return; }
+        const c = columnDef(v); setConfig({ ...cfg, sort: { key: c.id, dir: c.dir } });
+      },
+    }, [
+      ...sortKeys.map((k) => h('option', { value: k, selected: k === sortValueOf }, `Sort: ${k === 'xi' ? 'Squad slot' : columnDef(k).label}`)),
+      h('option', { value: 'nat:asc', selected: sortValueOf === 'nat:asc' }, 'Sort: Nationality A–Z'),
+      h('option', { value: 'nat:desc', selected: sortValueOf === 'nat:desc' }, 'Sort: Nationality Z–A'),
+    ]);
     const dirBtn = h('button', {
       type: 'button', class: 'tool-btn', 'aria-label': cfg.sort.dir === 'asc' ? 'Ascending — switch to descending' : 'Descending — switch to ascending',
       onclick: () => setConfig({ ...cfg, sort: { ...cfg.sort, dir: cfg.sort.dir === 'asc' ? 'desc' : 'asc' } }),

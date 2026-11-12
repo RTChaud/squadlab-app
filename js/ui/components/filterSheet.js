@@ -7,6 +7,10 @@
 // each role's key attributes become editable conditions (default at least 15,
 // tendencies unset), one row per attribute even when both roles list it. They
 // are ANDed with everything else. The Apply button shows a live match count.
+//
+// Nationality: tick any countries from those represented in the view's player
+// pool (the caller supplies them; Tactic results recompute them from the draft
+// position and roles). Search countries only narrows the list; ticks are kept.
 
 import { h } from '../dom.js';
 import { openSheet } from './sheet.js';
@@ -14,7 +18,7 @@ import { pickAttribute } from './attributePicker.js';
 import {
   POSITION_CHOICES, FOOT_CHOICES, TIER_CHOICES, SLOT_CHOICES, OPERATORS, RANGES, ATTR_CHOICE, ATTR_SCALE,
   sanitizeFilters, conditionError, rangeError, DEFAULT_MIN_FAM, ROLE_DEFAULT_MIN, ROLE_OPERATORS,
-  EXPIRY_CHOICES, MONEY_RANGES, CLAUSE_FILTERS, moneyRangeError, moneyError,
+  EXPIRY_CHOICES, MONEY_RANGES, CLAUSE_FILTERS, moneyRangeError, moneyError, matchCountry,
 } from '../../data/listView.js';
 import { parseMoney, formatMoneyInput, formatMoneyTyping } from '../../data/money.js';
 import { PHASES, loadRoleCatalogue, positionByCode, rolesFor } from '../../data/roles.js';
@@ -118,7 +122,8 @@ const strOf = (v) => (v === null || v === undefined ? '' : String(v));
 const numOrNull = (v) => (String(v).trim() === '' ? null : Number(v));
 
 /**
- * @param {object} o  filters, tags: [{ id, name }], onApply(filters), count(filters) → number (optional)
+ * @param {object} o  filters, tags: [{ id, name }], onApply(filters), count(filters) → number (optional),
+ *   nations(filters) → [{ name, flag }] countries in the view's pool (optional)
  */
 export function openFilterSheet(o) {
   const f0 = sanitizeFilters(o.filters);
@@ -131,7 +136,9 @@ export function openFilterSheet(o) {
     attrs: f0.attrs.map((c) => ({ ...c, value: String(c.value) })),
     role: draftRole(f0.roles),
     ct: draftContract(f0),
+    nations: [...f0.nations],
   };
+  let natQuery = ''; // Search countries text: narrows the list only
   let cat = null; // role catalogue (loaded below)
 
   const body = h('div', { class: 'filter-form' });
@@ -377,6 +384,62 @@ export function openFilterSheet(o) {
       clauseExtra);
   }
 
+  // ---- Nationality ------------------------------------------------------------------------
+  let natOptions = [];
+  /** Recompute the countries on offer (Tactic results: from the draft position/roles) and drop ticks they lose. */
+  function syncNations() {
+    natOptions = o.nations ? o.nations(draftFilters()) : [];
+    const have = new Set(natOptions.map((n) => n.name));
+    d.nations = d.nations.filter((n) => have.has(n));
+  }
+
+  function nationalitySection() {
+    if (!o.nations) return null;
+    if (!natOptions.length) return section('Nationality', h('p', { class: 'fhint' }, 'No nationalities recorded for these players.'));
+    const countEl = h('span', { class: 'fnat-count' });
+    const clearBtn = h('button', { type: 'button', class: 'chip-clear fnat-clear', onclick: () => { d.nations = []; list.querySelectorAll('input').forEach((i) => { i.checked = false; }); updateCount(); } }, 'Clear');
+    const updateCount = () => {
+      countEl.textContent = d.nations.length ? `${d.nations.length} selected` : 'Any nationality';
+      clearBtn.hidden = !d.nations.length;
+      updateErrors(); // refreshes the Apply count
+    };
+    const list = h('div', { class: 'fnat-list', role: 'group', 'aria-label': 'Countries' });
+    const empty = h('p', { class: 'fhint fnat-none', hidden: true }, 'No countries match.');
+    const rows = natOptions.map((n) => {
+      const box = h('input', {
+        type: 'checkbox', class: 'fnat-box', checked: d.nations.includes(n.name), value: n.name,
+        onchange: (e) => { d.nations = e.target.checked ? [...new Set([...d.nations, n.name])] : d.nations.filter((x) => x !== n.name); updateCount(); },
+      });
+      const row = h('label', { class: 'fnat-row', 'data-country': n.name },
+        box,
+        h('span', { class: 'fnat-flag', 'aria-hidden': 'true' }, n.flag || ''),
+        h('span', { class: 'fnat-name' }, n.name));
+      return { n, row };
+    });
+    list.append(...rows.map((x) => x.row));
+    const filterList = () => {
+      let shown = 0;
+      for (const { n, row } of rows) { const ok = matchCountry(n.name, natQuery); row.hidden = !ok; if (ok) shown++; }
+      empty.hidden = shown > 0;
+    };
+    const search = h('input', {
+      type: 'search', class: 'finput fnat-search', placeholder: 'Search countries', 'aria-label': 'Search countries', value: natQuery,
+      autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'search',
+      oninput: (e) => { natQuery = e.target.value; filterList(); },
+      onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } },
+    });
+    search.value = natQuery;
+    filterList();
+    const sec = section('Nationality',
+      h('div', { class: 'fnat-head' }, countEl, clearBtn),
+      search, list, empty);
+    sec.classList.add('fsec-nat');
+    // Count text set once the section exists (updateErrors needs the sheet).
+    countEl.textContent = d.nations.length ? `${d.nations.length} selected` : 'Any nationality';
+    clearBtn.hidden = !d.nations.length;
+    return sec;
+  }
+
   function updateErrors() {
     const errs = errors();
     body.querySelectorAll('.ferror').forEach((el) => {
@@ -390,15 +453,17 @@ export function openFilterSheet(o) {
   function render() {
     const scroll = sheet?.el.scrollTop ?? 0;
     syncRoles();
-    body.replaceChildren(
+    syncNations();
+    body.replaceChildren(...[
       positionsSection(),
       section('Age, CA and PA', ...Object.keys(RANGES).map(rangeSection)),
       section('Preferred foot', h('div', { class: 'tchips' }, FOOT_CHOICES.map((x) => tchip(x, d.feet.includes(x), () => { d.feet = toggleIn(d.feet, x); render(); })))),
+      nationalitySection(),
       tagsSection(),
       lineupSection(),
       contractSection(),
       attrsSection(),
-    );
+    ].filter(Boolean));
     updateErrors();
     if (sheet) sheet.el.scrollTop = scroll;
   }
@@ -416,6 +481,7 @@ export function openFilterSheet(o) {
     out.expiry = d.ct.expiry ? Number(d.ct.expiry) : null;
     for (const k of Object.keys(MONEY_RANGES)) out[k] = d.ct[k].map(money);
     out.clause = d.ct.clauseType ? { type: d.ct.clauseType, max: money(d.ct.clauseMax), status: d.ct.clauseStatus } : null;
+    out.nations = d.nations;
     return sanitizeFilters(out);
   }
 
@@ -436,7 +502,7 @@ export function openFilterSheet(o) {
     return [
       { label: hasErrors ? 'Fix the highlighted values' : applyLabel(), disabled: hasErrors, onClick: apply },
       { label: 'Clear all', kind: 'secondary', onClick: () => {
-        Object.assign(d, { positions: [], minFam: DEFAULT_MIN_FAM, feet: [], tags: [], tagMode: 'any', tiers: [], slots: [], unassigned: false, attrs: [], role: emptyRole(), ct: draftContract(null),
+        Object.assign(d, { positions: [], minFam: DEFAULT_MIN_FAM, feet: [], tags: [], tagMode: 'any', tiers: [], slots: [], unassigned: false, attrs: [], role: emptyRole(), ct: draftContract(null), nations: [],
           ranges: Object.fromEntries(Object.keys(RANGES).map((k) => [k, ['', '']])) });
         render();
       } },
