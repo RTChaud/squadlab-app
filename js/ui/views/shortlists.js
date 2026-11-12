@@ -51,6 +51,8 @@ export async function ShortlistsView({ listId, query }) {
       await PlayerBrowser({
         section: 'shortlists', source: current.id, sourceName: current.id === ALL_LIST_ID ? 'all players' : `“${current.name}”`,
         players: current.players,
+        // Opened from Tactic: country options come from the players at its position and roles.
+        nationPool: from === '/tactic' ? 'tactic' : 'source',
         from: here,
         emptyTitle: current.id === ALL_LIST_ID ? 'No players in this snapshot' : 'This shortlist is empty',
         emptyText: current.id === ALL_LIST_ID ? '' : `“${current.name}” has no players in this extract.`,
