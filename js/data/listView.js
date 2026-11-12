@@ -151,8 +151,10 @@ export const emptyFilters = () => ({
   attrs: [],
   roles: null,
   expiry: null, salary: [null, null], tvalue: [null, null], clause: null,
+  nations: [],
 });
 
+const collator = new Intl.Collator('en-GB', { sensitivity: 'base', numeric: true });
 const intIn = (v, min, max) => (Number.isInteger(v) && v >= min && v <= max ? v : null);
 const uniq = (arr) => [...new Set(arr)];
 
@@ -248,6 +250,7 @@ export function sanitizeFilters(raw) {
   f.clause = cl && CLAUSE_FILTERS.some((t) => t.id === cl.type)
     ? { type: cl.type, max: moneyOrNull(cl.max), status: cl.type === 'relegation' && cl.status === 'active' ? 'active' : 'any' }
     : null;
+  f.nations = uniq(arr(raw.nations).filter((x) => typeof x === 'string' && x.trim()).map((x) => x.trim().slice(0, 80))).slice(0, 300).sort(collator.compare);
   return f;
 }
 
@@ -304,6 +307,7 @@ export function activeFilterCount(f) {
   if (f.expiry) n++;
   for (const k of Object.keys(MONEY_RANGES)) if (f[k][0] !== null || f[k][1] !== null) n++;
   if (f.clause) n++;
+  if (f.nations.length) n++;
   return n;
 }
 
@@ -318,12 +322,11 @@ export function preferredFoot(p) {
   return l === r ? 'Both' : r > l ? 'Right' : 'Left';
 }
 
-const collator = new Intl.Collator('en-GB', { sensitivity: 'base', numeric: true });
 
 /**
  * Build the row model for one player (current values from the latest snapshot).
  * ctx: { careerId, keyOf(p), slotsOf(key), tagsOf(key) → [tag], teamOf(p) → {key,label,short}|null,
- *        nationsOf(p) → [{ name, flag }] }
+ *        nationsOf(p) → [{ name, flag }] (primary first), primaryNationOf(p) → { name, flag } | null }
  */
 export function buildRow(p, ctx) {
   const key = ctx.keyOf(p);
@@ -354,6 +357,8 @@ export function buildRow(p, ctx) {
     team,
     club: (typeof p.club_short_name === 'string' && p.club_short_name.trim()) || (typeof p.club_name === 'string' && p.club_name.trim()) || null,
     nations,
+    // Sorting uses the primary nationality only (dual nationals match filters through either).
+    primaryNation: ctx.primaryNationOf ? ctx.primaryNationOf(p) : nations[0] || null,
     foot: preferredFoot(p),
     // Contract & transfer, read the same way as the profile's Contract sheet.
     ctDate: ctx.gameDateOf?.(p) || null,
@@ -380,6 +385,8 @@ export function matchesFilters(row, f) {
   if (f.positions.length && !f.positions.some((c) => row.fam[c] !== null && row.fam[c] >= f.minFam)) return false;
   if (!inRange(row.age, f.age) || !inRange(row.ca, f.ca) || !inRange(row.pa, f.pa)) return false;
   if (f.feet.length && !(row.foot && f.feet.includes(row.foot))) return false;
+  // Nationality: any selected country, through any recorded nationality. None selected = everyone (missing included).
+  if (f.nations.length && !row.nations.some((n) => f.nations.includes(n.name))) return false;
   if (f.tags.length) {
     const ok = f.tagMode === 'all' ? f.tags.every((t) => row.tagIds.has(t)) : f.tags.some((t) => row.tagIds.has(t));
     if (!ok) return false;
@@ -479,7 +486,34 @@ export function filterChips(f, tagName) {
     const text = f.clause.max === null ? what : `${what} ≤ ${formatMoney(f.clause.max)}`;
     chips.push({ id: 'clause', text, label: `Release clause: ${text}`, remove: () => ({ ...clone(), clause: null }) });
   }
+  if (f.nations.length) {
+    chips.push({ id: 'nations', text: `Nationality: ${f.nations.join(', ')}`, label: `Nationality ${f.nations.join(' or ')}`, remove: () => ({ ...clone(), nations: [] }) });
+  }
   return chips;
+}
+
+// ---- Nationality options -------------------------------------------------------------------
+// The Nationality filter offers the countries represented in the view's player
+// pool (not the filtered results), so ticking one country leaves the others
+// available. Squad, Shortlists and Tags use the selected squad / list / tag;
+// Tactic results use the players at the chosen position and roles.
+
+/** Countries represented in rows, alphabetical by displayed name: [{ name, flag }]. */
+export function nationOptions(rows) {
+  const byName = new Map();
+  for (const r of rows) for (const n of r.nations) if (n?.name && !byName.has(n.name)) byName.set(n.name, { name: n.name, flag: n.flag || null });
+  return [...byName.values()].sort((a, b) => collator.compare(a.name, b.name));
+}
+
+/** The Tactic pool's criteria taken from a filter set: position(s), familiarity and roles only. */
+export function tacticPoolFilters(f) {
+  return sanitizeFilters({ ...emptyFilters(), positions: f.positions, minFam: f.minFam, roles: f.roles });
+}
+
+/** Country names matching a search (case- and accent-insensitive). */
+export function matchCountry(name, query) {
+  const q = normalizeSearch(query).trim();
+  return !q || normalizeSearch(name).includes(q);
 }
 
 // ---- Development changes -------------------------------------------------------------------
@@ -542,7 +576,7 @@ function sortValue(row, id, dev) {
     case 'pa': return row.pa;
     case 'squad': return row.team ? TEAM_ORDER[row.team.key] ?? 9 : null;
     case 'club': return row.club;
-    case 'nat': return row.nations[0]?.name ?? null;
+    case 'nat': return row.primaryNation?.name ?? null;
     case 'foot': return row.foot;
     case 'c:expiry': return row.ct.contract.end ? Number(row.ct.contract.end.replace(/-/g, '')) : null;
     case 'c:salary': return moneySort(row, 'salary');
@@ -594,8 +628,8 @@ export function defaultConfig(section) {
   return { filters: emptyFilters(), columns: [...DEFAULT_COLUMNS[section] || DEFAULT_COLUMNS.squad], sort: { ...DEFAULT_SORT }, baseline: 'first' };
 }
 
-/** Sort keys allowed for a column set: any shown column, plus XI (Squad slot) even when hidden. */
-export const sortableKeys = (columns) => uniq(['xi', ...columns]);
+/** Sort keys allowed for a column set: any shown column, plus XI (Squad slot) and Nationality even when hidden. */
+export const sortableKeys = (columns) => uniq(['xi', ...columns, 'nat']);
 
 export function sanitizeConfig(raw, section) {
   const base = defaultConfig(section);
