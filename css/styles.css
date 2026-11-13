@@ -1841,3 +1841,16 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .fnat-flag { width: 1.4em; flex: 0 0 auto; font-size: 18px; line-height: 1; text-align: center; }
 .fnat-name { min-width: 0; overflow-wrap: anywhere; }
 .fnat-none { margin-top: 8px; }
+
+/* Role catalogue: Key / Preferred lists, empty phases, roles to reselect. */
+.role-attr-tier { margin: 8px 0 2px; font-size: 12px; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.role-attr-tier:first-child { margin-top: 0; }
+.role-none { margin: 6px 0 0; }
+.role-legacy { margin: 6px 0 0; font-size: 13px; font-weight: 650; color: var(--accent); }
+.tac-pref .tac-attr-name { color: var(--text-2); }
+.slot-roles dd.slot-legacy { color: var(--accent); font-weight: 650; }
+.pslot-roles.stale { color: var(--accent); }
+.lineup-stale { padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--accent); background: var(--accent-soft); }
+.lineup-stale p { margin: 0; }
+.lineup-stale-title { font-weight: 750; color: var(--text); }
+.lineup-stale .small + .small { margin-top: 4px; }
