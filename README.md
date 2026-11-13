@@ -25,7 +25,7 @@ To test locally, run `python3 -m http.server` in the folder and open `http://loc
 ```
 index.html, manifest.webmanifest
 data/fm-nation-mapping.json   nation ID → name map from the save (replace when regenerated)
-data/fm27-role-catalogue.json provisional position/role catalogue (replace with a revised file; same format)
+data/fm27-role-catalogue-fminside.json  FMInside role catalogue: roles per position and phase, Key and Preferred attributes
 css/styles.css
 icons/logo.png
 js/app.js              shell, import flow, view dispatch
@@ -44,7 +44,7 @@ js/data/flags.js       nation → flag emoji
 js/data/tags.js        player tags (app data, kept in backups)
 js/data/lineups.js     4-2-3-1 slot definitions, default/custom lineups, Squad slot ranks, saved role pair per slot (shared by First / Backup / Future XI)
 js/data/radar.js       radar overviews, selectable attributes, radar preferences
-js/data/roles.js       role catalogue loading/validation, position + attribute mapping, Role attributes /100 score
+js/data/roles.js       role catalogue loading/validation, position + attribute mapping, role score (mean of Key attributes × 5), saved-role resolution
 js/data/listView.js    Squad/Shortlists columns, filters (incl. Tactic → filters), sorting, change columns, saved views
 js/data/money.js       GBP formatting (two decimals, display rounded up: next £1,000 below £1m, next £100,000 from £1m), weekly → monthly salary, typed amounts
 js/data/contract.js    Contract data shared by the Contract sheet, table columns and filters: expiry, salary, value, clauses (FM26 codes 0, 27, 1 and 55 read only in the tested FM26 format)
