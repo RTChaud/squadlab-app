@@ -13,22 +13,27 @@ const PHASES = ['in_possession', 'out_of_possession'];
 const score = (v) => (typeof v === 'number' && Number.isFinite(v) ? String(Math.round(v * 10) / 10) : '–');
 const sec = (label, ...kids) => h('section', { class: 'ai-sec', 'aria-label': label }, h('p', { class: 'ai-kicker' }, label), ...kids);
 
-function phaseCard(ph, roleName, scoreValue, explanation, inputs = null) {
-  const list = inputs ? Object.entries(inputs).filter(([, v]) => v !== null && v !== undefined) : [];
+/** A phase card: role, SquadLab score, its Key attributes (score inputs) and Preferred attributes (context). */
+function phaseCard(ph, roleName, scoreValue, explanation, fit = null) {
+  const vals = (o) => Object.entries(o || {}).map(([k, v]) => `${k} ${v ?? '–'}`).join(' · ');
+  const key = vals(fit?.key_attributes), pref = vals(fit?.preferred_attributes);
+  if (fit?.score_incomplete) scoreValue = undefined;
   return h('li', { class: 'ai-phase' },
     h('span', { class: 'ai-phase-head' }, PHASE_LABEL[ph], scoreValue !== undefined ? h('b', {}, score(scoreValue)) : null),
     roleName ? h('span', { class: 'ai-phase-role' }, roleName) : null,
-    list.length ? h('span', { class: 'ai-phase-inputs' }, `Score inputs: ${list.map(([k, v]) => `${k} ${v}`).join(' · ')}`) : null,
+    key ? h('span', { class: 'ai-phase-inputs' }, `Key: ${key}`) : null,
+    pref ? h('span', { class: 'ai-phase-inputs' }, `Preferred: ${pref}`) : null,
+    fit?.score_incomplete ? h('span', { class: 'ai-phase-inputs' }, `Score incomplete: no value for ${(fit.missing_key_attributes || []).join(', ')}`) : null,
     explanation ? h('span', { class: 'ai-text' }, explanation) : null);
 }
 
-/** The role's SquadLab score and its inputs at a position, from the request. */
+/** The role's SquadLab score and its Key / Preferred values at a position, from the request. */
 function roleAt(payload, position, ph, roleName) {
   const pos = payload.positions.find((x) => x.position === position);
   const r = pos?.best_roles?.[ph]?.find((x) => x.name === roleName);
-  if (r) return { score: r.squadlab_role_score_out_of_100, inputs: r.key_attributes };
+  if (r) return { score: r.squadlab_role_score_out_of_100, fit: r };
   const a = (payload.lineup_assignments || []).find((x) => x.position === position && x.role_fit?.[ph]?.role === roleName);
-  return a ? { score: a.role_fit[ph].squadlab_role_score_out_of_100, inputs: a.role_fit[ph].key_attributes } : { score: undefined, inputs: null };
+  return a ? { score: a.role_fit[ph].squadlab_role_score_out_of_100, fit: a.role_fit[ph] } : { score: undefined, fit: null };
 }
 
 export function developmentView(report, payload) {
@@ -44,7 +49,7 @@ export function developmentView(report, payload) {
         bp.needs_retraining ? h('span', { class: 'ai-tag' }, 'Needs retraining') : null),
       h('p', { class: 'ai-text' }, bp.explanation),
       PHASES.some((ph) => bp[ph]) ? h('ul', { class: 'ai-phases' }, PHASES.filter((ph) => bp[ph]).map((ph) =>
-        { const at = roleAt(payload, bp.position, ph, bp[ph].role); return phaseCard(ph, bp[ph].role, at.score, bp[ph].explanation, at.inputs); })) : null,
+        { const at = roleAt(payload, bp.position, ph, bp[ph].role); return phaseCard(ph, bp[ph].role, at.score, bp[ph].explanation, at.fit); })) : null,
       bp.alternative ? h('p', { class: 'ai-text ai-alt' }, h('b', {}, 'Alternative: '), bp.alternative) : null),
     sec('Fit in Your Lineups',
       places.length
@@ -91,7 +96,7 @@ export function recruitmentView(report, payload) {
         const f = fit?.his_role_fit?.[ph];
         const saved = !!fit?.saved_roles?.[ph];
         const roleName = f ? (saved ? f.role : `${f.role} · general fit, role not set`) : null;
-        return phaseCard(ph, roleName, f ? f.squadlab_role_score_out_of_100 : undefined, bf[ph] || null, f?.key_attributes || null);
+        return phaseCard(ph, roleName, f ? f.squadlab_role_score_out_of_100 : undefined, bf[ph] || null, f || null);
       })) : null),
     report.competition.length ? sec('Competition',
       h('ul', { class: 'ai-phases' }, report.competition.map((c) => {

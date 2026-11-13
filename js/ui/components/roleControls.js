@@ -18,7 +18,7 @@ export function openRoleInfo(position, roles) {
       return h('div', { class: 'role-desc', 'data-phase': ph.id },
         h('p', { class: 'sheet-sub' }, ph.label),
         role
-          ? [h('p', { class: 'role-desc-name' }, role.name), h('p', { class: 'sheet-text' }, role.description || 'No description in the role catalogue.')]
+          ? [h('p', { class: 'role-desc-name' }, role.name), role.description ? h('p', { class: 'sheet-text' }, role.description) : null].filter(Boolean)
           : h('p', { class: 'sheet-text muted' }, 'No role chosen.'));
     }),
     actions: [{ label: 'Close', kind: 'secondary', onClick: (close) => close() }],

@@ -21,7 +21,7 @@ import {
   EXPIRY_CHOICES, MONEY_RANGES, CLAUSE_FILTERS, moneyRangeError, moneyError, matchCountry,
 } from '../../data/listView.js';
 import { parseMoney, formatMoneyInput, formatMoneyTyping } from '../../data/money.js';
-import { PHASES, loadRoleCatalogue, positionByCode, rolesFor } from '../../data/roles.js';
+import { PHASES, loadRoleCatalogue, positionByCode, rolesFor, resolveSavedRole, NO_ROLES_TEXT } from '../../data/roles.js';
 
 // Familiarity codes laid out like the profile pitch (front to back).
 const POS_LAYOUT = [[null, 'stc', null], ['aml', 'amc', 'amr'], ['ml', 'mc', 'mr'], ['wbl', 'dm', 'wbr'], ['dl', 'dc', 'dr'], [null, 'gk', null]];
@@ -169,7 +169,7 @@ export function openFilterSheet(o) {
 
   // ---- Role filter --------------------------------------------------------------------
   const onePosition = () => (d.positions.length === 1 ? d.positions[0] : null);
-  const roleOf = (phase) => (cat && d.role[phase] ? rolesFor(cat, d.role.position, phase).find((r) => r.id === d.role[phase]) || null : null);
+  const roleOf = (phase) => (cat && d.role[phase] ? resolveSavedRole(cat, d.role.position, phase, d.role[phase]).role : null);
   /** Role filtering applies only with exactly one position and at least one role chosen. */
   const roleActive = () => !!cat && !cat.error && onePosition() === d.role.position && PHASES.some((ph) => roleOf(ph.id));
 
@@ -177,7 +177,7 @@ export function openFilterSheet(o) {
   function requiredAttrs() {
     const req = new Map();
     for (const ph of PHASES) {
-      for (const a of roleOf(ph.id)?.attrs || []) {
+      for (const a of (roleOf(ph.id)?.attrs || []).filter((x) => x.tier === 'key')) {
         if (!a.mapped || !ATTR_CHOICE[a.key]) continue;
         const e = req.get(a.key) || { tendency: !!a.tendency, phases: [] };
         e.phases.push(ph.id);
@@ -221,6 +221,9 @@ export function openFilterSheet(o) {
     if (!positionByCode(cat, pos)) return hint(`The role catalogue has no roles for ${POS_LABEL[pos]}.`);
     const picks = h('div', { class: 'frole-picks' }, PHASES.map((ph) => {
       const role = roleOf(ph.id);
+      if (!rolesFor(cat, pos, ph.id).length) {
+        return h('div', { class: 'frole-col', 'data-phase': ph.id }, h('p', { class: 'frole-phase' }, ph.label), h('p', { class: 'role-none muted small' }, NO_ROLES_TEXT));
+      }
       const select = h('select', {
         class: 'role-pick-select', 'data-role-filter': ph.id, 'aria-label': `${ph.label} role`,
         onchange: (e) => { d.role[ph.id] = e.target.value || null; render(); },
