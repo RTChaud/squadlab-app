@@ -202,7 +202,7 @@ export function tacticFilters(position, roles) {
   const conds = [];
   const seen = new Set();
   for (const phase of ['in_possession', 'out_of_possession']) {
-    for (const a of roles[phase]?.attrs || []) {
+    for (const a of (roles[phase]?.attrs || []).filter((x) => x.tier === 'key')) {
       if (!a.mapped || !ATTR_CHOICE[a.key] || seen.has(a.key)) continue;
       seen.add(a.key);
       conds.push(a.tendency ? { key: a.key, op: null, value: null, tendency: true } : { key: a.key, op: 'gte', value: ROLE_DEFAULT_MIN, tendency: false });

@@ -90,13 +90,19 @@ function squadOf(p, model, teamLabelOf) {
   return teamLabelOf?.(squad, model) || squad.name;
 }
 
-/** Role evidence for one player in one phase: familiarity is per position, values per role attribute. */
+/**
+ * Role evidence for one player in one phase: the SquadLab score (mean of the
+ * Key attributes × 5), his Key attribute values (the score inputs) and his
+ * Preferred attribute values (suitability context, not scored). A Key value
+ * missing from the data makes the score incomplete (null), never zero.
+ */
 export function roleFit(p, role, posCode) {
   const s = roleScore(role, p);
-  const val = (tier) => Object.fromEntries(role.attrs.filter((a) => a.tier === tier).map((a) => [a.tendency ? `${a.label} (tendency)` : a.label, roleValue(p, a)]));
+  const val = (tier) => Object.fromEntries(role.attrs.filter((a) => a.tier === tier).map((a) => [a.label, roleValue(p, a)]));
   const fit = { squadlab_role_score_out_of_100: s.value === null ? null : round2(s.value), key_attributes: val('key') };
-  const sup = val('supporting');
-  if (Object.keys(sup).length) fit.supporting_attributes = sup;
+  if (s.incomplete) { fit.score_incomplete = true; fit.missing_key_attributes = s.missing; }
+  const pref = val('preferred');
+  if (Object.keys(pref).length) fit.preferred_attributes = pref;
   return fit;
 }
 
@@ -178,11 +184,11 @@ export function playerBlock(res, label, ctx, basis, club) {
 }
 
 export function roleBlock(role) {
-  const list = (tier) => role.attrs.filter((a) => a.tier === tier).map((a) => (a.tendency ? `${a.label} (tendency)` : a.label));
+  const list = (tier) => role.attrs.filter((a) => a.tier === tier).map((a) => a.label);
   const out = { name: role.name, key_attributes: list('key') };
   if (role.description) out.description = role.description;
-  const sup = list('supporting');
-  if (sup.length) out.supporting_attributes = sup;
+  const pref = list('preferred');
+  if (pref.length) out.preferred_attributes = pref;
   return out;
 }
 

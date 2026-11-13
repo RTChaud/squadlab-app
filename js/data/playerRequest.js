@@ -15,7 +15,7 @@
 // Nothing is estimated: missing values are null and a missing fee stays missing.
 // Pure: no DOM, no store; the caller passes the context in.
 
-import { PHASES, rolesFor, roleScore, familiarityAt } from './roles.js';
+import { PHASES, rolesFor, roleScore, familiarityAt, resolveSavedRole } from './roles.js';
 import { SLOTS, SLOT_BY_ID, DEFAULT_LINEUPS } from './lineups.js';
 import { ATTR_BY_KEY, HIDDEN_ATTRS, PERSONALITY_ATTRS, intOrNull } from './attributes.js';
 import { ATTRIBUTE_INFO } from './attributeInfo.js';
@@ -92,7 +92,7 @@ function positionAttributes(cat, p, code) {
  */
 export function phaseDescription(cat, role) {
   const d = role.description || '';
-  if (!d) return { description: null, description_note: 'No description in the role catalogue.' };
+  if (!d) return { description: null, description_note: 'The role catalogue has no description for this role yet.' };
   if (role.phase === 'out_of_possession') {
     const twin = rolesFor(cat, role.position, 'in_possession').find((r) => r.name === role.name && r.description === d);
     if (twin) return { description: null, description_note: 'The role catalogue only repeats the in-possession description for this role, so its out-of-possession duties are not described.' };
@@ -132,7 +132,7 @@ function slotAssessed(cat, slotRoles, slotId, refPlayer) {
   const saved = slotRoles?.[slotId] || {};
   const out = {};
   for (const ph of PHASES) {
-    const role = saved[ph.id] ? rolesFor(cat, code, ph.id).find((r) => r.id === saved[ph.id]) : null;
+    const role = saved[ph.id] ? resolveSavedRole(cat, code, ph.id, saved[ph.id]).role : null;
     if (role) { out[ph.id] = { role, source: SAVED_SOURCE }; continue; }
     const top = refPlayer ? rankedRoles(cat, refPlayer, code, ph.id)[0] : null;
     out[ph.id] = top ? { role: top.role, source: GENERAL_SOURCE } : null;
@@ -145,7 +145,8 @@ function savedPair(cat, slotRoles, slotId) {
   const code = SLOT_BY_ID[slotId].fam;
   return Object.fromEntries(PHASES.map((ph) => {
     const id = slotRoles?.[slotId]?.[ph.id];
-    const role = id ? rolesFor(cat, code, ph.id).find((r) => r.id === id) : null;
+    // Renamed roles map; one no longer listed counts as not set (it's reselected on the Lineups page).
+    const role = id ? resolveSavedRole(cat, code, ph.id, id).role : null;
     return [ph.id, role || null];
   }));
 }

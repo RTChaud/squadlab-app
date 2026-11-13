@@ -1,19 +1,28 @@
 // Position & role analysis: the bundled role catalogue, its mapping onto the
 // app's fields, and the shared "Role attributes /100" calculation used by the
-// player profile and the Comparison tab.
+// player profile, Comparison, Tactic, Lineups and the AI reports.
 //
-// The catalogue is a plain JSON file shipped with the app
-// (data/fm27-role-catalogue.json). It can be replaced by a revised file with
-// different role names or attribute lists: everything here is read from it, and
-// anything it contains that the app can't map is reported, not guessed.
-// Selections are stored by role id, which is unique per position AND phase, so
-// a role with the same name in both phases stays two separate entries.
+// Source of truth: data/fm27-role-catalogue-fminside.json (FMInside's FM27
+// role calculator). Its shape is
+//   { positions: { GK: { position, in_possession: [role], out_of_possession: [role] }, … } }
+//   role = { role, key_attributes: [label], preferred_attributes: [label], description }
+// Each phase has its own list, so a role name can appear in both phases with
+// different attributes; roles are resolved by position + phase + role.
+// Role ids are "<app position>:<phase>:<slug>" (e.g. "amc:in_possession:advanced_playmaker").
+// A trailing position qualifier in the name ("(AMC)", "(Wide)") is kept for
+// display but left out of the slug, so ids stay stable.
+//
+// Saved selections (Lineups slot roles, Tactic, the profile's role explorer,
+// Comparison, role filters) store role ids. Ids from the previous catalogue that
+// no longer exist are resolved through LEGACY_ROLES: a clear rename at the same
+// position and phase maps to the new id; anything else keeps its old name and
+// asks to be reselected.
 
 import { SELECTABLE } from './radar.js';
 import { TENDENCY_KEYS, attributeDirection } from './attributes.js';
 import { formatPositions } from './positions.js';
 
-export const CATALOGUE_URL = 'data/fm27-role-catalogue.json';
+export const CATALOGUE_URL = 'data/fm27-role-catalogue-fminside.json';
 
 export const PHASES = [
   { id: 'in_possession', label: 'In Possession' },
@@ -21,32 +30,83 @@ export const PHASES = [
 ];
 export const PHASE_IDS = PHASES.map((p) => p.id);
 
-// ---- Mapping (one place for both views) -----------------------------------------------
+/** Shown in a role selector when the catalogue lists nothing for that position and phase. */
+export const NO_ROLES_TEXT = 'No roles listed for this position and phase';
+
+// ---- Mapping (one place for every view) ----------------------------------------------
 
 /**
- * Catalogue position code → the app's familiarity key (the extract's
- * `positions` block, lower case). The catalogue uses STC for the striker;
- * ST is accepted as an alias.
+ * FMInside position code → the app's position (the extract's `positions`
+ * familiarity key). Left and right stay separate; ST is the app's STC.
  */
 export const POSITION_CODE_MAP = {
-  GK: 'gk', DC: 'dc', DL: 'dl', DR: 'dr', WBL: 'wbl', WBR: 'wbr', DM: 'dm',
-  MC: 'mc', ML: 'ml', MR: 'mr', AMC: 'amc', AML: 'aml', AMR: 'amr', STC: 'stc', ST: 'stc',
+  GK: 'gk', DR: 'dr', DC: 'dc', DL: 'dl', WBR: 'wbr', WBL: 'wbl', DM: 'dm',
+  MR: 'mr', MC: 'mc', ML: 'ml', AMR: 'amr', AMC: 'amc', AML: 'aml', ST: 'stc', STC: 'stc',
 };
+
+/** Catalogue attribute label → the app's attribute key (from the app's own attribute list). */
+const normLabel = (s) => String(s || '').toLowerCase().replace(/\(tendency\)/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+const LABEL_TO_KEY = new Map(Object.entries(SELECTABLE).map(([key, a]) => [normLabel(a.label), key]));
+export const attributeKeyForLabel = (label) => LABEL_TO_KEY.get(normLabel(label)) || null;
+
+/** Slug for a role id: the name without a trailing position qualifier. */
+export const roleSlug = (name) => String(name || '').replace(/\s*\((?:AMC|Wide)\)\s*$/i, '')
+  .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 
 /**
- * Catalogue attribute key → app attribute key, for names that differ. Keys not
- * listed are used as they are (e.g. one_on_ones, work_rate). Where the value
- * lives (attributes or personality) comes from the app's attribute list.
+ * Role ids saved with the previous catalogue that this one no longer lists.
+ * `to`: a clear rename at the same position and phase. Without `to`, the old
+ * name is kept and the role must be reselected.
  */
-export const ATTRIBUTE_KEY_ALIASES = {
-  one_v_ones: 'one_on_ones',
-  one_on_one: 'one_on_ones',
-  workrate: 'work_rate',
-  off_ball: 'off_the_ball',
-  jumping: 'jumping_reach',
+export const LEGACY_ROLES = {
+  'gk:out_of_possession:line_holding_keeper': { name: 'Line-Holding Keeper', to: 'gk:out_of_possession:line_holding_goalkeeper' },
+  'ml:out_of_possession:wide_outlet_midfielder': { name: 'Wide Outlet Midfielder', to: 'ml:out_of_possession:wide_outlet_wide_midfielder' },
+  'mr:out_of_possession:wide_outlet_midfielder': { name: 'Wide Outlet Midfielder', to: 'mr:out_of_possession:wide_outlet_wide_midfielder' },
+  'dl:out_of_possession:full_back': { name: 'Full-Back' },
+  'dl:out_of_possession:pressing_full_back': { name: 'Pressing Full-Back' },
+  'dl:out_of_possession:holding_full_back': { name: 'Holding Full-Back' },
+  'dr:out_of_possession:full_back': { name: 'Full-Back' },
+  'dr:out_of_possession:pressing_full_back': { name: 'Pressing Full-Back' },
+  'dr:out_of_possession:holding_full_back': { name: 'Holding Full-Back' },
+  'wbl:out_of_possession:wing_back': { name: 'Wing-Back' },
+  'wbl:out_of_possession:holding_wing_back': { name: 'Holding Wing-Back' },
+  'wbl:out_of_possession:pressing_wing_back': { name: 'Pressing Wing-Back' },
+  'wbr:out_of_possession:wing_back': { name: 'Wing-Back' },
+  'wbr:out_of_possession:holding_wing_back': { name: 'Holding Wing-Back' },
+  'wbr:out_of_possession:pressing_wing_back': { name: 'Pressing Wing-Back' },
+  'mc:in_possession:box_to_box_midfielder': { name: 'Box-to-Box Midfielder' },
+  'mc:in_possession:box_to_box_playmaker': { name: 'Box-to-Box Playmaker' },
+  'ml:in_possession:wide_central_midfielder': { name: 'Wide Central Midfielder' },
+  'mr:in_possession:wide_central_midfielder': { name: 'Wide Central Midfielder' },
+  'aml:in_possession:half_space_winger': { name: 'Half-Space Winger' },
+  'amr:in_possession:half_space_winger': { name: 'Half-Space Winger' },
+  'aml:in_possession:wide_playmaker': { name: 'Wide Playmaker' },
+  'amr:in_possession:wide_playmaker': { name: 'Wide Playmaker' },
+  'aml:out_of_possession:inverting_outlet_winger': { name: 'Inverting Outlet Winger' },
+  'amr:out_of_possession:inverting_outlet_winger': { name: 'Inverting Outlet Winger' },
+  'stc:in_possession:second_striker': { name: 'Second Striker' },
+  'stc:in_possession:half_space_forward': { name: 'Half-Space Forward' },
 };
 
-const appAttrKey = (catKey) => ATTRIBUTE_KEY_ALIASES[catKey] || catKey;
+/** "half_back" → "Half Back": a readable name for an unknown saved id. */
+const nameFromId = (id) => String(id || '').split(':').slice(2).join(' ').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+/**
+ * A saved role id at a position and phase, resolved against the catalogue:
+ *   { id, role, renamedFrom } when it (or its clear rename) is listed there;
+ *   { id: null, role: null, legacy: { id, name } } when it must be reselected;
+ *   { id: null, role: null } when nothing was saved.
+ */
+export function resolveSavedRole(cat, position, phase, id) {
+  if (!id) return { id: null, role: null, legacy: null };
+  const list = rolesFor(cat, position, phase);
+  const direct = list.find((r) => r.id === id);
+  if (direct) return { id, role: direct, legacy: null };
+  const old = LEGACY_ROLES[id];
+  const renamed = old?.to ? list.find((r) => r.id === old.to) : null;
+  if (renamed) return { id: renamed.id, role: renamed, legacy: null, renamedFrom: id };
+  return { id: null, role: null, legacy: { id, name: old?.name || nameFromId(id) } };
+}
 
 // ---- Loading & validation ---------------------------------------------------------------
 
@@ -76,95 +136,93 @@ export function useCatalogue(raw) {
 }
 
 /**
- * Normalise a raw catalogue into
- *   { version, status, source, schemaVersion, positions: [{ code, catCode, label, short, phases }],
- *     roles: Map(id → role), issues: [text] }
- * role = { id, name, phase, position (app code), attrs: [attrDef], description }
- * attrDef = { key, catKey, label, block, mapped, tendency, tier: 'key'|'supporting', weight }
+ * Normalise the FMInside catalogue into
+ *   { game, source, positions: [{ code, catCode, label, short, phases }], roles: Map(id → role), counts, issues }
+ * role = { id, name, phase, position (app code), attrs: [attrDef], description (null for now) }
+ * attrDef = { key, label, block, mapped, tendency, tier: 'key' | 'preferred' }
  * Entries that can't be used are skipped and described in `issues`.
  */
 export function normaliseCatalogue(raw) {
   const issues = [];
-  const labels = raw && typeof raw.attribute_labels === 'object' ? raw.attribute_labels : {};
-  const rules = raw && typeof raw.scoring_rules === 'object' && raw.scoring_rules ? raw.scoring_rules : {};
   const roles = new Map();
   const positions = [];
-  const seenPos = new Set();
+  const counts = { in_possession: 0, out_of_possession: 0 };
 
-  const attrDef = (catKey, tier, weight) => {
-    const key = appAttrKey(String(catKey));
-    const app = SELECTABLE[key];
-    if (!app) issues.push(`Attribute “${catKey}” isn’t one the app records.`);
-    const rule = rules[catKey] || rules[key] || null;
+  const attrDef = (label, tier) => {
+    const key = attributeKeyForLabel(label);
+    const app = key ? SELECTABLE[key] : null;
+    if (!app) issues.push(`Attribute “${label}” isn’t one the app records.`);
     return {
-      key, catKey: String(catKey), tier, weight,
-      label: app ? app.label.replace(/\s*\(Tendency\)$/, '') : String(labels[catKey] || catKey),
+      key: key || String(label), tier,
+      label: app ? app.label : String(label),
       block: app ? app.source : 'attributes',
       mapped: !!app,
-      tendency: TENDENCY_KEYS.has(key),
-      rule: rule === 'higher_is_better' || rule === 'lower_is_better' ? rule : null,
+      tendency: key ? TENDENCY_KEYS.has(key) : false,
     };
   };
 
-  for (const pos of Array.isArray(raw?.positions) ? raw.positions : []) {
-    const catCode = String(pos?.position_code || '').toUpperCase();
+  const src = raw && typeof raw.positions === 'object' && !Array.isArray(raw.positions) ? raw.positions : {};
+  for (const [rawCode, pos] of Object.entries(src)) {
+    const catCode = String(rawCode).toUpperCase();
     const code = POSITION_CODE_MAP[catCode];
-    if (!code) { issues.push(`Position “${pos?.position_code}” isn’t one the app knows.`); continue; }
-    if (seenPos.has(code)) { issues.push(`Position ${catCode} appears twice; the first entry is used.`); continue; }
-    seenPos.add(code);
+    if (!code) { issues.push(`Position “${rawCode}” isn’t one the app knows.`); continue; }
+    if (positions.some((p) => p.code === code)) { issues.push(`Position ${catCode} appears twice; the first entry is used.`); continue; }
     const phases = {};
     for (const phase of PHASE_IDS) {
       phases[phase] = [];
-      for (const r of Array.isArray(pos[phase]) ? pos[phase] : []) {
-        const id = typeof r?.id === 'string' ? r.id.trim() : '';
-        const name = typeof r?.name === 'string' ? r.name.trim() : '';
+      for (const r of Array.isArray(pos?.[phase]) ? pos[phase] : []) {
+        const name = typeof r?.role === 'string' ? r.role.trim() : '';
         const key = Array.isArray(r?.key_attributes) ? r.key_attributes : [];
-        const supporting = Array.isArray(r?.supporting_attributes) ? r.supporting_attributes : [];
-        if (!id || !name || !key.length) { issues.push(`A ${catCode} ${phase.replace(/_/g, ' ')} role is missing its id, name or key attributes.`); continue; }
-        if (roles.has(id)) { issues.push(`Role id “${id}” is used twice; the first entry is used.`); continue; }
-        // Key attributes weigh 2 and supporting 1 when a supporting list exists; otherwise all equal.
-        const kw = supporting.length ? 2 : 1;
-        const attrs = [...new Set(key)].map((k) => attrDef(k, 'key', kw))
-          .concat([...new Set(supporting)].filter((k) => !key.includes(k)).map((k) => attrDef(k, 'supporting', 1)));
-        const description = typeof r?.description === 'string' ? r.description.trim() : '';
-        const role = { id, name, phase, position: code, attrs, description };
+        const preferred = Array.isArray(r?.preferred_attributes) ? r.preferred_attributes : [];
+        if (!name || !key.length) { issues.push(`A ${catCode} ${phase.replace(/_/g, ' ')} role is missing its name or key attributes.`); continue; }
+        const id = `${code}:${phase}:${roleSlug(name)}`;
+        if (roles.has(id)) { issues.push(`${catCode} ${phase.replace(/_/g, ' ')} lists “${name}” twice; the first entry is used.`); continue; }
+        const keyAttrs = [...new Set(key)].map((l) => attrDef(l, 'key'));
+        const keyLabels = new Set(key.map(normLabel));
+        const prefAttrs = [...new Set(preferred)].filter((l) => !keyLabels.has(normLabel(l))).map((l) => attrDef(l, 'preferred'));
+        const description = typeof r?.description === 'string' && r.description.trim() ? r.description.trim() : null;
+        const role = { id, name, phase, position: code, attrs: [...keyAttrs, ...prefAttrs], description };
         roles.set(id, role);
         phases[phase].push(role);
+        counts[phase]++;
       }
     }
-    positions.push({ code, catCode, label: String(pos.label || catCode), short: formatPositions([catCode === 'ST' ? 'STC' : catCode]), phases });
+    positions.push({ code, catCode, label: String(pos?.position || catCode), short: formatPositions([code.toUpperCase()]), phases });
   }
 
   return {
-    schemaVersion: raw?.schema_version ?? null,
-    version: typeof raw?.catalogue_version === 'string' ? raw.catalogue_version : 'unknown',
-    status: typeof raw?.status === 'string' ? raw.status : null,
-    source: raw?.source && typeof raw.source === 'object' ? {
-      publisher: raw.source.publisher || null, url: raw.source.url || null,
-      retrieved: raw.source.retrieved_on || null, notes: raw.source.notes || null,
-    } : null,
+    game: typeof raw?.game === 'string' ? raw.game : null,
+    source: typeof raw?.source === 'string' ? raw.source : null,
+    version: typeof raw?.source === 'string' ? raw.source : 'unknown',
     positions,
     roles,
+    counts,
     issues: [...new Set(issues)],
   };
 }
 
 export const positionByCode = (cat, code) => cat.positions.find((p) => p.code === code) || null;
 export const rolesFor = (cat, code, phase) => positionByCode(cat, code)?.phases[phase] || [];
+export const keyAttrs = (role) => role.attrs.filter((a) => a.tier === 'key');
+export const preferredAttrs = (role) => role.attrs.filter((a) => a.tier === 'preferred');
 
 /**
  * Check a saved { position, role } for one phase against the active catalogue.
- * An unknown position clears both; a role that isn't listed for that position
- * and phase is cleared and reported, so the UI can ask for another.
- * Returns { position, role, cleared: null | { reason } }.
+ * An unknown position clears both; a renamed role maps to its new id; a role
+ * that isn't listed for that position and phase is cleared and reported with
+ * its old name, so the UI can ask for another.
+ * Returns { position, role, cleared: null | { reason, roleName } }.
  */
 export function validateSelection(cat, phase, sel) {
   const position = sel?.position && positionByCode(cat, sel.position) ? sel.position : null;
-  const roleOk = position && sel?.role && rolesFor(cat, position, phase).some((r) => r.id === sel.role);
-  let cleared = null;
+  let cleared = null, role = null;
   if (sel?.position && !position) cleared = { reason: 'position' };
-  else if (sel?.role && !roleOk) cleared = { reason: 'role', roleName: cat.roles.get(sel.role)?.name || null };
-  return { position, role: roleOk ? sel.role : null, cleared };
+  else if (position && sel?.role) {
+    const r = resolveSavedRole(cat, position, phase, sel.role);
+    role = r.id;
+    if (!r.id) cleared = { reason: 'role', roleName: r.legacy?.name || null };
+  }
+  return { position, role, cleared };
 }
 
 // ---- Values and the score ------------------------------------------------------------------
@@ -185,40 +243,35 @@ export function familiarityAt(p, code) {
 }
 
 /**
- * Whether an attribute counts towards the score: tendencies and other
- * context-dependent values only count when the catalogue gives a scoring rule.
- */
-export function isScored(a) {
-  if (a.rule) return true;
-  if (a.tendency) return false;
-  return a.mapped ? attributeDirection(a.key) !== 'neutral' : true;
-}
-
-/**
- * SquadLab role attribute score (0–100), shared by the profile and Comparison.
- * Weighted mean of the scored attributes (all equal for this catalogue; key 2 /
- * supporting 1 when a supporting list exists), multiplied by 5 so 20 → 100.
- * Lower-is-better values are flipped (21 − v). Full precision is kept; round
- * only for display. Any missing scored value makes the score unavailable.
- * Returns { value|null, parts: [{ attr, value, used, weight, reason }], excluded, missing, mean }.
+ * SquadLab role attribute score (0–100), shared by every view and the AI requests:
+ * the mean of the role's Key attributes × 5 (20 → 100). Preferred attributes
+ * are context only and never change the score. Lower-is-better values are
+ * flipped (21 − v). A Key attribute with no recorded value makes the score
+ * incomplete: `value` is then null (never computed as if it were 0) and
+ * `partial` is the mean of the values that are recorded, for display only.
+ * Full precision is kept; round only for display.
+ * Returns { value|null, partial|null, incomplete, missing: [label], mean, parts, preferred: [{ attr, value }] }.
  */
 export function roleScore(role, p) {
-  const parts = role.attrs.map((a) => {
+  const parts = keyAttrs(role).map((a) => {
     const value = roleValue(p, a);
-    const used = isScored(a);
-    const lower = a.rule === 'lower_is_better' || (!a.rule && a.mapped && attributeDirection(a.key) === 'negative');
-    return { attr: a, value, used, weight: a.weight, scoreValue: value === null ? null : (lower ? 21 - value : value), reason: used ? null : 'tendency' };
+    const lower = a.mapped && attributeDirection(a.key) === 'negative';
+    return { attr: a, value, used: true, weight: 1, scoreValue: value === null ? null : (lower ? 21 - value : value) };
   });
-  const scored = parts.filter((x) => x.used);
-  const missing = scored.filter((x) => x.scoreValue === null).map((x) => x.attr.label);
-  const excluded = parts.filter((x) => !x.used).map((x) => x.attr.label);
-  let value = null, mean = null;
-  if (scored.length && !missing.length) {
-    const wsum = scored.reduce((s, x) => s + x.weight, 0);
-    mean = scored.reduce((s, x) => s + x.scoreValue * x.weight, 0) / wsum;
-    value = mean * 5;
-  }
-  return { value, mean, parts, excluded, missing };
+  const known = parts.filter((x) => x.scoreValue !== null);
+  const missing = parts.filter((x) => x.scoreValue === null).map((x) => x.attr.label);
+  const knownMean = known.length ? known.reduce((s, x) => s + x.scoreValue, 0) / known.length : null;
+  const incomplete = missing.length > 0;
+  return {
+    value: !incomplete && knownMean !== null ? knownMean * 5 : null,
+    mean: incomplete ? null : knownMean,
+    partial: knownMean === null ? null : knownMean * 5,
+    incomplete,
+    missing,
+    parts,
+    excluded: [],
+    preferred: preferredAttrs(role).map((a) => ({ attr: a, value: roleValue(p, a) })),
+  };
 }
 
 /** Display: one decimal, without a trailing ".0" (80, 81.7). */
@@ -226,17 +279,14 @@ export const fmtScore = (v) => (v === null || v === undefined ? '—' : String(M
 
 /** Short text for the score breakdown. */
 export function scoreBreakdown(s) {
-  const used = s.parts.filter((x) => x.used);
-  const weighted = used.some((x) => x.weight !== used[0].weight);
   const lines = [];
   if (s.value !== null) {
-    const items = used.map((x) => `${x.attr.label} ${x.value}${x.scoreValue !== x.value ? ` (counts as ${x.scoreValue})` : ''}${weighted ? ` ×${x.weight}` : ''}`).join(', ');
-    lines.push(`${weighted ? 'Weighted mean' : 'Mean'} of ${items} = ${Math.round(s.mean * 100) / 100} × 5 = ${fmtScore(s.value)}/100`);
-  } else if (s.missing.length) {
-    lines.push(`Unavailable: no recorded value for ${s.missing.join(', ')}.`);
+    const items = s.parts.map((x) => `${x.attr.label} ${x.value}${x.scoreValue !== x.value ? ` (counts as ${x.scoreValue})` : ''}`).join(', ');
+    lines.push(`Mean of Key attributes ${items} = ${Math.round(s.mean * 100) / 100} × 5 = ${fmtScore(s.value)}/100`);
+  } else if (s.incomplete) {
+    lines.push(`Incomplete: no recorded value for ${s.missing.join(', ')}.`);
   } else {
-    lines.push('Unavailable: this role has no scored attributes.');
+    lines.push('Unavailable: this role has no Key attributes.');
   }
-  if (s.excluded.length) lines.push(`${s.excluded.join(', ')} ${s.excluded.length === 1 ? 'is a tendency' : 'are tendencies'}: shown, but not scored.`);
   return lines;
 }
