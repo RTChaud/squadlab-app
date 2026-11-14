@@ -1,5 +1,6 @@
 import { h, icon } from '../dom.js';
 import { getModel } from '../../store.js';
+import { openDataMenu } from '../dataMenu.js';
 import { formatGameDate } from '../../data/snapshot.js';
 
 function welcome(onImport, onRestore) {
@@ -13,15 +14,17 @@ function welcome(onImport, onRestore) {
   );
 }
 
-// Compact save strip: club on the left (wraps if long), in-game date on the right.
+// Compact save strip: club on the left (wraps if long), in-game date on the
+// right — a shortcut to Snapshots.
 function saveStrip(model) {
   return h('div', { class: 'save-strip' },
     h('span', { class: 'save-club' }, model.club?.name || '—'),
-    h('span', { class: 'save-date' }, formatGameDate(model.gameDate)));
+    h('a', { class: 'save-date', href: '#/snapshots', 'aria-label': `${formatGameDate(model.gameDate)}, open Snapshots` }, formatGameDate(model.gameDate)));
 }
 
-// Launcher order: squad tools on top (Squad, Lineups, Tactic), scouting below
-// (Shortlists, Tags, Comparison).
+// Launcher order: squad tools on top (Squad, Lineups, Tactic), scouting next
+// (Shortlists, Tags, Comparison), then history and data (Development,
+// Snapshots, Data).
 const TILES = [
   { href: '#/squad', iconName: 'squad', label: 'Squad' },
   { href: '#/lineups', iconName: 'pitch', label: 'Lineups' },
@@ -29,10 +32,13 @@ const TILES = [
   { href: '#/shortlists', iconName: 'list', label: 'Shortlists' },
   { href: '#/tags', iconName: 'tag', label: 'Tags' },
   { href: '#/compare', iconName: 'compare', label: 'Comparison' },
+  { href: '#/development', iconName: 'chart', label: 'Development' },
+  { href: '#/snapshots', iconName: 'snapshots', label: 'Snapshots' },
+  { id: 'data-tile', onclick: () => openDataMenu(), iconName: 'data', label: 'Data' },
 ];
 
-const tile = ({ href, iconName, label }) => h('li', { class: 'app-cell' },
-  h('a', { class: 'app-tile', href },
+const tile = ({ href, id, onclick, iconName, label }) => h('li', { class: 'app-cell' },
+  h(href ? 'a' : 'button', href ? { class: 'app-tile', href } : { class: 'app-tile', type: 'button', id, onclick, 'aria-haspopup': 'dialog' },
     icon(iconName, 'app-icon'),
     h('span', { class: 'app-label' }, label)));
 
