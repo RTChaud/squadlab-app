@@ -53,11 +53,16 @@ export function wireFileInput() {
   });
 }
 
+// While a file is read or written, the Data tile is disabled (if shown).
 async function busy(fn) {
-  const btn = document.getElementById('data-btn');
-  btn.disabled = true;
-  btn.classList.add('busy');
-  try { return await fn(); } finally { btn.disabled = false; btn.classList.remove('busy'); }
+  const btn = document.getElementById('data-tile');
+  document.documentElement.classList.add('data-busy');
+  if (btn) btn.disabled = true;
+  try { return await fn(); } finally {
+    document.documentElement.classList.remove('data-busy');
+    const b = document.getElementById('data-tile');
+    if (b) b.disabled = false;
+  }
 }
 
 function failed(e) {
