@@ -1854,3 +1854,8 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .lineup-stale p { margin: 0; }
 .lineup-stale-title { font-weight: 750; color: var(--text); }
 .lineup-stale .small + .small { margin-top: 4px; }
+
+/* Add FM snapshot: destination and incoming snapshot, Switch career */
+.import-warn { color: var(--danger); }
+.career-item.active { opacity: 1; }
+.career-active { margin-left: 8px; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 700; vertical-align: 1px; }
