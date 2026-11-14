@@ -10,8 +10,15 @@ Personal Football Manager companion. Static site with no build step or backend, 
 
 Imported extracts are stored only in this browser's IndexedDB. They are never uploaded. The one exception is **AI Analysis**, on Comparison and on the player page: tapping it sends that comparison, or that player with his positions, roles, lineup places and the relevant club players, to the SquadLab Worker, which forwards it to the AI provider. On the player page, the club's own players get a Development Report and anyone else a Recruitment Report. The Worker asks for its access code once per device; the code stays in that browser and isn't part of app backups. **Copy for ChatGPT** sends nothing: it only puts the comparison or player on your clipboard.
 
+## Home
+
+Nine tiles: Squad · Lineups · Tactic, Shortlists · Tags · Comparison, Development · Snapshots · Data. The in-game date next to the club name opens Snapshots.
+
+- **Development**: the latest snapshot's club players (out on loan included, shortlist-only players excluded) ranked by CA gained, for Overall, 12 months, 3 months or 1 month, and All squads, First team, Reserves, Youth or Out on loan. The end date is the latest snapshot. Overall starts at the player's first snapshot as a club player in his current spell; a time window starts at his last observation on or before the cutoff, or at his first club snapshot (Since joining) or the career's first snapshot (Shorter coverage). Fewer than two observations with CA shows Not enough history. A row opens the player's development graph.
+- **Snapshots**: the career's snapshots by in-game season (July–June), newest first, with club player counts, Latest and Pinned markers and the stored snapshot data size (an estimate). View a snapshot read-only, compare two dates (joined, left, biggest CA gains, by club membership and player identity), pin milestones, and delete snapshots one at a time or several together. The latest snapshot cannot be deleted, pinned snapshots must be unpinned first, and tags and lineups are never touched.
+
 ## Data
-The **Data** button in the header opens:
+The **Data** tile on Home opens:
 - **Add FM snapshot**: adds a later in-game date (the file's game_date) to the active career, after showing the destination career and the incoming date. The same date offers to replace only that snapshot. An earlier date is refused here. Players are matched by FM unique_id, with uid as a fallback only when unambiguous, so tags, lineups and history stay linked even when the exporter's career_id differs. A different career_id never creates, switches or overwrites a career.
 - **Restore older snapshot**: adds an earlier in-game date to the active career; the newest snapshot stays selected.
 - **Start new career**: starts a separate career from a snapshot; existing careers stay on this device. **Switch career** appears when there is more than one.
@@ -40,7 +47,8 @@ js/data/positions.js   FM-style position formatting
 js/data/attributes.js  attribute groups/labels, colour bands, value direction, traits
 js/data/attributeInfo.js  short attribute explanations + source (SI FM24 manual), bundled offline
 js/data/changes.js     "Show changes" preferences and change colouring rules
-js/data/players.js     persistent player identity (player_key), metrics, history
+js/data/players.js     persistent player identity (player_key), metrics (incl. club membership and squad per snapshot), history
+js/data/development.js Development ranking rules, season grouping, snapshot comparison
 js/data/nations.js     reads data/fm-nation-mapping.json to show nationalities
 js/data/flags.js       nation → flag emoji
 js/data/tags.js        player tags (app data, kept in backups)
@@ -60,6 +68,6 @@ js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, de
                        playerBrowser.js, playerTable.js, filterSheet.js, viewSheet.js, attributePicker.js, familiarityPitch.js,
                        attributeInfoSheet.js, playerPicker.js, radarAttributePicker.js, roleControls.js, roleExplorer.js, contractSheet.js,
                        aiAnalysis.js (AI Analysis + Copy for ChatGPT buttons, report sheet), playerReport.js (Development / Recruitment Report views)
-js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js, lineups.js, lineup.js (pitch + slot roles), lineupPicker.js, compare.js, tactic.js (position + roles → Find matching players)
+js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js (one player's graph), devBoard.js (Development ranking), snapshots.js (timeline, view, compare), lineups.js, lineup.js (pitch + slot roles), lineupPicker.js, compare.js, tactic.js (position + roles → Find matching players)
 worker/worker.js       Cloudflare Worker (paste into the dashboard's Edit code): POST /compare with access code, rate limit, fixed analyst instructions, report checks
 ```
