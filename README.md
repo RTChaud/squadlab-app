@@ -12,12 +12,14 @@ Imported extracts are stored only in this browser's IndexedDB. They are never up
 
 ## Data
 The **Data** button in the header opens:
-- **Import FM snapshot**: adds a dated extract to the active career's history. The newest in-game date is always shown.
+- **Add FM snapshot**: adds a later in-game date (the file's game_date) to the active career, after showing the destination career and the incoming date. The same date offers to replace only that snapshot. An earlier date is refused here. Players are matched by FM unique_id, with uid as a fallback only when unambiguous, so tags, lineups and history stay linked even when the exporter's career_id differs. A different career_id never creates, switches or overwrites a career.
+- **Restore older snapshot**: adds an earlier in-game date to the active career; the newest snapshot stays selected.
+- **Start new career**: starts a separate career from a snapshot; existing careers stay on this device. **Switch career** appears when there is more than one.
 - **Import app backup**: restores a SquadLab backup and replaces the current data, after you confirm.
 - **Export app backup**: saves one JSON file containing every snapshot and setting. On iPhone, use Save to Files.
-- **Reset app data**: clears everything so you can start a different career.
+- **Reset app data**: clears every career stored on this device.
 
-SquadLab holds one career at a time. If your browser data is cleared, the export is your only copy, so keep backups in iCloud Drive.
+One career is active at a time, and backups cover the active career. Restoring a backup replaces every career on the device. If your browser data is cleared, the export is your only copy, so keep backups in iCloud Drive.
 
 To test locally, run `python3 -m http.server` in the folder and open `http://localhost:8000/`. ES modules won't load if you open the file directly with `file://`.
 
@@ -30,7 +32,7 @@ css/styles.css
 icons/logo.png
 js/app.js              shell, import flow, view dispatch
 js/router.js           hash routes
-js/store.js            active career, snapshot history, backup/restore/reset
+js/store.js            active career, snapshot history and timeline checks, career switching, backup/restore/reset
 js/data/db.js          IndexedDB (snapshots, snapshotIndex, settings, metrics; upgrades keep data)
 js/data/importer.js    snapshot + backup parsing and validation
 js/data/snapshot.js    model building (incl. the deduplicated pool behind Shortlists → All), team_slot squad linking, player summary values
