@@ -6,7 +6,7 @@ import {
   readJsonFile, validateSnapshot, validateBackup, ImportError,
   BACKUP_FORMAT, BACKUP_VERSION,
 } from './data/importer.js';
-import { makeSnapshotRecord, buildModel } from './data/snapshot.js';
+import { makeSnapshotRecord, buildModel, jsonBytes } from './data/snapshot.js';
 import { buildMetrics, keyFor, findInSnapshot, playerHistory, playerKey, matchIncomingPlayers, METRICS_VERSION } from './data/players.js';
 import * as Tags from './data/tags.js';
 import * as Lineups from './data/lineups.js';
@@ -59,6 +59,7 @@ async function reload() {
   state.lists = career ? ListView.sanitizeListPrefs(await db.getSetting(listsKey(career), null)) : ListView.emptyListPrefs();
   state.compare = sanitizeCompare(career ? await db.getSetting(compareKey(career), null) : null);
   state.tactic = sanitizeTactic(career ? await db.getSetting(tacticKey(career), null) : null);
+  state.pins = sanitizePins(career ? await db.getSetting(pinsKey(career), null) : null);
   state.prefs = new Map((await db.getAllSettings()).filter((x) => x.key.startsWith('pref:')).map((x) => [x.key.slice(5), x.value]));
   await ensureMetrics(metas);
   emit();
@@ -71,6 +72,7 @@ const changesKey = (career) => `changes:${career.careerId}`;
 const listsKey = (career) => `lists:${career.careerId}`;
 const compareKey = (career) => `compare:${career.careerId}`;
 const tacticKey = (career) => `tactic:${career.careerId}`;
+const pinsKey = (career) => `pins:${career.careerId}`;
 
 /**
  * Load (or create once) the career's lineups. The three defaults have fixed
@@ -306,6 +308,79 @@ export async function switchCareer(careerId) {
   const created = mine.map((m) => m.importedAt).sort()[0] ?? null;
   await db.setSetting('career', { careerId, createdAt: created });
   await reload();
+}
+
+// ---- Snapshots: pins, viewing, deletion, storage -------------------------------
+// Pins are stored per career by in-game date, so replacing the data for a
+// pinned date keeps the pin.
+
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
+function sanitizePins(raw) {
+  return { dates: [...new Set((Array.isArray(raw?.dates) ? raw.dates : []).filter((d) => typeof d === 'string' && ISO.test(d)))].sort() };
+}
+export const getPins = () => new Set((state.pins || sanitizePins(null)).dates);
+
+export async function setPinned(gameDate, pinned) {
+  if (!state.career) return;
+  const dates = getPins();
+  if (pinned) dates.add(gameDate); else dates.delete(gameDate);
+  state.pins = sanitizePins({ dates: [...dates] });
+  await db.setSetting(pinsKey(state.career), state.pins);
+  emit();
+}
+
+/** The model of one stored snapshot of the active career (read-only browsing), or null. */
+export async function getSnapshotModel(gameDate) {
+  if (!state.career) return null;
+  if (state.model?.gameDate === gameDate) return state.model;
+  const rec = await db.getSnapshot(db.snapshotId(state.career.careerId, gameDate));
+  return rec ? buildModel(rec) : null;
+}
+
+/**
+ * Delete snapshots of the active career by in-game date. The latest snapshot
+ * and pinned snapshots are refused. Tags, lineups and other settings are not
+ * touched; graphs and comparisons simply lose those observations.
+ */
+export async function deleteSnapshots(dates) {
+  if (!state.career) return;
+  const latest = state.history[0]?.gameDate;
+  const pins = getPins();
+  const want = [...new Set(dates)];
+  if (want.includes(latest)) throw new Error('The latest snapshot cannot be deleted.');
+  const pinned = want.filter((d) => pins.has(d));
+  if (pinned.length) throw new Error('Unpin a milestone before deleting it.');
+  const ids = want.map((d) => db.snapshotId(state.career.careerId, d)).filter((id) => state.history.some((m) => m.id === id));
+  if (!ids.length) return;
+  await db.deleteSnapshots(ids);
+  await reload();
+}
+
+/**
+ * Storage for the active career. Snapshot sizes are the stored extracts' JSON
+ * size (measured once per snapshot and kept in its index entry); the browser's
+ * own figure for the whole app is an estimate. Resolves
+ * { snapshots: [{ gameDate, bytes }], careerBytes, device: { usage, quota } | null }.
+ */
+export async function getCareerStorage() {
+  if (!state.career) return null;
+  const out = [];
+  for (const m of state.history) {
+    let bytes = Number.isFinite(m.bytes) ? m.bytes : null;
+    if (bytes === null) {
+      const rec = await db.getSnapshot(m.id);
+      bytes = rec ? jsonBytes(rec.data) : null;
+      if (bytes !== null) { m.bytes = bytes; await db.putSnapshotMeta({ ...m, bytes }); }
+    }
+    out.push({ gameDate: m.gameDate, bytes });
+  }
+  let device = null;
+  try {
+    const e = await navigator.storage?.estimate?.();
+    if (e && Number.isFinite(e.usage)) device = { usage: e.usage, quota: Number.isFinite(e.quota) ? e.quota : null };
+  } catch { /* not available */ }
+  const known = out.filter((x) => x.bytes !== null);
+  return { snapshots: out, careerBytes: known.length === out.length ? known.reduce((n, x) => n + x.bytes, 0) : null, device };
 }
 
 // ---- App backup ----------------------------------------------------------------

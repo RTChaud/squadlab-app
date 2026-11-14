@@ -1,10 +1,10 @@
-// SquadLab entry point: wires the shell (header, Data menu) to the views.
+// SquadLab entry point: wires the shell (header, file picker) to the views.
 
 import * as store from './store.js';
 import { currentRoute, onRouteChange } from './router.js';
 import { formatGameDate } from './data/snapshot.js';
 import { showError } from './ui/components/feedback.js';
-import { openDataMenu, pick, wireFileInput } from './ui/dataMenu.js';
+import { pick, wireFileInput } from './ui/dataMenu.js';
 import { HomeView } from './ui/views/home.js';
 import { SquadView } from './ui/views/squad.js';
 import { ShortlistsView } from './ui/views/shortlists.js';
@@ -16,6 +16,8 @@ import { LineupView } from './ui/views/lineup.js';
 import { LineupPickerView, pickerOpenedFrom } from './ui/views/lineupPicker.js';
 import { PlayerView } from './ui/views/player.js';
 import { DevelopmentView } from './ui/views/development.js';
+import { DevBoardView } from './ui/views/devBoard.js';
+import { SnapshotsView, SnapshotView, SnapshotCompareView } from './ui/views/snapshots.js';
 
 const els = {
   header: document.querySelector('.topbar'),
@@ -25,7 +27,6 @@ const els = {
   title: document.getElementById('page-title'),
   titleMain: document.getElementById('page-title-main'),
   titleSub: document.getElementById('page-title-sub'),
-  dataBtn: document.getElementById('data-btn'),
 };
 
 const VIEWS = {
@@ -40,11 +41,15 @@ const VIEWS = {
   lineupPick: (p) => LineupPickerView(p),
   player: (p, q) => PlayerView({ ...p, query: q }),
   development: (p, q) => DevelopmentView({ ...p, query: q }),
+  devBoard: () => DevBoardView(),
+  snapshots: () => SnapshotsView(),
+  snapshotView: (p, q) => SnapshotView({ ...p, query: q }),
+  snapshotCompare: (p, q) => SnapshotCompareView({ query: q }),
 };
 
 // Remember list scroll positions so Back from a profile returns to the same spot.
 const scrollMemory = new Map();
-const REMEMBER_SCROLL = new Set(['squadTeam', 'shortlists', 'tags', 'compare']);
+const REMEMBER_SCROLL = new Set(['squadTeam', 'shortlists', 'tags', 'compare', 'devBoard', 'snapshots']);
 
 let renderToken = 0;
 let lastRoute = null;
@@ -133,7 +138,6 @@ function markDisplayMode() {
 async function start() {
   markDisplayMode();
   trackHeaderHeight();
-  els.dataBtn.addEventListener('click', openDataMenu);
   wireFileInput();
   store.subscribe(() => render());
   onRouteChange(render);

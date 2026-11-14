@@ -19,6 +19,10 @@ const ROUTES = [
   { pattern: /^\/tags\/?$/, name: 'tags' },
   { pattern: /^\/tags\/(.+)$/, name: 'tags', keys: ['tagId'] },
   { pattern: /^\/player\/([^/]+)\/development\/?$/, name: 'development', keys: ['pid'] },
+  { pattern: /^\/development\/?$/, name: 'devBoard' },
+  { pattern: /^\/snapshots\/?$/, name: 'snapshots' },
+  { pattern: /^\/snapshots\/compare\/?$/, name: 'snapshotCompare' },
+  { pattern: /^\/snapshots\/(\d{4}-\d{2}-\d{2})\/?$/, name: 'snapshotView', keys: ['date'] },
   { pattern: /^\/player\/([^/]+)\/?$/, name: 'player', keys: ['pid'] },
 ];
 
