@@ -47,6 +47,8 @@ export function wireFileInput() {
     pickMode = null;
     if (!file) return; // cancelled: nothing changes
     if (mode === 'backup') importBackupFlow(file);
+    else if (mode === 'restoreOlder') importSnapshotFlow(file, { restore: true });
+    else if (mode === 'newCareer') newCareerFlow(file);
     else importSnapshotFlow(file);
   });
 }
@@ -65,9 +67,31 @@ function failed(e) {
 
 const goHome = () => { if (location.hash !== '#/' && location.hash !== '') location.hash = '#/'; };
 
-// ---- Import FM snapshot ---------------------------------------------------------------
+// ---- Add FM snapshot (to the active career) ------------------------------------------------
 
-async function importSnapshotFlow(file) {
+const careerName = (c) => `${c.clubName ?? '—'}${c.managerName ? ` · ${c.managerName}` : ''}`;
+const careerRange = (c) => `${plural(c.count, 'snapshot')} · ${c.count > 1 ? `${formatGameDate(c.oldest)} – ` : ''}${formatGameDate(c.newest)}`;
+
+/** Destination career and incoming snapshot, shown before anything is written. */
+function importDetails(prepared) {
+  const { data, destination: d, match } = prepared;
+  const lines = [
+    h('p', { class: 'sheet-sub' }, 'Destination career'),
+    h('ul', { class: 'sheet-list import-dest' }, h('li', {}, careerName(d)), h('li', {}, careerRange(d))),
+    h('p', { class: 'sheet-sub' }, 'Incoming snapshot'),
+    h('ul', { class: 'sheet-list import-incoming' },
+      h('li', {}, h('b', {}, formatGameDate(data.game_date)), ` · ${data.club?.name ?? '—'}`),
+      h('li', {}, `${plural(match.linked, 'player')} linked to this career${match.added ? ` · ${match.added} new` : ''}${match.unlinked ? ` · ${match.unlinked} without a player ID` : ''}`),
+      prepared.clubDiffers ? h('li', { class: 'import-warn' }, `Club differs from this career (${d.clubName})`) : null),
+  ];
+  return h('div', {}, ...lines);
+}
+
+/**
+ * Normal import adds later snapshots and offers to replace the same date.
+ * With { restore: true } it is the recovery path for an earlier date.
+ */
+async function importSnapshotFlow(file, { restore = false } = {}) {
   let prepared;
   try {
     prepared = await busy(() => store.prepareSnapshot(file));
@@ -75,21 +99,22 @@ async function importSnapshotFlow(file) {
 
   const { data } = prepared;
   const date = formatGameDate(data.game_date);
+  const where = prepared.destination ? careerName(prepared.destination) : '';
 
   try {
     switch (prepared.status) {
       case 'duplicate':
-        showNotice('Already imported', [`The ${date} snapshot is already in your history.`], 'Nothing was changed.');
+        showNotice('Already imported', [`The ${date} snapshot is already in ${where}.`], 'Nothing was changed.');
         return;
 
       case 'sameDate': {
         const ok = await confirmSheet({
           title: `Replace the ${date} snapshot?`,
-          message: 'Your history already has a different snapshot for this in-game date.',
-          details: [
-            `Stored: exported ${fmtStamp(prepared.existing.exportedAt)}`,
-            `This file: exported ${fmtStamp(data.exported_at_utc)}`,
-          ],
+          message: h('div', {},
+            importDetails(prepared),
+            h('ul', { class: 'sheet-list' },
+              h('li', {}, `Stored: exported ${fmtStamp(prepared.existing.exportedAt)}`),
+              h('li', {}, `This file: exported ${fmtStamp(data.exported_at_utc)}`))),
           confirmLabel: 'Replace snapshot',
           cancelLabel: 'Keep existing',
         });
@@ -99,33 +124,46 @@ async function importSnapshotFlow(file) {
         break;
       }
 
-      case 'otherCareer': {
-        const cur = careerSummaryLines();
+      case 'older': {
+        const newest = formatGameDate(prepared.destination.newest);
+        if (!restore) {
+          showError(`${date} is earlier than your newest snapshot`, [
+            `${where} already goes up to ${newest}.`,
+            'To add it to this career, use Data → Restore older snapshot.',
+          ]);
+          return;
+        }
         const ok = await confirmSheet({
-          title: 'This snapshot is from another career',
-          danger: true,
-          message: h('div', {},
-            h('p', { class: 'sheet-text' }, `It belongs to ${data.club?.name ?? 'another club'}${data.club?.manager_name ? ` (${data.club.manager_name})` : ''}, which has a different career ID. SquadLab holds one career at a time and never merges two careers.`),
-            h('p', { class: 'sheet-text' }, `Current career: ${cur.join(' · ')}. Starting a new career removes it from this device, so back it up first.`)),
-          offerBackup: true,
-          ack: 'I understand the current career will be removed from this device.',
-          confirmLabel: 'Start new career',
+          title: `Restore ${date} into this career?`,
+          message: h('div', {}, importDetails(prepared),
+            h('p', { class: 'sheet-text' }, `${newest} stays selected.`)),
+          confirmLabel: 'Restore snapshot',
         });
         if (!ok) return;
-        await busy(() => store.startNewCareer(prepared));
-        toast(`New career started · ${data.club?.name ?? ''} · ${date}`);
+        await busy(() => store.restoreOlderSnapshot(prepared));
+        toast(`Restored ${date} · showing ${formatGameDate(store.getModel().gameDate)}`);
         break;
       }
 
-      case 'older': {
-        await busy(() => store.addSnapshot(prepared));
-        toast(`Added ${date} to history · still showing ${formatGameDate(store.getModel().gameDate)}`, 'info');
-        break;
-      }
-
-      default: { // 'first' | 'new'
+      case 'first': {
         await busy(() => store.addSnapshot(prepared));
         toast(`Imported ${data.club?.name ?? 'snapshot'} · ${date}`);
+        break;
+      }
+
+      default: { // 'new'
+        if (restore) {
+          showError(`${date} is not earlier than your newest snapshot`, ['Use Data → Add FM snapshot for later dates.']);
+          return;
+        }
+        const ok = await confirmSheet({
+          title: `Add ${date}?`,
+          message: importDetails(prepared),
+          confirmLabel: 'Add snapshot',
+        });
+        if (!ok) return;
+        await busy(() => store.addSnapshot(prepared));
+        toast(`Added ${date} to ${prepared.destination.clubName ?? 'this career'}`);
       }
     }
     goHome();
@@ -133,6 +171,50 @@ async function importSnapshotFlow(file) {
   } catch (e) {
     failed(e);
   }
+}
+
+// ---- New career / switch career ----------------------------------------------------------
+
+async function newCareerFlow(file) {
+  let prepared;
+  try {
+    prepared = await busy(() => store.prepareNewCareer(file));
+  } catch (e) { failed(e); return; }
+  const { data } = prepared;
+  const date = formatGameDate(data.game_date);
+  const cur = store.careerSummary();
+  const ok = await confirmSheet({
+    title: 'Start a new career?',
+    message: h('div', {},
+      h('p', { class: 'sheet-sub' }, 'New career'),
+      h('ul', { class: 'sheet-list' }, h('li', {}, `${data.club?.name ?? '—'}${data.club?.manager_name ? ` · ${data.club.manager_name}` : ''}`), h('li', {}, date)),
+      cur ? h('p', { class: 'sheet-sub' }, 'Kept on this device') : null,
+      cur ? h('ul', { class: 'sheet-list' }, h('li', {}, careerName(cur)), h('li', {}, careerRange(cur))) : null),
+    confirmLabel: 'Start new career',
+  });
+  if (!ok) return;
+  try {
+    await busy(() => store.startNewCareer(prepared));
+    toast(`New career started · ${data.club?.name ?? ''} · ${date}`);
+    goHome();
+  } catch (e) { failed(e); }
+}
+
+async function switchCareerFlow() {
+  const careers = await store.listCareers();
+  const s = openSheet({
+    title: 'Switch career',
+    content: h('div', { class: 'menu' }, careers.map((c) => h('button', {
+      type: 'button', class: `menu-item career-item${c.active ? ' active' : ''}`, disabled: c.active,
+      onclick: async () => {
+        s.close();
+        try { await busy(() => store.switchCareer(c.careerId)); toast(`Switched to ${c.clubName ?? 'career'}`); goHome(); } catch (e) { failed(e); }
+      },
+    }, h('span', { class: 'menu-body' },
+      h('span', { class: 'menu-title' }, careerName(c), c.active ? h('span', { class: 'career-active' }, 'Active') : null),
+      h('span', { class: 'menu-text' }, careerRange(c)))))),
+    actions: [{ label: 'Close', kind: 'secondary', onClick: (close) => close() }],
+  });
 }
 
 // ---- Import app backup ------------------------------------------------------------------
@@ -145,6 +227,7 @@ async function importBackupFlow(file) {
 
   const { summary, backup } = prepared;
   const hasData = !!store.getModel();
+  const others = hasData ? (await store.listCareers()).filter((c) => !c.active).length : 0;
   const backupLines = [
     `${summary.clubName}${summary.managerName ? ` · ${summary.managerName}` : ''}`,
     `${plural(summary.count, 'snapshot')} · ${formatGameDate(summary.firstDate)} – ${formatGameDate(summary.lastDate)}`,
@@ -161,7 +244,7 @@ async function importBackupFlow(file) {
       h('p', { class: 'sheet-sub' }, 'Backup'),
       h('ul', { class: 'sheet-list' }, backupLines.map((l) => h('li', {}, l))),
       hasData ? h('p', { class: 'sheet-sub' }, 'Will be replaced') : null,
-      hasData ? h('ul', { class: 'sheet-list' }, careerSummaryLines().map((l) => h('li', {}, l))) : null,
+      hasData ? h('ul', { class: 'sheet-list' }, careerSummaryLines().map((l) => h('li', {}, l)), others ? h('li', {}, `and ${plural(others, 'other career')} on this device`) : null) : null,
     ),
     offerBackup: hasData,
     ack: hasData ? 'I understand the current data will be replaced.' : null,
@@ -225,8 +308,9 @@ function item({ iconName, title, text, onClick, disabled }) {
   );
 }
 
-export function openDataMenu() {
+export async function openDataMenu() {
   const hasData = !!store.getModel();
+  const careerCount = hasData ? (await store.listCareers()).length : 0;
   const lines = careerSummaryLines();
   let sheet;
   // Close first, then open the picker in the same tap.
@@ -237,7 +321,10 @@ export function openDataMenu() {
     content: [
       hasData ? h('div', { class: 'menu-career' }, h('span', { class: 'menu-career-club' }, lines[0]), h('span', { class: 'muted' }, lines[1])) : null,
       h('div', { class: 'menu' },
-        item({ iconName: 'upload', title: 'Import FM snapshot', text: 'Add a dated extract to this career’s history', onClick: run(() => pick('snapshot')) }),
+        item({ iconName: 'upload', title: hasData ? 'Add FM snapshot' : 'Import FM snapshot', text: hasData ? 'Add a later in-game date to this career' : 'Start with a dated extract', onClick: run(() => pick('snapshot')) }),
+        hasData ? item({ iconName: 'restore', title: 'Restore older snapshot', text: 'Add an earlier in-game date to this career', onClick: run(() => pick('restoreOlder')) }) : null,
+        hasData ? item({ iconName: 'plus', title: 'Start new career', text: 'From a snapshot · current career is kept', onClick: run(() => pick('newCareer')) }) : null,
+        careerCount > 1 ? item({ iconName: 'squad', title: 'Switch career', text: `${careerCount} careers on this device`, onClick: run(switchCareerFlow) }) : null,
         item({ iconName: 'restore', title: 'Import app backup', text: 'Restore a SquadLab backup (replaces current data)', onClick: run(() => pick('backup')) }),
         item({ iconName: 'download', title: 'Export app backup', text: hasData ? 'Save everything to Files or iCloud Drive' : 'Nothing to export yet', onClick: run(exportFlow), disabled: !hasData }),
       ),
