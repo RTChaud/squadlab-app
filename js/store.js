@@ -7,7 +7,7 @@ import {
   BACKUP_FORMAT, BACKUP_VERSION,
 } from './data/importer.js';
 import { makeSnapshotRecord, buildModel } from './data/snapshot.js';
-import { buildMetrics, keyFor, findInSnapshot, playerHistory, playerKey, METRICS_VERSION } from './data/players.js';
+import { buildMetrics, keyFor, findInSnapshot, playerHistory, playerKey, matchIncomingPlayers, METRICS_VERSION } from './data/players.js';
 import * as Tags from './data/tags.js';
 import * as Lineups from './data/lineups.js';
 import * as Radar from './data/radar.js';
@@ -151,21 +151,52 @@ export function setPref(key, value) {
 export const init = reload;
 
 // ---- FM snapshot import ------------------------------------------------------
+//
+// A snapshot is always added to the ACTIVE career, whatever career_id the
+// exporter wrote: the timeline is checked with the file's game_date, and
+// players are linked by FM unique_id (uid only as an unambiguous fallback).
+// A different career_id never creates, switches or overwrites a career; a new
+// career is its own explicit action.
+
+/** Summary of the active career for import sheets. */
+export function careerSummary() {
+  if (!state.career || !state.model) return null;
+  return {
+    careerId: state.career.careerId,
+    clubName: state.model.club?.name ?? null,
+    managerName: state.model.club?.manager_name ?? null,
+    count: state.history.length,
+    newest: state.history[0]?.gameDate ?? null,
+    oldest: state.history[state.history.length - 1]?.gameDate ?? null,
+  };
+}
 
 /**
- * Read and validate a snapshot, and work out how it relates to stored data.
- * Nothing is written here.
- * status: 'first' | 'new' | 'older' | 'duplicate' | 'sameDate' | 'otherCareer'
+ * Read and validate a snapshot, and work out how it fits the active career's
+ * timeline. Nothing is written here.
+ * status: 'first' | 'new' | 'older' | 'duplicate' | 'sameDate'
+ *   new      — later in-game date than the newest snapshot (append)
+ *   older    — earlier than the newest snapshot (normal import blocks it;
+ *              restoreOlderSnapshot adds it)
+ *   sameDate — a different snapshot exists for that date (replace on confirm)
  */
 export async function prepareSnapshot(file) {
   const obj = await readJsonFile(file, 'snapshot');
   const { data, warnings } = validateSnapshot(obj);
   const out = { data, warnings, fileName: file.name || '' };
-
   if (!state.career) return { ...out, status: 'first' };
-  if (data.career_id !== state.career.careerId) return { ...out, status: 'otherCareer' };
 
-  const id = db.snapshotId(data.career_id, data.game_date);
+  const careerId = state.career.careerId;
+  const match = matchIncomingPlayers(data, await careerMetrics());
+  Object.assign(out, {
+    careerId,
+    destination: careerSummary(),
+    match,
+    sourceDiffers: data.career_id !== careerId,
+    clubDiffers: !!(state.model?.club?.name && data.club?.name && state.model.club.name !== data.club.name),
+  });
+
+  const id = db.snapshotId(careerId, data.game_date);
   const existing = state.history.find((m) => m.id === id);
   if (existing) {
     const rec = await db.getSnapshot(id);
@@ -176,27 +207,104 @@ export async function prepareSnapshot(file) {
   return { ...out, status: newest && data.game_date < newest.gameDate ? 'older' : 'new' };
 }
 
-/** Add (or replace the same-date) snapshot to the active career's history. */
-export async function addSnapshot(prepared) {
-  const { data, fileName } = prepared;
-  if (state.career && data.career_id !== state.career.careerId) {
-    throw new ImportError('This snapshot belongs to a different career.');
+function recordFor(prepared) {
+  return makeSnapshotRecord(prepared.data, prepared.fileName, { careerId: state.career.careerId, uidLinks: prepared.match?.uidLinks });
+}
+
+function checkPrepared(prepared) {
+  if (prepared.status === 'first') return;
+  if (!state.career || prepared.careerId !== state.career.careerId) {
+    throw new ImportError('The active career changed while importing.', ['Nothing was saved. Import the file again.']);
   }
-  const record = makeSnapshotRecord(data, fileName);
+}
+
+/**
+ * Add a later snapshot to the active career, or replace the same-date one
+ * (status 'sameDate', after confirmation). Earlier dates are refused here.
+ */
+export async function addSnapshot(prepared) {
+  const { data } = prepared;
   if (!state.career) {
     // First snapshot: create the career and its first snapshot together.
-    await db.replaceAll([record], [{ key: 'career', value: { careerId: data.career_id, createdAt: record.importedAt } }]);
-  } else {
-    await db.putSnapshot(record);
+    const record = makeSnapshotRecord(data, prepared.fileName);
+    await db.replaceAll([record], [{ key: 'career', value: { careerId: record.careerId, createdAt: record.importedAt } }]);
+    await reload();
+    return { shownIsImported: true };
   }
+  checkPrepared(prepared);
+  const newest = state.history[0];
+  if (newest && data.game_date < newest.gameDate) {
+    throw new ImportError('This snapshot is earlier than your newest one.', [`Use Data → Restore older snapshot to add ${data.game_date} to this career.`]);
+  }
+  const record = recordFor(prepared);
+  await db.putSnapshot(record);
   await reload();
   return { shownIsImported: state.model?.id === record.id };
 }
 
-/** Wipe all data and start a new career from this snapshot (one transaction). */
+/** Recovery: add an earlier-dated snapshot to the active career. The newest snapshot stays selected. */
+export async function restoreOlderSnapshot(prepared) {
+  checkPrepared(prepared);
+  const newest = state.history[0];
+  if (!newest || prepared.data.game_date >= newest.gameDate) {
+    throw new ImportError('This snapshot is not earlier than your newest one.', ['Use Data → Add FM snapshot instead.']);
+  }
+  const record = recordFor(prepared);
+  await db.putSnapshot(record);
+  await reload();
+  return { shownIsImported: state.model?.id === record.id };
+}
+
+/** Every career stored on this device, newest activity first. */
+export async function listCareers() {
+  const metas = await db.listSnapshotMeta();
+  const by = new Map();
+  for (const m of metas) {
+    if (!by.has(m.careerId)) by.set(m.careerId, []);
+    by.get(m.careerId).push(m);
+  }
+  return [...by].map(([careerId, list]) => {
+    list.sort(byDateDesc);
+    return {
+      careerId,
+      clubName: list[0].clubName ?? null,
+      managerName: list[0].managerName ?? null,
+      count: list.length,
+      newest: list[0].gameDate,
+      oldest: list[list.length - 1].gameDate,
+      active: careerId === state.career?.careerId,
+    };
+  }).sort((a, b) => (b.active - a.active) || b.newest.localeCompare(a.newest));
+}
+
+/** Read a snapshot file for Start new career (no timeline checks). */
+export async function prepareNewCareer(file) {
+  const obj = await readJsonFile(file, 'snapshot');
+  const { data, warnings } = validateSnapshot(obj);
+  return { data, warnings, fileName: file.name || '', status: 'newCareer' };
+}
+
+/**
+ * Start a new career from this snapshot. Other careers on this device are
+ * kept (switch back from Data → Switch career). If the exporter's career_id
+ * is already used by a stored career, the new career gets its own id.
+ */
 export async function startNewCareer(prepared) {
-  const record = makeSnapshotRecord(prepared.data, prepared.fileName);
-  await db.replaceAll([record], [{ key: 'career', value: { careerId: record.careerId, createdAt: record.importedAt } }]);
+  const used = new Set((await db.listSnapshotMeta()).map((m) => m.careerId));
+  let careerId = prepared.data.career_id;
+  for (let n = 2; used.has(careerId); n++) careerId = `${prepared.data.career_id}~${n}`;
+  const record = makeSnapshotRecord(prepared.data, prepared.fileName, { careerId });
+  await db.putSnapshotWithSettings(record, [{ key: 'career', value: { careerId, createdAt: record.importedAt } }]);
+  await reload();
+}
+
+/** Make another stored career the active one. */
+export async function switchCareer(careerId) {
+  const metas = await db.listSnapshotMeta();
+  const mine = metas.filter((m) => m.careerId === careerId);
+  if (!mine.length) throw new Error('That career is no longer stored on this device.');
+  const created = mine.map((m) => m.importedAt).sort()[0] ?? null;
+  await db.setSetting('career', { careerId, createdAt: created });
   await reload();
 }
 
