@@ -2,14 +2,22 @@
 // The original JSON is always kept in `model.raw`; nothing is dropped.
 
 import { describePositions } from './positions.js';
-import { persistentId } from './players.js';
+import { persistentId, linkRecordPlayers } from './players.js';
 
-/** Build the IndexedDB record for a freshly imported extract. */
-export function makeSnapshotRecord(data, fileName = '') {
-  return {
+/**
+ * Build the IndexedDB record for a freshly imported extract.
+ * `careerId` is the SquadLab career it is stored in (the extract's own
+ * career_id is kept in the untouched data and in `sourceCareerId`);
+ * `uidLinks` maps uids of players without a unique_id to existing players.
+ */
+export function makeSnapshotRecord(data, fileName = '', { careerId = data.career_id, uidLinks = null } = {}) {
+  const links = uidLinks && Object.keys(uidLinks).length ? uidLinks : null;
+  return linkRecordPlayers({
     // One snapshot per career and in-game date.
-    id: `${data.career_id}|${data.game_date}`,
-    careerId: data.career_id,
+    id: `${careerId}|${data.game_date}`,
+    careerId,
+    sourceCareerId: data.career_id,
+    ...(links ? { uidLinks: links } : {}),
     gameDate: data.game_date,
     exportedAt: data.exported_at_utc || null,
     clubName: data.club?.name ?? null,
@@ -18,7 +26,7 @@ export function makeSnapshotRecord(data, fileName = '') {
     fileName,
     importedAt: new Date().toISOString(),
     data,
-  };
+  });
 }
 
 /** Built-in Shortlists view of every player in the snapshot (never an imported id). */
@@ -35,6 +43,7 @@ function squadKind(s) {
 }
 
 export function buildModel(record) {
+  linkRecordPlayers(record);
   const data = record.data;
 
   // One underlying record per player; squads and shortlists only reference uids.

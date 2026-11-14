@@ -1,31 +1,99 @@
 // Player identity and history.
 //
-// Identity = career ID + FM's persistent player ID (`unique_id`). The extractor
-// already provides this as `player_key` ("<career_id>:<unique_id>"). Names are
-// never used to match, and `uid` is only used inside one snapshot (squad and
-// shortlist membership lists refer to it).
+// Identity = SquadLab career ID + FM's persistent player ID (`unique_id`).
+// Keys look like "<career id>:<unique_id>". The career part is always the
+// SquadLab career the snapshot is stored in, never the exporter's own
+// career_id, so snapshots exported with a different career_id still link to
+// the same players (and their tags, lineups and history). When a record has no
+// unique_id, the player_key suffix is used, and failing that a uid link worked
+// out at import time (only when unambiguous). Names are never used to match.
 
 import { FOOTBALL_ATTRS, HIDDEN_ATTRS, PERSONALITY_ATTRS, intOrNull } from './attributes.js';
 
-/** Persistent key for a player record, or null when it cannot be trusted. */
-export function playerKey(p, careerId) {
-  if (typeof p.player_key === 'string' && p.player_key) {
-    return p.player_key.startsWith(`${careerId}:`) ? p.player_key : null;
+const LINKED = Symbol('squadlab.linked');
+const UID_PID = Symbol('squadlab.uidPid');
+
+/** FM's own persistent id for a record (unique_id, else the player_key suffix), or null. */
+export function ownPersistentId(p) {
+  if (Number.isInteger(p?.unique_id)) return String(p.unique_id);
+  if (typeof p?.player_key === 'string' && p.player_key.includes(':')) {
+    const tail = p.player_key.split(':').pop();
+    if (tail) return tail;
   }
-  return Number.isInteger(p.unique_id) ? `${careerId}:${p.unique_id}` : null;
+  return null;
 }
 
-export const keyFor = (careerId, persistentId) => `${careerId}:${persistentId}`;
+/**
+ * Attach a stored record's uid links (players without a unique_id that were
+ * matched to an existing player by uid) to its players. Idempotent; the data
+ * itself is not changed.
+ */
+export function linkRecordPlayers(record) {
+  const data = record?.data;
+  if (!data || data[LINKED]) return record;
+  const links = record.uidLinks && typeof record.uidLinks === 'object' ? record.uidLinks : null;
+  if (links) {
+    for (const p of data.players || []) {
+      const pid = links[p?.uid];
+      if (typeof pid === 'string' && pid && !ownPersistentId(p)) p[UID_PID] = pid;
+    }
+  }
+  data[LINKED] = true;
+  return record;
+}
 
-/** The id used in URLs (the persistent part of the key). */
+/** The persistent part of a player's key (used in URLs), or null when unknown. */
 export function persistentId(p) {
-  if (typeof p.player_key === 'string' && p.player_key.includes(':')) return p.player_key.split(':').pop();
-  return Number.isInteger(p.unique_id) ? String(p.unique_id) : null;
+  return ownPersistentId(p) ?? (typeof p?.[UID_PID] === 'string' ? p[UID_PID] : null);
 }
+
+/** Key of a player record inside a SquadLab career, or null when it has no persistent id. */
+export function playerKey(p, careerId) {
+  const pid = persistentId(p);
+  return pid ? `${careerId}:${pid}` : null;
+}
+
+export const keyFor = (careerId, pid) => `${careerId}:${pid}`;
+
+const pidOfKey = (key) => (typeof key === 'string' ? key.slice(key.lastIndexOf(':') + 1) : '');
 
 /** Find a player in one snapshot's data by persistent key. */
 export function findInSnapshot(data, key) {
-  return data.players.find((p) => playerKey(p, data.career_id) === key) || null;
+  const pid = pidOfKey(key);
+  return pid ? data.players.find((p) => persistentId(p) === pid) || null : null;
+}
+
+/**
+ * Work out how an incoming extract's players link to a career's existing
+ * players. `known` is the career's metrics list (each { players: [{ key, uid }] }).
+ * Returns { uidLinks: { uid: pid }, linked, added, unlinked }:
+ *   linked   — players already recorded in the career (same unique_id, or uid link)
+ *   added    — players new to the career
+ *   unlinked — players with no unique_id whose uid match was missing or ambiguous
+ */
+export function matchIncomingPlayers(data, known) {
+  const knownPids = new Set();
+  const pidsByUid = new Map();
+  for (const m of known) for (const r of m.players) {
+    const pid = pidOfKey(r.key);
+    knownPids.add(pid);
+    if (Number.isInteger(r.uid)) {
+      if (!pidsByUid.has(r.uid)) pidsByUid.set(r.uid, new Set());
+      pidsByUid.get(r.uid).add(pid);
+    }
+  }
+  const taken = new Set(data.players.map(ownPersistentId).filter(Boolean));
+  const uidLinks = {};
+  let linked = 0, added = 0, unlinked = 0;
+  for (const p of data.players) {
+    const own = ownPersistentId(p);
+    if (own) { if (knownPids.has(own)) linked++; else added++; continue; }
+    const c = pidsByUid.get(p.uid);
+    const pid = c && c.size === 1 ? [...c][0] : null;
+    if (pid && !taken.has(pid)) { uidLinks[p.uid] = pid; taken.add(pid); linked++; }
+    else unlinked++;
+  }
+  return { uidLinks, linked, added, unlinked };
 }
 
 // ---- Metrics: compact per-snapshot values used for development graphs ------
@@ -36,10 +104,11 @@ export function findInSnapshot(data, key) {
 export const METRICS_VERSION = 2;
 
 export function buildMetrics(record) {
+  linkRecordPlayers(record);
   const { data } = record;
   const players = [];
   for (const p of data.players) {
-    const key = playerKey(p, data.career_id);
+    const key = playerKey(p, record.careerId);
     if (!key) continue;
     const attrs = {};
     for (const a of FOOTBALL_ATTRS) attrs[a.key] = intOrNull(p.attributes?.[a.key]);

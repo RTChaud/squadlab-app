@@ -16,7 +16,7 @@
 //      Existing v1 data is migrated in place — nothing is cleared.
 //   3  metrics store (filled from existing snapshots on first load).
 
-import { buildMetrics } from './players.js';
+import { buildMetrics, linkRecordPlayers } from './players.js';
 import { noteSnapshotFormat } from './contract.js';
 
 const DB_NAME = 'squadlab';
@@ -129,7 +129,7 @@ const collect = (out, req) => { req.onsuccess = () => { out.value = req.result; 
 
 // Every snapshot read goes through here, so its players are tagged with the
 // export format (which raw clause codes can be trusted — contract.js).
-const noted = (rec) => { if (rec?.data) noteSnapshotFormat(rec.data); return rec; };
+const noted = (rec) => { if (rec?.data) { linkRecordPlayers(rec); noteSnapshotFormat(rec.data); } return rec; };
 
 export const getSnapshot = (id) =>
   tx(['snapshots'], 'readonly', (s, out) => collect(out, s.snapshots.get(id))).then(noted);
@@ -147,6 +147,17 @@ export const putSnapshot = (record) => {
     s.snapshots.put(record);
     s.snapshotIndex.put(metaOf(record));
     s.metrics.put(metrics);
+  });
+};
+
+/** Add one snapshot and set some settings in one transaction (e.g. a new career). */
+export const putSnapshotWithSettings = (record, settings) => {
+  const metrics = buildMetrics(record);
+  return tx(['snapshots', 'snapshotIndex', 'metrics', 'settings'], 'readwrite', (s) => {
+    s.snapshots.put(record);
+    s.snapshotIndex.put(metaOf(record));
+    s.metrics.put(metrics);
+    for (const st of settings) s.settings.put(st);
   });
 };
 

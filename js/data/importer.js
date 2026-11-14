@@ -177,8 +177,11 @@ export function validateBackup(b) {
     const problems = snapshotProblems(rec.data);
     problems.forEach((p) => errors.push(`${where}: ${p}`));
     if (problems.length) return;
-    if (rec.data.career_id !== careerId) errors.push(`${where}: belongs to a different career.`);
-    if (rec.careerId !== careerId || rec.gameDate !== rec.data.game_date) errors.push(`${where}: header does not match its data.`);
+    // The extract's own career_id may differ: snapshots added to this career
+    // from a re-exported save keep it in their untouched data.
+    if (rec.careerId !== careerId) errors.push(`${where}: belongs to a different career.`);
+    if (rec.gameDate !== rec.data.game_date) errors.push(`${where}: header does not match its data.`);
+    if (rec.uidLinks !== undefined && (!isObj(rec.uidLinks) || Object.values(rec.uidLinks).some((v) => typeof v !== 'string' || !v))) errors.push(`${where}: invalid player links.`);
     if (rec.id !== `${careerId}|${rec.gameDate}`) errors.push(`${where}: unexpected id.`);
     if (ids.has(rec.id)) errors.push(`${where}: duplicate in-game date.`);
     ids.add(rec.id);
