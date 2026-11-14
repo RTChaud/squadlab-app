@@ -101,11 +101,28 @@ export function matchIncomingPlayers(data, known) {
 // rebuilt at any time and is not part of the backup.
 
 /** Bump when buildMetrics changes; stored metrics with another version are rebuilt. */
-export const METRICS_VERSION = 2;
+export const METRICS_VERSION = 3;
+
+const TEAM_SLOT_KEYS = { 0: 'first', 1: 'reserve', 2: 'youth' };
+
+/**
+ * uid → 'first' | 'reserve' | 'youth' | 'loan' from the extract's squads,
+ * linked the same way as the Squad screen (team_slot 0/1/2 and the single
+ * "Out on loan" group). An ambiguous or missing group links nobody.
+ */
+export function squadKeyByUid(data) {
+  const map = new Map();
+  const squads = Array.isArray(data?.squads) ? data.squads : [];
+  const add = (list, key) => { if (list.length === 1) for (const u of list[0].player_uids || []) if (!map.has(u)) map.set(u, key); };
+  for (const [slot, key] of Object.entries(TEAM_SLOT_KEYS)) add(squads.filter((s) => Number.isInteger(s.team_id) && s.team_slot === Number(slot)), key);
+  add(squads.filter((s) => s.id === 'out_on_loan'), 'loan');
+  return map;
+}
 
 export function buildMetrics(record) {
   linkRecordPlayers(record);
   const { data } = record;
+  const squadOf = squadKeyByUid(data);
   const players = [];
   for (const p of data.players) {
     const key = playerKey(p, record.careerId);
@@ -121,6 +138,10 @@ export function buildMetrics(record) {
       ca: intOrNull(p.ability?.current),
       pa: intOrNull(p.ability?.potential),
       club: p.club_name ?? null,
+      // v3: club membership (incl. players out on loan), squad and name on that date.
+      own: isClubOwned(p, data),
+      squad: squadOf.get(p.uid) ?? null,
+      name: displayNameOf(p),
       attrs,
     });
   }

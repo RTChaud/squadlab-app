@@ -4,6 +4,11 @@
 import { describePositions } from './positions.js';
 import { persistentId, linkRecordPlayers } from './players.js';
 
+/** Size of the extract as JSON text (UTF-8 bytes), or null if it cannot be measured. */
+export function jsonBytes(data) {
+  try { return new Blob([JSON.stringify(data)]).size; } catch { return null; }
+}
+
 /**
  * Build the IndexedDB record for a freshly imported extract.
  * `careerId` is the SquadLab career it is stored in (the extract's own
@@ -23,6 +28,7 @@ export function makeSnapshotRecord(data, fileName = '', { careerId = data.career
     clubName: data.club?.name ?? null,
     managerName: data.club?.manager_name ?? null,
     playerCount: Array.isArray(data.players) ? data.players.length : 0,
+    bytes: jsonBytes(data),
     fileName,
     importedAt: new Date().toISOString(),
     data,

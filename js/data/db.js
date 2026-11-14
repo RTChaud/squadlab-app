@@ -161,6 +161,16 @@ export const putSnapshotWithSettings = (record, settings) => {
   });
 };
 
+/** Delete snapshots (record + index + metrics) in one transaction. */
+export const deleteSnapshots = (ids) =>
+  tx(['snapshots', 'snapshotIndex', 'metrics'], 'readwrite', (s) => {
+    for (const id of ids) { s.snapshots.delete(id); s.snapshotIndex.delete(id); s.metrics.delete(id); }
+  });
+
+/** Update only a snapshot's index entry (e.g. its measured size). */
+export const putSnapshotMeta = (meta) =>
+  tx(['snapshotIndex'], 'readwrite', (s) => { s.snapshotIndex.put(meta); });
+
 // ---- Metrics (derived) -------------------------------------------------------
 
 export const listMetrics = () =>
