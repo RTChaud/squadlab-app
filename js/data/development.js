@@ -142,3 +142,24 @@ export function compareSnapshots(earlier, later) {
   const byCa = (x, y) => (y.after?.ca ?? y.before?.ca ?? -1) - (x.after?.ca ?? x.before?.ca ?? -1);
   return { joined: joined.sort(byCa), left: left.sort((x, y) => (y.before.ca ?? -1) - (x.before.ca ?? -1)), gains: both };
 }
+
+// ---- One player's graph: change per metric ------------------------------------------
+
+/**
+ * Net change of one metric over the graph's active date range (`points`, the
+ * same points the graph plots: { gameDate, present, values }). Uses that
+ * metric's valid observations only (player recorded, whole-number value).
+ * Returns null with fewer than two, else
+ *   { from, to, delta, firstDate, lastDate, partial }
+ * where `partial` is true when those observations don't span the whole range.
+ */
+export function metricChange(points, key) {
+  const obs = points.filter((x) => x.present && Number.isInteger(x.values?.[key]));
+  if (obs.length < 2) return null;
+  const a = obs[0], b = obs[obs.length - 1];
+  return {
+    from: a.values[key], to: b.values[key], delta: b.values[key] - a.values[key],
+    firstDate: a.gameDate, lastDate: b.gameDate,
+    partial: a.gameDate !== points[0].gameDate || b.gameDate !== points[points.length - 1].gameDate,
+  };
+}
