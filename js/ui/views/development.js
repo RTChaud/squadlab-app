@@ -4,7 +4,8 @@
 import { h } from '../dom.js';
 import { getPlayerProfile, getPlayerHistory, getPref, setPref } from '../../store.js';
 import { formatGameDate } from '../../data/snapshot.js';
-import { ATTR_BY_KEY } from '../../data/attributes.js';
+import { ATTR_BY_KEY, attributeDirection } from '../../data/attributes.js';
+import { metricChange } from '../../data/development.js';
 import { backTarget } from '../../router.js';
 import { DevChart } from '../components/devChart.js';
 import { MetricPicker } from '../components/metricPicker.js';
@@ -52,7 +53,18 @@ export async function DevelopmentView({ pid, query }) {
   const observations = presentIdx.length;
 
   const chartArea = h('div', { class: 'chart-area' });
+  // Net change per metric over the graph's date range (the same points it plots).
+  const changeOf = (key) => (points.length ? metricChange(points, key) : null);
+  const good = (key, delta) => {
+    const dir = key === 'ca' ? 'positive' : attributeDirection(key);
+    return dir === 'neutral' ? null : dir === 'negative' ? delta < 0 : delta > 0;
+  };
+  const shortDate = (iso) => formatGameDate(iso);
+  const dates = (a, b) => (a.slice(0, 4) === b.slice(0, 4) ? `${shortDate(a).replace(/\s\d{4}$/, '')} – ${shortDate(b)}` : `${shortDate(a)} – ${shortDate(b)}`);
   const picker = MetricPicker({
+    change: changeOf,
+    good,
+    dates,
     selected: { ...selected, attrs: [...selected.attrs] },
     series: seriesFor,
     maxAttrs: MAX_ATTRS,

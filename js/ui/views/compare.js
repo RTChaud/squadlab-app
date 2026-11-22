@@ -69,7 +69,7 @@ function playerHead(side, res, otherPid) {
   const pa = paRaw !== null && paRaw > 0 ? paRaw : null; // ≤ 0 is an FM range code, not a PA
   // Each line sits on a shared grid row, so both columns stay level when a name wraps.
   return h('div', { class: `cmp-col cmp-${side}` },
-    h('a', { class: 'cmp-name', href: linkWithFrom(`/player/${encodeURIComponent(persistentId(p))}`, '/compare') }, name.main),
+    h('a', { class: 'cmp-name', title: name.main, href: linkWithFrom(`/player/${encodeURIComponent(persistentId(p))}`, '/compare') }, name.main),
     res.current
       ? h('span', { class: 'cmp-meta' }, [pos, age !== null ? String(age) : null].filter(Boolean).join(' · ') || DASH)
       : h('span', { class: 'cmp-meta cmp-old' }, `Last recorded ${formatGameDate(res.model.gameDate)}`),

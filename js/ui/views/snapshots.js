@@ -229,25 +229,25 @@ export async function SnapshotCompareView({ query }) {
     h('select', { class: 'select', id, onchange: (e) => onChange(e.target.value) },
       options.map((d) => h('option', { value: d, selected: d === value }, formatGameDate(d)))));
 
-  const person = (key, name, meta, right) => h('li', {}, h('a', { class: 'cmp-row', href: link(key) },
-    h('span', { class: 'cmp-main' }, h('span', { class: 'cmp-name' }, name || '—'), h('span', { class: 'cmp-meta' }, meta)),
+  const person = (key, name, meta, right) => h('li', {}, h('a', { class: 'sc-row', href: link(key) },
+    h('span', { class: 'sc-main' }, h('span', { class: 'sc-name' }, name || '—'), h('span', { class: 'sc-meta' }, meta)),
     right));
   const squadText = (r) => (r?.squad ? SQUAD_LABEL[r.squad] : 'Club');
   const caText = (r) => (Number.isInteger(r?.ca) ? `CA ${r.ca}` : null);
 
-  const section = (title, items, render, empty) => h('section', { class: 'card cmp-section', 'aria-label': title },
-    h('p', { class: 'cmp-title' }, title, h('span', { class: 'group-count' }, String(items.length))),
-    items.length ? h('ul', { class: 'cmp-list' }, items.map(render)) : h('p', { class: 'muted small' }, empty));
+  const section = (title, items, render, empty) => h('section', { class: 'card sc-section', 'aria-label': title },
+    h('p', { class: 'sc-title' }, title, h('span', { class: 'group-count' }, String(items.length))),
+    items.length ? h('ul', { class: 'sc-list' }, items.map(render)) : h('p', { class: 'muted small' }, empty));
 
   const gains = cmp.gains.filter((x) => x.change > 0).slice(0, 10);
 
   return {
     title: 'Compare snapshots',
     back: '#/snapshots',
-    body: h('div', { class: 'stack cmp-snaps' },
-      h('div', { class: 'cmp-pickers' },
-        pick('cmp-from', 'Earlier', from, dates.filter((d) => d < to), (v) => go(v, to)),
-        pick('cmp-to', 'Later', to, dates.filter((d) => d > dates[0]), (v) => go(v < from || v === from ? dates[dates.indexOf(v) - 1] : from, v))),
+    body: h('div', { class: 'stack sc-snaps' },
+      h('div', { class: 'sc-pickers' },
+        pick('sc-from', 'Earlier', from, dates.filter((d) => d < to), (v) => go(v, to)),
+        pick('sc-to', 'Later', to, dates.filter((d) => d > dates[0]), (v) => go(v < from || v === from ? dates[dates.indexOf(v) - 1] : from, v))),
       section('Joined', cmp.joined, (x) => person(x.key, x.after.name,
         [squadText(x.after), caText(x.after), x.before?.club ? `previously ${x.before.club}` : null].filter(Boolean).join(' · ')), 'No players joined.'),
       section('Left', cmp.left, (x) => person(x.key, x.before.name,
