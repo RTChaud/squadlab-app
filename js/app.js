@@ -121,7 +121,7 @@ function watchRevealTitle(target) {
 // Keep sticky elements (list column headings) just below the real header height,
 // whatever the safe-area inset is.
 function trackHeaderHeight() {
-  const set = () => document.documentElement.style.setProperty('--header-h', `${els.header.offsetHeight}px`);
+  const set = () => document.documentElement.style.setProperty('--header-h', `${els.header.getBoundingClientRect().height}px`);
   set();
   // border-box so changes to the safe-area padding are noticed too
   if ('ResizeObserver' in window) new ResizeObserver(set).observe(els.header, { box: 'border-box' });
