@@ -1000,6 +1000,19 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .opt:active { background: var(--surface-2); }
 .opt input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
 .opt.disabled { opacity: 0.4; cursor: default; }
+/* Development: each row's net change over the graph's range, right-aligned. */
+.opt-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; padding: 6px 0; }
+.opt-label { overflow-wrap: anywhere; }
+.opt-dates { font-size: 11.5px; color: var(--muted); }
+.opt-change { flex: none; margin-left: auto; padding-left: 8px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.opt-change.none { font-size: 15px; }
+.opt-vals { color: var(--text-2); }
+.opt-sep { color: var(--muted); }
+.opt-delta { display: inline-block; min-width: 2.1em; font-size: 14px; font-weight: 800; text-align: right; }
+.opt-delta.good { color: #7fd892; }
+.opt-delta.bad { color: #ef8f86; }
+.opt-delta.flat { color: var(--muted); font-weight: 700; }
+@media (max-width: 340px) { .opt-vals { display: none; } }
 
 .chart-area { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .dev-notes {
@@ -1436,7 +1449,7 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 /* ---- Comparison ------------------------------------------------------------------- */
 /* Player header stays under the page header while scrolling the attributes. */
 .cmp-head {
-  position: sticky; top: var(--header-h); z-index: 4;
+  position: sticky; top: calc(var(--header-h) - 1px); z-index: 4;
   display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-rows: repeat(4, auto);
   align-items: start; gap: 2px 8px;
   margin: 0 calc(-1 * var(--gutter)); padding: 10px var(--gutter);
@@ -1457,7 +1470,7 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .cmp-name {
   max-width: 100%; color: var(--text); text-decoration: none; font-size: 16px; font-weight: 750; line-height: 1.2;
   overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
 }
 .cmp-meta { font-size: 12px; color: var(--muted); }
 .cmp-old { color: #e0a43c; font-weight: 600; }
@@ -1483,9 +1496,12 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 
 .cmp-table { display: flex; flex-direction: column; gap: 10px; }
 .cmp-list { list-style: none; margin: 0; padding: 0 4px 8px; }
-/* Left value | name | right value: equal narrow value columns, name gets the rest. */
+/* Left value | name | right value: the same fixed value columns on every row
+   (attributes, block summaries, role scores), so values line up under the
+   player headers and the centre — names, gap labels and the bar's axis —
+   never moves with the length of a name or a value. */
 .cmp-row {
-  display: grid; grid-template-columns: 3rem minmax(0, 1fr) 3rem; align-items: center; column-gap: 4px;
+  display: grid; grid-template-columns: 3rem minmax(0, 1fr) 3rem; align-items: center; column-gap: 6px;
   min-height: 38px; padding: 3px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); border-radius: 6px;
   --lead: 62, 210, 112;
 }
@@ -1496,11 +1512,14 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .lead-s3 { --tint: 0.21; }
 .cmp-row.lead-left { background: linear-gradient(to right, rgba(var(--lead), var(--tint)) 0%, rgba(var(--lead), 0) 50%); }
 .cmp-row.lead-right { background: linear-gradient(to left, rgba(var(--lead), var(--tint)) 0%, rgba(var(--lead), 0) 50%); }
-.cmp-val { display: flex; justify-content: center; }
+.cmp-val { display: flex; justify-content: center; min-width: 0; }
+.cmp-row > .cmp-val:first-child { justify-content: flex-start; }
+.cmp-row > .cmp-val:last-child { justify-content: flex-end; }
 .cmp-val .attr-val { min-width: 32px; }
 .cmp-na { color: var(--muted) !important; }
-/* Centre: gap label | name | gap label, with the bar on its own line beneath. */
-.cmp-mid { display: grid; grid-template-columns: 1.7rem minmax(0, 1fr) 1.7rem; align-items: center; min-width: 0; }
+/* Centre: gap label | name | gap label (equal side tracks), with the bar on its
+   own line beneath spanning all three, so its 0 mark is the row's centre. */
+.cmp-mid { display: grid; grid-template-columns: 2.1rem minmax(0, 1fr) 2.1rem; align-items: center; min-width: 0; }
 .cmp-gap { font-size: 11.5px; font-weight: 800; color: rgb(var(--lead)); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cmp-gap-left { justify-self: start; }
 .cmp-gap-right { justify-self: end; }
@@ -1935,13 +1954,13 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .snapview-name { font-weight: 600; overflow-wrap: anywhere; padding: 6px 0; }
 .snapview-pos { font-size: 12px; color: var(--text-2); }
 
-.cmp-pickers { display: grid; grid-template-columns: 1fr; gap: 10px; }
-@media (min-width: 440px) { .cmp-pickers { grid-template-columns: 1fr 1fr; } }
-.cmp-section { gap: 8px; padding: 12px 14px; }
-.cmp-title { display: flex; align-items: center; margin: 0; font-size: 15px; font-weight: 700; }
-.cmp-list { list-style: none; margin: 0 -14px -12px; padding: 0; }
-.cmp-row { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 14px; border-top: 1px solid var(--border); color: inherit; text-decoration: none; }
-.cmp-row:active { background: var(--surface-2); }
-.cmp-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.cmp-name { font-size: 15px; font-weight: 650; overflow-wrap: anywhere; }
-.cmp-meta { font-size: 12px; color: var(--muted); }
+.sc-pickers { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 440px) { .sc-pickers { grid-template-columns: 1fr 1fr; } }
+.sc-section { gap: 8px; padding: 12px 14px; }
+.sc-title { display: flex; align-items: center; margin: 0; font-size: 15px; font-weight: 700; }
+.sc-list { list-style: none; margin: 0 -14px -12px; padding: 0; }
+.sc-row { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 14px; border-top: 1px solid var(--border); color: inherit; text-decoration: none; }
+.sc-row:active { background: var(--surface-2); }
+.sc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sc-name { font-size: 15px; font-weight: 650; overflow-wrap: anywhere; }
+.sc-meta { font-size: 12px; color: var(--muted); }
