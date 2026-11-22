@@ -5,12 +5,19 @@ import { h, icon } from '../dom.js';
 import { ATTRIBUTE_GROUPS } from '../../data/attributes.js';
 import { swatch } from './devChart.js';
 
+const signed = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : '0');
+
 /**
  * @param {object} o
  *   selected  { ca: boolean, attrs: [{ key, slot }] }
  *   series    (key) => { label, color, shape }  — current styling per metric
  *   maxAttrs  number
  *   onChange  (nextSelected) => void
+ *   change    optional (key) => { from, to, delta, firstDate, lastDate, partial } | null
+ *             net change over the graph's date range, shown on every list row
+ *   good      optional (key, delta) => true | false | null  (desirability; null = neutral)
+ *   dates     optional (firstDate, lastDate) => string  (for a row whose values
+ *             cover less than the graph's range)
  */
 export function MetricPicker(o) {
   const { selected } = o;
@@ -68,12 +75,33 @@ export function MetricPicker(o) {
     chips.replaceChildren(...nodes);
   }
 
+  /** Right-aligned "12 → 14 · +2" (or —), coloured by desirability. */
+  function changeCell(key, labelText) {
+    if (!o.change) return { cell: null, note: null, title: null };
+    const c = o.change(key);
+    if (!c) {
+      return { cell: h('span', { class: 'opt-change none', 'data-change': '', 'aria-label': `${labelText}: not enough history` }, '—'), note: null, title: 'Fewer than two recorded values in this range' };
+    }
+    const g = c.delta === 0 ? null : o.good ? o.good(key, c.delta) : c.delta > 0;
+    const tone = c.delta === 0 || g === null ? 'flat' : g ? 'good' : 'bad';
+    const span = o.dates ? o.dates(c.firstDate, c.lastDate) : `${c.firstDate} – ${c.lastDate}`;
+    return {
+      cell: h('span', { class: 'opt-change', 'data-change': String(c.delta), 'aria-label': `${labelText}: ${c.from} to ${c.to}, ${signed(c.delta)}${c.partial ? `, ${span}` : ''}` },
+        h('span', { class: 'opt-vals' }, `${c.from} → ${c.to}`, h('span', { class: 'opt-sep' }, ' · ')),
+        h('b', { class: `opt-delta ${tone}` }, signed(c.delta))),
+      note: c.partial ? h('span', { class: 'opt-dates' }, span) : null,
+      title: `${c.from} → ${c.to} (${signed(c.delta)}), ${span}`,
+    };
+  }
+
   function option(key, labelText) {
     const sel = isSel(key);
     const disabled = !sel && key !== 'ca' && attrCount() >= o.maxAttrs;
-    return h('label', { class: `opt${disabled ? ' disabled' : ''}` },
+    const ch = changeCell(key, labelText);
+    return h('label', { class: `opt${disabled ? ' disabled' : ''}`, 'data-key': key, title: ch.title },
       h('input', { type: 'checkbox', checked: sel, disabled, onchange: () => toggleKey(key) }),
-      h('span', {}, labelText));
+      h('span', { class: 'opt-text' }, h('span', { class: 'opt-label' }, labelText), ch.note),
+      ch.cell);
   }
 
   function renderList() {
@@ -104,5 +132,7 @@ export function MetricPicker(o) {
     renderChips();
     if (open) renderList();
   };
+  // Recalculate the per-row changes (e.g. after the graph's date range changes).
+  root.setChange = (fn) => { o.change = fn; if (open) renderList(); };
   return root;
 }
