@@ -1,0 +1,10 @@
+{
+  "about": "Home banner identity per club, keyed by the club's FM unique_id (club.unique_id in the extract). colours: one or two hex colours used as faint accents. crest: an image path relative to the app (e.g. icons/crests/865.png), or null for the SquadLab logo.",
+  "clubs": {
+    "865": {
+      "name": "Olympique Lyonnais",
+      "colours": ["#da1f26", "#1b3f94"],
+      "crest": null
+    }
+  }
+}
