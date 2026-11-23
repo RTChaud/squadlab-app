@@ -250,28 +250,89 @@ html.on-home { --header-gap: 2px; }
 html.standalone.on-home { --header-gap: 10px; }
 html.on-home .view { padding-top: 12px; }
 
-.home { display: flex; flex-direction: column; gap: 22px; }
+/* ---- Home: club banner + launcher ("analysis studio") ------------------------------
+   Decorative layers (pitch pattern, glow, tile line art, crest watermark) are
+   aria-hidden, sit behind content and never take taps. */
 
-.save-strip {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(247, 134, 30, 0.14), rgba(247, 134, 30, 0.03) 65%), var(--surface);
-  border: 1px solid rgba(247, 134, 30, 0.24);
+.home { position: relative; isolation: isolate; display: flex; flex-direction: column; gap: 20px; }
+
+.home-backdrop { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.home-pitch {
+  position: absolute; left: 50%; top: calc(var(--header-h, 64px) - 30px); width: min(760px, 170vw); aspect-ratio: 600 / 900;
+  transform: translateX(-50%);
+  background: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 600 900%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%222%22%3E%3Crect x=%2230%22 y=%2230%22 width=%22540%22 height=%22840%22 rx=%224%22/%3E%3Cpath d=%22M30 450H570%22/%3E%3Ccircle cx=%22300%22 cy=%22450%22 r=%2274%22/%3E%3Ccircle cx=%22300%22 cy=%22450%22 r=%223%22 fill=%22%23fff%22/%3E%3Cpath d=%22M150 30V170H450V30M222 30V78H378V30M150 870V730H450V870M222 870V822H378V870%22/%3E%3Cpath d=%22M246 170A66 66 0 0 0 354 170M246 730A66 66 0 0 1 354 730%22/%3E%3Ccircle cx=%22300%22 cy=%22126%22 r=%223%22 fill=%22%23fff%22/%3E%3Ccircle cx=%22300%22 cy=%22774%22 r=%223%22 fill=%22%23fff%22/%3E%3Cpath d=%22M30 44A14 14 0 0 0 44 30M556 30A14 14 0 0 0 570 44M30 856A14 14 0 0 1 44 870M570 856A14 14 0 0 0 556 870%22/%3E%3C/svg%3E") center top / 100% auto no-repeat;
+  opacity: 0.05;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.6) 35%, transparent 70%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.6) 35%, transparent 70%);
 }
-.save-club { min-width: 0; font-size: 16px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
-.save-date { flex: none; font-size: 15px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; text-decoration: none; padding: 4px 0 4px 8px; margin: -4px 0; }
-.save-date:active { opacity: 0.7; }
 
-/* Launcher: three equal columns, square icons with the name below. */
+/* Club banner */
+.club-banner {
+  --club-a: 247, 134, 30; --club-b: 247, 134, 30; --club-alpha: 0.10;
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 14px;
+  min-height: 92px; padding: 16px 18px 18px;
+  border-radius: 18px;
+  background:
+    radial-gradient(130% 170% at 0% 0%, rgba(var(--club-a), var(--club-alpha)), transparent 55%),
+    radial-gradient(120% 160% at 100% 100%, rgba(var(--club-b), var(--club-alpha)), transparent 58%),
+    linear-gradient(135deg, #25272e 0%, #1b1c21 62%, #17181c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 12px 28px rgba(0, 0, 0, 0.36), 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+.club-banner.has-colours { --club-alpha: 0.17; }
+/* Orange stays the app's accent: a soft line along the banner's foot. */
+.club-banner::after {
+  content: ""; position: absolute; left: 18px; right: 30%; bottom: 0; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, rgba(247, 134, 30, 0.85), rgba(247, 134, 30, 0));
+  pointer-events: none;
+}
+.club-banner-deco { position: absolute; inset: 0; pointer-events: none; }
+.club-watermark {
+  position: absolute; right: -7%; top: 50%; height: 175%; width: auto; max-width: none;
+  transform: translateY(-50%) rotate(-9deg);
+  opacity: 0.08; filter: saturate(0.8);
+  user-select: none; -webkit-user-drag: none;
+}
+.club-banner.fallback-crest .club-watermark { opacity: 0.06; filter: grayscale(0.35); }
+/* The SquadLab mark has a dark square background: blend it into the frame. */
+.club-banner.fallback-crest .club-crest-img, .club-banner.fallback-crest .club-watermark { mix-blend-mode: lighten; border-radius: 10px; }
+.club-crest {
+  position: relative; flex: none; display: grid; place-items: center;
+  width: 54px; height: 54px; border-radius: 15px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+.club-crest-img { width: 42px; height: 42px; object-fit: contain; display: block; }
+.club-text { position: relative; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.club-name {
+  margin: 0; font-size: clamp(18px, 5.3vw, 23px); font-weight: 750; line-height: 1.15; letter-spacing: -0.01em;
+  overflow-wrap: anywhere; -webkit-hyphens: auto; hyphens: auto;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+}
+.club-date {
+  display: inline-flex; align-items: center; gap: 2px; min-height: 30px; margin: -4px 0 -6px;
+  font-size: 14.5px; font-weight: 650; color: var(--accent); font-variant-numeric: tabular-nums;
+  text-decoration: none; white-space: nowrap;
+}
+.club-date-chev { display: inline-flex; width: 15px; height: 15px; opacity: 0.8; }
+.club-date-chev svg { width: 100%; height: 100%; display: block; }
+.club-date:active { opacity: 0.7; }
+
+/* Launcher: three equal columns, rounded-square tiles with the name below. */
+.home nav { position: relative; }
+.home nav::before {
+  content: ""; position: absolute; left: 50%; top: 46%; width: min(150%, 620px); aspect-ratio: 1.15;
+  transform: translate(-50%, -50%); z-index: -1; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(247, 134, 30, 0.10), rgba(247, 134, 30, 0.04) 55%, transparent);
+}
 .app-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  row-gap: 18px;
-  column-gap: 8px;
+  row-gap: 16px;
+  column-gap: 10px;
   max-width: 420px;
   width: 100%;
   margin: 0 auto;
@@ -280,44 +341,81 @@ html.on-home .view { padding-top: 12px; }
 }
 .app-cell { display: flex; justify-content: center; min-width: 0; }
 .app-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 4px 0;
-  border-radius: 16px;
-  -webkit-touch-callout: none;
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  width: 100%; padding: 4px 0 2px; border-radius: 18px;
+  color: inherit; text-decoration: none; outline: none;
+  -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
 }
+button.app-tile { border: 0; background: none; font: inherit; cursor: pointer; }
+button.app-tile:disabled { opacity: 0.6; }
 .app-icon {
-  display: grid;
-  place-items: center;
-  width: min(84px, 100%);
-  aspect-ratio: 1;
-  padding: 23%;
-  border-radius: 23%;
-  background: linear-gradient(160deg, #2c2f37, var(--surface) 70%);
-  border: 1px solid var(--border);
+  position: relative; overflow: hidden; isolation: isolate;
+  display: grid; place-items: center;
+  width: min(86px, 100%); aspect-ratio: 1;
+  border-radius: 20%;
+  background:
+    radial-gradient(120% 85% at 28% 0%, rgba(255, 255, 255, 0.075), transparent 58%),
+    linear-gradient(165deg, #2d3038 0%, #23252b 52%, #1a1c21 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    0 8px 18px rgba(0, 0, 0, 0.34),
+    0 2px 4px rgba(0, 0, 0, 0.28);
   color: var(--accent);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 4px 12px rgba(0, 0, 0, 0.28);
-  transition: transform 0.12s, background 0.12s;
+  transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
 }
+/* Delicate lit top edge. */
+.app-icon::before {
+  content: ""; position: absolute; top: 0; left: 16%; right: 16%; height: 1px; z-index: 3;
+  background: linear-gradient(90deg, transparent, rgba(255, 210, 165, 0.5), transparent);
+  pointer-events: none;
+}
+/* Per-tile line art, faded out around the icon. */
+.app-art {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  color: rgba(232, 214, 196, 0.16);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 22%, rgba(0, 0, 0, 0.55) 42%, #000 68%);
+  mask-image: radial-gradient(circle at 50% 50%, transparent 22%, rgba(0, 0, 0, 0.55) 42%, #000 68%);
+}
+.app-art svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+.app-art .fill { fill: currentColor; stroke: none; }
+.app-halo {
+  position: absolute; inset: 17%; z-index: 1; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(247, 134, 30, 0.2), rgba(247, 134, 30, 0.07) 62%, transparent);
+}
+/* Main icon: about 25% larger than before (54% → 66% of the tile). */
+.app-glyph { position: relative; z-index: 2; display: block; width: 66%; aspect-ratio: 1; }
+.app-glyph svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 1px 5px rgba(247, 134, 30, 0.18)); }
 .app-label {
   max-width: 100%;
-  font-size: 13.5px;
-  font-weight: 600;
-  line-height: 1.2;
-  text-align: center;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 13.5px; font-weight: 550; line-height: 1.2; letter-spacing: 0.005em;
+  text-align: center; color: #e4e6eb;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-button.app-tile { border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
-button.app-tile:disabled { opacity: 0.6; }
-.app-tile:active .app-icon { transform: scale(0.94); background: var(--surface-2); }
+
+/* Feedback: quick press-in with a brief orange edge; hover where supported; visible keyboard focus. */
+.app-tile:active .app-icon {
+  transform: scale(0.95);
+  border-color: rgba(247, 134, 30, 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(247, 134, 30, 0.28), 0 0 16px rgba(247, 134, 30, 0.22), 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition-duration: 0.06s;
+}
 @media (hover: hover) {
-  .app-tile:hover .app-icon { border-color: rgba(247, 134, 30, 0.5); }
+  .app-tile:hover .app-icon { transform: translateY(-1px); border-color: rgba(247, 134, 30, 0.34); }
+  .app-tile:hover .app-label { color: #fff; }
+  .app-tile:hover:active .app-icon { transform: scale(0.95); border-color: rgba(247, 134, 30, 0.6); }
+}
+.app-tile:focus-visible .app-icon { outline: 2px solid var(--accent); outline-offset: 3px; border-color: rgba(247, 134, 30, 0.45); }
+.app-tile:focus-visible .app-label { color: var(--accent); }
+@media (min-width: 700px) {
+  .app-grid { max-width: 500px; row-gap: 20px; column-gap: 14px; }
+  .app-icon { width: min(100px, 100%); }
+  .app-label { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-icon { transition: border-color 0.14s ease, box-shadow 0.14s ease; }
+  .app-tile:active .app-icon, .app-tile:hover .app-icon, .app-tile:hover:active .app-icon { transform: none; }
 }
 
 /* Tactic: position pitch, a role column per phase, then the search button. */
