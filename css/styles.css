@@ -244,10 +244,12 @@ svg { display: block; width: 100%; height: 100%; }
 
 /* ---- Home ----------------------------------------------------------------- */
 
-/* Home sits closer to the status bar than other pages (still clear of the safe area). */
-html.on-home { --header-gap: 2px; }
-@media (display-mode: standalone) { html.on-home { --header-gap: 10px; } }
-html.standalone.on-home { --header-gap: 10px; }
+/* Home: the safe-area inset is still applied once (by .topbar); this is only the
+   extra breathing room below it, 14–16px more than before so the logo and title
+   sit clear of the status bar and iOS's blur beneath it. */
+html.on-home { --header-gap: 16px; }
+@media (display-mode: standalone) { html.on-home { --header-gap: 26px; } }
+html.standalone.on-home { --header-gap: 26px; }
 html.on-home .view { padding-top: 12px; }
 
 /* ---- Home: club banner + launcher ("analysis studio") ------------------------------
