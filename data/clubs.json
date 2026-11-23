@@ -4,7 +4,7 @@
     "865": {
       "name": "Olympique Lyonnais",
       "colours": ["#da1f26", "#1b3f94"],
-      "crest": null
+      "crest": "icons/crests/865.png"
     }
   }
 }
