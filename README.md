@@ -12,7 +12,16 @@ Imported extracts are stored only in this browser's IndexedDB. They are never up
 
 ## Home
 
-Nine tiles: Squad · Lineups · Tactic, Shortlists · Tags · Comparison, Development · Snapshots · Data. The in-game date next to the club name opens Snapshots.
+Nine tiles: Squad · Lineups · Tactic, Shortlists · Tags · Comparison, Development · Snapshots · Data. Above them, the club banner shows the crest, club name and in-game date; the date opens Snapshots.
+
+**Club crest and colours** (`data/clubs.json`): one entry per club, keyed by the club's FM `unique_id` (the extract's `club.unique_id`; the club name is used as a fallback match):
+
+```json
+{ "clubs": { "865": { "name": "Olympique Lyonnais", "colours": ["#da1f26", "#1b3f94"], "crest": "icons/crests/865.png" } } }
+```
+
+- `colours`: one or two hex colours, used as faint accents in the banner (one colour is used for both). Leave it out for neutral accents.
+- `crest`: path to an image in the repo (a transparent PNG or SVG works best), or `null`. Without a crest, or if the file can't be loaded, the SquadLab logo is shown.
 
 - **Development**: the latest snapshot's club players (out on loan included, shortlist-only players excluded) ranked by CA gained, for Overall, 12 months, 3 months or 1 month, and All squads, First team, Reserves, Youth or Out on loan. The end date is the latest snapshot. Overall starts at the player's first snapshot as a club player in his current spell; a time window starts at his last observation on or before the cutoff, or at his first club snapshot (Since joining) or the career's first snapshot (Shorter coverage). Fewer than two observations with CA shows Not enough history. A row opens the player's development graph.
 - **Snapshots**: the career's snapshots by in-game season (July–June), newest first, with club player counts, Latest and Pinned markers and the stored snapshot data size (an estimate). View a snapshot read-only, compare two dates (joined, left, biggest CA gains, by club membership and player identity), pin milestones, and delete snapshots one at a time or several together. The latest snapshot cannot be deleted, pinned snapshots must be unpinned first, and tags and lineups are never touched.
@@ -48,6 +57,7 @@ js/data/attributes.js  attribute groups/labels, colour bands, value direction, t
 js/data/attributeInfo.js  short attribute explanations + source (SI FM24 manual), bundled offline
 js/data/changes.js     "Show changes" preferences and change colouring rules
 js/data/players.js     persistent player identity (player_key), metrics (incl. club membership and squad per snapshot), history
+js/data/clubIdentity.js Home banner crest and colours from data/clubs.json
 js/data/development.js Development ranking rules, season grouping, snapshot comparison
 js/data/nations.js     reads data/fm-nation-mapping.json to show nationalities
 js/data/flags.js       nation → flag emoji
