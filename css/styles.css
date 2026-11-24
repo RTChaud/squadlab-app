@@ -2079,8 +2079,7 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .cl-hero .club-text { gap: 3px; }
 .cl-name { font-size: clamp(19px, 5.6vw, 24px); }
 .cl-date { margin: 0; font-size: 14.5px; font-weight: 650; color: var(--accent); font-variant-numeric: tabular-nums; }
-.cl-since { margin: 2px 0 0; display: flex; flex-direction: column; font-size: 13px; color: var(--text-2); }
-.cl-since-note { font-size: 11.5px; color: var(--muted); }
+.cl-since { margin: 2px 0 0; font-size: 13px; color: var(--text-2); }
 .cl-squad { margin-top: 2px; }
 
 .cl-block, .cl-section { gap: 12px; padding: 14px 14px 16px; min-width: 0; }
@@ -2097,13 +2096,24 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .cl-stat { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; min-width: 0; border-radius: 10px; background: var(--surface-2); }
 .cl-stat-label { font-size: 11.5px; color: var(--muted); }
 .cl-stat-value { font-size: 16px; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
-/* Money tiles need room for "£2,900,000.00" on one line. */
-.cl-group[data-group="Monthly salary"] .cl-stats, [data-section="wages"] .cl-stats { grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); }
+/* One row for 3 or 4 figures; money groups two per row (a total fills its own row), four per row on wide screens. */
+.cl-stats.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cl-stats.n4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.cl-stats.n2, .cl-stats.with-total { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cl-stats.with-total > .cl-stat:last-child { grid-column: 1 / -1; }
+@media (min-width: 600px) { .cl-stats.with-total { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.cl-stats.n3 .cl-stat, .cl-stats.n4 .cl-stat { padding: 8px 8px; }
+@media (max-width: 380px) {
+  .cl-stats.n4 .cl-stat-label { font-size: 10.5px; }
+  .cl-stats.n4 .cl-stat-value { font-size: 15px; }
+}
 .cl-group[data-group="Monthly salary"] .cl-stat-value, [data-section="wages"] .cl-stat-value { font-size: 14.5px; }
 @media (max-width: 360px) {
-  .cl-group[data-group="Monthly salary"] .cl-stats, [data-section="wages"] .cl-stats { grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); }
   .cl-group[data-group="Monthly salary"] .cl-stat-value, [data-section="wages"] .cl-stat-value { font-size: 13px; }
 }
+.cl-stat-pct { font-weight: 650; color: var(--text-2); white-space: nowrap; }
+[data-stat="top"] .cl-stat-value { white-space: normal; }
+.cl-row-when { flex: none; font-size: 12.5px; color: var(--text-2); white-space: nowrap; }
 .cl-stat-value.up, .cl-attrs-net b.up, .cl-trio-item.up b { color: #7fd892; }
 .cl-stat-value.down, .cl-attrs-net b.down, .cl-trio-item.down b { color: #ef8f86; }
 .cl-records { display: flex; flex-direction: column; gap: 4px; }
@@ -2177,3 +2187,21 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .cl-sheet-name { flex: 1; min-width: 0; display: flex; flex-direction: column; font-weight: 650; overflow-wrap: anywhere; }
 .cl-sheet-sq { font-size: 12px; font-weight: 400; color: var(--muted); }
 .cl-sheet-val { flex: none; max-width: 55%; text-align: right; font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+/* A page that couldn't be found or built. */
+.empty.problem { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.empty.problem .btn { text-decoration: none; }
+
+/* Charts with a legend and readout under each graph (My Club evolution). */
+.devchart.per-panel .chart-panel { margin: 0 0 14px; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 2px; font-size: 12.5px; color: var(--text-2); }
+.legend-item { display: inline-flex; align-items: center; gap: 5px; }
+.panel-readout { margin-top: 6px; }
+
+/* Position coverage pitch: tiles show how many players cover each position. */
+.ptile-count { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 0 7px; min-width: 0; }
+.cl-section .pitch { padding: 8px; gap: 5px; }
+.cl-section .pitch-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+@media (max-width: 360px) { .ptile-count { font-size: 11px; padding: 0 5px; } }
+.ptile-count .ptile-val { color: var(--accent); }
+.ptile-count.ptile-zero .ptile-val { color: #ef8f86; }
