@@ -263,22 +263,41 @@ export function squadEvolution(metrics, squad) {
 // ---- Nationalities ----------------------------------------------------------------------
 
 /**
- * Primary nationality per player (once each), resolved with `resolve(id)` →
- * { name, flag } | null. → { rows: [{ name, flag, count, share, players }], unknown: players }
+ * Every nationality a player holds (nation_id and second_nation_ids; 0 means
+ * none), each counted once per player, resolved with `resolve(id)` →
+ * { name, flag } | null. A player with two nationalities counts for both, so
+ * counts can add up to more than the squad. Nations held by fewer than
+ * `minCount` players are grouped as `others` (players without a resolvable
+ * nationality go there too).
+ * → { rows: [{ name, flag, count, share, players }], others: { count, share, players }, total }
  */
-export function nationalities(rows, resolve) {
+export function nationalities(rows, resolve, minCount = 2) {
   const by = new Map();
-  const unknown = [];
+  const none = [];
   for (const r of rows) {
-    const n = Number.isInteger(r.p.nation_id) ? resolve(r.p.nation_id) : null;
-    if (!n?.name) { unknown.push(r); continue; }
-    if (!by.has(n.name)) by.set(n.name, { name: n.name, flag: n.flag || null, players: [] });
-    by.get(n.name).players.push(r);
+    const ids = [r.p.nation_id, ...(Array.isArray(r.p.second_nation_ids) ? r.p.second_nation_ids : [])].filter((id) => Number.isInteger(id) && id > 0);
+    const names = new Set();
+    for (const id of ids) {
+      const n = resolve(id);
+      if (!n?.name || names.has(n.name)) continue;
+      names.add(n.name);
+      if (!by.has(n.name)) by.set(n.name, { name: n.name, flag: n.flag || null, players: [] });
+      by.get(n.name).players.push(r);
+    }
+    if (!names.size) none.push(r);
   }
   const total = rows.length;
-  const list = [...by.values()].map((x) => ({ ...x, count: x.players.length, share: total ? x.players.length / total : 0 }))
+  const share = (n) => (total ? n / total : 0);
+  const all = [...by.values()].map((x) => ({ ...x, count: x.players.length, share: share(x.players.length) }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-  return { rows: list, unknown, total };
+  const shown = all.filter((x) => x.count >= minCount);
+  const rest = all.filter((x) => x.count < minCount);
+  const otherPlayers = [...new Set([...rest.flatMap((x) => x.players), ...none])];
+  return {
+    rows: shown,
+    others: { count: rest.reduce((n, x) => n + x.count, 0) + none.length, share: share(rest.reduce((n, x) => n + x.count, 0) + none.length), players: otherPlayers, nations: rest.map((x) => x.name) },
+    total,
+  };
 }
 
 // ---- Contracts ---------------------------------------------------------------------------
@@ -321,8 +340,8 @@ export function wageConcentration(rows, n = 5) {
 
 // ---- Position coverage --------------------------------------------------------------------
 
-export const COVER_MIN = 15;
-/** Players with familiarity ≥ 15 per pitch position (counts overlap). */
+export const COVER_MIN = 16;
+/** Players with familiarity ≥ 16 per pitch position (counts overlap). */
 export function positionCoverage(rows) {
   const hasFam = (r) => r.p.positions && typeof r.p.positions === 'object';
   const unknown = rows.filter((r) => !hasFam(r));
@@ -340,28 +359,47 @@ export function positionCoverage(rows) {
 /**
  * Club membership changes between two snapshots for a squad view. For a
  * single squad, moves between club squads are listed apart from players newly
- * or no longer recorded at the club.
+ * or no longer recorded at the club. `between` is the career's metrics list;
+ * each change gets `date`, the in-game date of the first snapshot (after the
+ * start) that recorded it.
  */
-export function membershipChanges(startM, endM, squad) {
+export function membershipChanges(startM, endM, squad, between = []) {
   const a = new Map(startM.players.map((r) => [r.key, r]));
   const b = new Map(endM.players.map((r) => [r.key, r]));
   const inSq = (r) => r?.own && (squad === 'all' || r.squad === squad);
+  const steps = asc(between).filter((m) => m.gameDate > startM.gameDate && m.gameDate <= endM.gameDate)
+    .map((m) => ({ gameDate: m.gameDate, rows: new Map(m.players.map((r) => [r.key, r])) }));
+  if (!steps.length || steps[steps.length - 1].gameDate !== endM.gameDate) steps.push({ gameDate: endM.gameDate, rows: b });
+  // The last time the condition changed to its final state.
+  const whenBecame = (key, test) => {
+    let date = steps[steps.length - 1].gameDate;
+    for (let i = steps.length - 1; i >= 0; i--) {
+      if (test(steps[i].rows.get(key))) date = steps[i].gameDate; else break;
+    }
+    return date;
+  };
   const out = { joinedClub: [], leftClub: [], movedIn: [], movedOut: [] };
   for (const [key, r] of b) {
     if (!inSq(r)) continue;
     const old = a.get(key);
-    if (!old?.own) out.joinedClub.push({ key, before: old || null, after: r });
-    else if (squad !== 'all' && old.squad !== squad) out.movedIn.push({ key, before: old, after: r });
+    if (!old?.own) out.joinedClub.push({ key, before: old || null, after: r, date: whenBecame(key, (x) => x?.own) });
+    else if (squad !== 'all' && old.squad !== squad) out.movedIn.push({ key, before: old, after: r, date: whenBecame(key, inSq) });
   }
   for (const [key, r] of a) {
     if (!inSq(r)) continue;
     const now = b.get(key);
-    if (!now?.own) out.leftClub.push({ key, before: r, after: now || null });
-    else if (squad !== 'all' && now.squad !== squad) out.movedOut.push({ key, before: r, after: now });
+    if (!now?.own) out.leftClub.push({ key, before: r, after: now || null, date: whenBecame(key, (x) => !x?.own) });
+    else if (squad !== 'all' && now.squad !== squad) out.movedOut.push({ key, before: r, after: now, date: whenBecame(key, (x) => x?.own && x.squad !== squad) });
   }
   const byName = (x, y) => (x.after?.name || x.before?.name || '').localeCompare(y.after?.name || y.before?.name || '');
-  for (const k of Object.keys(out)) out[k].sort(byName);
+  for (const k of Object.keys(out)) out[k].sort((x, y) => y.date.localeCompare(x.date) || byName(x, y));
   return out;
+}
+
+/** Whole months between two in-game dates (a month counts once its day is reached). */
+export function monthsBetween(from, to) {
+  const [y0, m0, d0] = from.split('-').map(Number), [y1, m1, d1] = to.split('-').map(Number);
+  return Math.max(0, (y1 - y0) * 12 + (m1 - m0) - (d1 < d0 ? 1 : 0));
 }
 
 export { SQUAD_LABEL };

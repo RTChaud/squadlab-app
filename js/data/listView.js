@@ -123,7 +123,7 @@ export const RANGES = {
   ca: { label: 'CA', min: 1, max: 200 },
   pa: { label: 'PA', min: 1, max: 200 },
 };
-export const DEFAULT_MIN_FAM = 15;
+export const DEFAULT_MIN_FAM = 16;
 
 // Contract & transfer filters:
 //   expiry: null | 6 | 12 | 18 (months from the row's snapshot date, both ends inclusive)
