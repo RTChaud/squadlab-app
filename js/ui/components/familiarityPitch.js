@@ -8,6 +8,8 @@
 // With `plain` (Tactic), tiles show only the position, no player values.
 // With `pair` (Comparison), each tile shows both players' familiarity: left
 // player's value on the left, right player's on the right, each in its colour.
+// With `counts` (My Club), each tile shows a number of players instead of a
+// familiarity, and tapping it calls onSelect(code).
 
 import { h, DASH } from '../dom.js';
 import { formatPositions, famBand } from '../../data/positions.js';
@@ -50,6 +52,14 @@ export function FamiliarityPitch(p, o = {}) {
   };
   const tile = (code) => {
     if (!code) return h('span', { class: 'ptile ptile-blank' });
+    if (o.counts) {
+      const n = o.counts[code] ?? 0;
+      const label = formatPositions([code]);
+      return h('button', {
+        type: 'button', class: `ptile ptile-btn ptile-count${n ? '' : ' ptile-zero'}`, 'data-pos': code,
+        'aria-label': `${label}: ${n} player${n === 1 ? '' : 's'}`, onclick: () => o.onSelect?.(code),
+      }, h('span', { class: 'ptile-code' }, label), h('span', { class: 'ptile-val' }, String(n)));
+    }
     if (o.pair && o.onSelect) return pairTile(code);
     const v = intOrNull(fam[code]);
     const band = famBand(v);

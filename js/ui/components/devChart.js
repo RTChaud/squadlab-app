@@ -47,6 +47,8 @@ export function swatch(series) {
  *   panels   [{ key, title, min, max, ticks, format?, series: [{ key, label, color, shape, format? }] }]
  *            optional format(v) → text for tick labels (panel) or readout values (series)
  *   width    px
+ *   perPanel optional: each panel gets its own legend (below it) and its own
+ *            readout — tapping a panel shows that date's values for that panel only
  */
 export function DevChart(o) {
   const M = { l: o.marginLeft || 34, r: 14, t: 10, b: 26 };
@@ -76,7 +78,8 @@ export function DevChart(o) {
 
   const readout = h('div', { class: 'readout', 'aria-live': 'polite' });
   const guides = [];
-  const panelEls = o.panels.map((panel) => {
+  const panelReadouts = [];
+  const panelEls = o.panels.map((panel, pi) => {
     const H = panel.height || 190;
     const ih = H - M.t - M.b;
     const yOf = (v) => M.t + ih - ((v - panel.min) / (panel.max - panel.min)) * ih;
@@ -123,20 +126,45 @@ export function DevChart(o) {
       const x = ((ev.clientX - r.left) / r.width) * W;
       let best = 0, bd = Infinity;
       pts.forEach((p, i) => { const dd = Math.abs(xOf(p.gameDate) - x); if (dd < bd) { bd = dd; best = i; } });
-      setActive(best);
+      setActive(best, pi);
     };
     hit.addEventListener('pointerdown', pick);
     hit.addEventListener('pointermove', (ev) => { if (ev.pointerType === 'mouse' || ev.buttons) pick(ev); });
     svg.append(hit);
 
+    if (o.perPanel) {
+      guide.setAttribute('visibility', 'hidden');
+      const pr = h('div', { class: 'readout panel-readout', 'aria-live': 'polite', hidden: true });
+      panelReadouts.push(pr);
+      return h('figure', { class: 'chart-panel', 'data-panel': panel.key },
+        h('figcaption', { class: 'chart-title' }, panel.title),
+        svg,
+        h('div', { class: 'chart-legend' }, panel.series.map((se) => h('span', { class: 'legend-item' }, swatch(se), se.label))),
+        pr);
+    }
     return h('figure', { class: 'chart-panel' },
       h('figcaption', { class: 'chart-title' }, panel.title),
       svg);
   });
 
   const allSeries = o.panels.flatMap((p) => p.series);
-  function setActive(i) {
+  const valueText = (se, v) => (Number.isFinite(v) ? (se.format ? se.format(v) : v) : '—');
+  function setActive(i, pi) {
     active = i;
+    if (o.perPanel) {
+      if (pi === undefined) return; // nothing shown until a graph is tapped
+      const p = pts[i];
+      const x = xOf(p.gameDate);
+      guides.forEach((g, k) => { g.setAttribute('x1', x); g.setAttribute('x2', x); g.setAttribute('visibility', k === pi ? 'visible' : 'hidden'); });
+      panelReadouts.forEach((r, k) => {
+        r.hidden = k !== pi;
+        if (k !== pi) { r.replaceChildren(); return; }
+        r.replaceChildren(
+          h('span', { class: 'readout-date' }, formatGameDate(p.gameDate)),
+          h('span', { class: 'readout-vals' }, o.panels[pi].series.map((se) => h('span', { class: 'readout-item' }, swatch(se), `${se.label} `, h('strong', {}, valueText(se, p.values[se.key]))))));
+      });
+      return;
+    }
     const p = pts[i];
     const x = xOf(p.gameDate);
     guides.forEach((g) => { g.setAttribute('x1', x); g.setAttribute('x2', x); });
@@ -152,5 +180,5 @@ export function DevChart(o) {
   }
   setActive(active);
 
-  return h('div', { class: 'devchart' }, readout, panelEls);
+  return o.perPanel ? h('div', { class: 'devchart per-panel' }, panelEls) : h('div', { class: 'devchart' }, readout, panelEls);
 }
