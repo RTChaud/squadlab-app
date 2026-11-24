@@ -15,12 +15,12 @@ Imported extracts are stored only in this browser's IndexedDB. They are never up
 Nine tiles: Squad · Lineups · Tactic, Shortlists · Tags · Comparison, Development · Snapshots · Data. Above them, the club banner shows the crest, club name and in-game date; the date opens Snapshots.
 
 **My Club** (tap the club banner): a dashboard for the active career, driven by one squad selector (All club players, First Team, Reserves, Youth, Out on loan; club players only, one per player ID). It shows:
-- **Header:** crest, club, in-game date and *Manager since*, the earliest in-game date recorded for the career. This date is stored per career (`careerMeta:<careerId>`), only moves earlier, survives snapshot deletion and is part of app backups.
+- **Header:** crest, club, in-game date and *Manager since* with time in charge, from the earliest in-game date recorded for the career. This date is stored per career (`careerMeta:<careerId>`), only moves earlier, survives snapshot deletion and is part of app backups.
 - **Squad statistics:** CA, PA and headroom (PA − CA), monthly salary and age, with record holders and ties.
 - **Development:** periods shared with Development; actual dates are shown, and shorter history is labelled. The cohort is the squad's current members, compared only where they were at the club with a CA at both dates.
 - **Distributions:** age, CA, PA and salary bands, each tappable.
 - **Squad evolution:** across snapshots, using each date's own squad.
-- **Other sections:** nationalities, contract outlook (cumulative 6/12/24-month windows), wage concentration, position coverage (familiarity 15+), and snapshot changes (by recorded club membership; squad moves are listed separately).
+- **Other sections:** nationalities (every nationality a player holds; nations with one player grouped as Others), contract outlook (cumulative 6/12/24-month windows), wage concentration, position coverage on the pitch (familiarity 16+, also the default in filters), and snapshot changes (Transfers in / Transfers out with the month first recorded; squad moves are listed separately).
 
 Salaries are monthly, from the weekly wage of a contract with your club. A player on loan at your club keeps his parent club's contract, so his salary counts as unknown. Missing values are left out and counted, never treated as 0.
 
