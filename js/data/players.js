@@ -9,6 +9,7 @@
 // out at import time (only when unambiguous). Names are never used to match.
 
 import { FOOTBALL_ATTRS, HIDDEN_ATTRS, PERSONALITY_ATTRS, intOrNull } from './attributes.js';
+import { monthlyFromWeekly } from './money.js';
 
 const LINKED = Symbol('squadlab.linked');
 const UID_PID = Symbol('squadlab.uidPid');
@@ -101,7 +102,7 @@ export function matchIncomingPlayers(data, known) {
 // rebuilt at any time and is not part of the backup.
 
 /** Bump when buildMetrics changes; stored metrics with another version are rebuilt. */
-export const METRICS_VERSION = 3;
+export const METRICS_VERSION = 4;
 
 const TEAM_SLOT_KEYS = { 0: 'first', 1: 'reserve', 2: 'youth' };
 
@@ -117,6 +118,21 @@ export function squadKeyByUid(data) {
   for (const [slot, key] of Object.entries(TEAM_SLOT_KEYS)) add(squads.filter((s) => Number.isInteger(s.team_id) && s.team_slot === Number(slot)), key);
   add(squads.filter((s) => s.id === 'out_on_loan'), 'loan');
   return map;
+}
+
+/**
+ * Monthly salary paid under a contract with this club, from the recorded weekly
+ * wage. null when unknown: no usable contract, no wage, or a contract held by
+ * another club (a player loaned in keeps his parent club's contract). An
+ * explicit 0 stays 0.
+ */
+export function clubMonthlySalary(p, data) {
+  const c = p?.contract;
+  if (!c || typeof c !== 'object' || c.end_source === 'none') return null;
+  if (typeof c.wage !== 'number' || !Number.isFinite(c.wage)) return null;
+  const club = data?.club?.uid ?? data?.club?.unique_id;
+  if (Number.isInteger(c.club_uid) && Number.isInteger(club) && c.club_uid !== club) return null;
+  return monthlyFromWeekly(c.wage);
 }
 
 export function buildMetrics(record) {
@@ -142,6 +158,9 @@ export function buildMetrics(record) {
       own: isClubOwned(p, data),
       squad: squadOf.get(p.uid) ?? null,
       name: displayNameOf(p),
+      // v4: age and the monthly salary paid by this club on that date (null = unknown).
+      age: intOrNull(p.age),
+      salary: clubMonthlySalary(p, data),
       attrs,
     });
   }

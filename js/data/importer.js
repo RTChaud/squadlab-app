@@ -189,6 +189,8 @@ export function validateBackup(b) {
   b.settings.forEach((s, i) => {
     if (!isObj(s) || typeof s.key !== 'string' || !s.key) errors.push(`Setting ${i + 1}: missing key.`);
   });
+  const metaSetting = b.settings.find((s) => s?.key === `careerMeta:${careerId}`);
+  if (metaSetting && metaSetting.value?.managerSince != null && !/^\d{4}-\d{2}-\d{2}$/.test(String(metaSetting.value.managerSince))) errors.push('Career "manager since" date is invalid.');
   const careerSetting = b.settings.find((s) => s?.key === 'career');
   if (careerSetting && careerSetting.value?.careerId !== careerId) errors.push('Career settings do not match the backup career.');
   if (errors.length) throw new ImportError('This backup failed validation and cannot be restored.', errors);
