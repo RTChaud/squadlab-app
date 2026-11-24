@@ -17,6 +17,7 @@ function welcome(onImport, onRestore) {
 
 // ---- Club banner ----------------------------------------------------------------------
 // Crest + club name with the in-game date beneath (a shortcut to Snapshots), a
+// tap anywhere else opens My Club,
 // faint oversized crest clipped on the right and faint club-colour accents.
 // Identity comes from data/clubs.json; unknown clubs get the SquadLab logo.
 
@@ -27,6 +28,8 @@ function clubBanner(model) {
   const watermark = h('img', { class: 'club-watermark', src: FALLBACK_CREST, alt: '', 'aria-hidden': 'true', decoding: 'async' });
   const banner = h('section', { class: 'club-banner fallback-crest', 'aria-label': `${name}, ${date}` },
     h('span', { class: 'club-banner-deco', 'aria-hidden': 'true' }, watermark),
+    // The whole banner opens My Club; the date stays its own link to Snapshots.
+    h('a', { class: 'club-banner-link', href: '#/club', 'aria-label': `${name}: open My Club` }),
     h('span', { class: 'club-crest' }, crest),
     h('div', { class: 'club-text' },
       h('p', { class: 'save-club club-name', title: name }, name),
