@@ -44,11 +44,12 @@ export function swatch(series) {
 /**
  * @param {object} o
  *   points   [{ gameDate, present, values: { [seriesKey]: number|null } }] (chronological)
- *   panels   [{ key, title, min, max, ticks, series: [{ key, label, color, shape }] }]
+ *   panels   [{ key, title, min, max, ticks, format?, series: [{ key, label, color, shape, format? }] }]
+ *            optional format(v) → text for tick labels (panel) or readout values (series)
  *   width    px
  */
 export function DevChart(o) {
-  const M = { l: 34, r: 14, t: 10, b: 26 };
+  const M = { l: o.marginLeft || 34, r: 14, t: 10, b: 26 };
   const W = Math.max(280, Math.floor(o.width));
   const iw = W - M.l - M.r;
   const pts = o.points;
@@ -84,7 +85,7 @@ export function DevChart(o) {
     // grid + y labels
     for (const t of panel.ticks) {
       svg.append(s('line', { x1: M.l, x2: W - M.r, y1: yOf(t), y2: yOf(t), class: 'grid' }));
-      svg.append(s('text', { x: M.l - 6, y: yOf(t) + 4, class: 'ylab', 'text-anchor': 'end' }, document.createTextNode(String(t))));
+      svg.append(s('text', { x: M.l - 6, y: yOf(t) + 4, class: 'ylab', 'text-anchor': 'end' }, document.createTextNode(panel.format ? panel.format(t) : String(t))));
     }
     // x labels
     for (const i of tickIdx) {
@@ -144,7 +145,7 @@ export function DevChart(o) {
       p.present
         ? h('span', { class: 'readout-vals' }, allSeries.map((se) => {
             const v = p.values[se.key];
-            return h('span', { class: 'readout-item' }, swatch(se), `${se.label} `, h('strong', {}, Number.isFinite(v) ? v : '—'));
+            return h('span', { class: 'readout-item' }, swatch(se), `${se.label} `, h('strong', {}, Number.isFinite(v) ? (se.format ? se.format(v) : v) : '—'));
           }))
         : h('span', { class: 'readout-vals muted' }, 'Not in this snapshot'),
     );
