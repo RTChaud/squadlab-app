@@ -17,6 +17,7 @@ import { LineupPickerView, pickerOpenedFrom } from './ui/views/lineupPicker.js';
 import { PlayerView } from './ui/views/player.js';
 import { DevelopmentView } from './ui/views/development.js';
 import { DevBoardView } from './ui/views/devBoard.js';
+import { ClubView } from './ui/views/club.js';
 import { SnapshotsView, SnapshotView, SnapshotCompareView } from './ui/views/snapshots.js';
 
 const els = {
@@ -42,6 +43,7 @@ const VIEWS = {
   player: (p, q) => PlayerView({ ...p, query: q }),
   development: (p, q) => DevelopmentView({ ...p, query: q }),
   devBoard: () => DevBoardView(),
+  club: () => ClubView(),
   snapshots: () => SnapshotsView(),
   snapshotView: (p, q) => SnapshotView({ ...p, query: q }),
   snapshotCompare: (p, q) => SnapshotCompareView({ query: q }),
@@ -49,7 +51,7 @@ const VIEWS = {
 
 // Remember list scroll positions so Back from a profile returns to the same spot.
 const scrollMemory = new Map();
-const REMEMBER_SCROLL = new Set(['squadTeam', 'shortlists', 'tags', 'compare', 'devBoard', 'snapshots']);
+const REMEMBER_SCROLL = new Set(['squadTeam', 'shortlists', 'tags', 'compare', 'devBoard', 'snapshots', 'club']);
 
 let renderToken = 0;
 let lastRoute = null;

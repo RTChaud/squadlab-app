@@ -60,6 +60,7 @@ async function reload() {
   state.compare = sanitizeCompare(career ? await db.getSetting(compareKey(career), null) : null);
   state.tactic = sanitizeTactic(career ? await db.getSetting(tacticKey(career), null) : null);
   state.pins = sanitizePins(career ? await db.getSetting(pinsKey(career), null) : null);
+  state.careerMeta = await syncCareerMeta(career, state.history);
   state.prefs = new Map((await db.getAllSettings()).filter((x) => x.key.startsWith('pref:')).map((x) => [x.key.slice(5), x.value]));
   await ensureMetrics(metas);
   emit();
@@ -73,6 +74,30 @@ const listsKey = (career) => `lists:${career.careerId}`;
 const compareKey = (career) => `compare:${career.careerId}`;
 const tacticKey = (career) => `tactic:${career.careerId}`;
 const pinsKey = (career) => `pins:${career.careerId}`;
+const careerMetaKey = (career) => `careerMeta:${career.careerId}`;
+
+// ---- Career metadata ----------------------------------------------------------
+// "Manager since": the earliest in-game date ever recorded for this career. It
+// only moves earlier (an older snapshot restored), never later, so deleting old
+// snapshots doesn't change it. Stored per career, so it is in backups.
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+export function sanitizeCareerMeta(raw) {
+  return { managerSince: typeof raw?.managerSince === 'string' && ISO_DATE.test(raw.managerSince) ? raw.managerSince : null };
+}
+
+async function syncCareerMeta(career, history) {
+  if (!career) return sanitizeCareerMeta(null);
+  const meta = sanitizeCareerMeta(await db.getSetting(careerMetaKey(career), null));
+  const earliest = history.length ? history[history.length - 1].gameDate : null;
+  if (earliest && (!meta.managerSince || earliest < meta.managerSince)) {
+    meta.managerSince = earliest;
+    await db.setSetting(careerMetaKey(career), meta);
+  }
+  return meta;
+}
+
+export const getCareerMeta = () => state.careerMeta || sanitizeCareerMeta(null);
 
 /**
  * Load (or create once) the career's lineups. The three defaults have fixed
@@ -410,6 +435,7 @@ export async function buildBackup() {
       managerName: newest?.data?.club?.manager_name ?? null,
       snapshotCount: snapshots.length,
       firstGameDate: snapshots[0]?.gameDate ?? null,
+      managerSince: state.careerMeta?.managerSince ?? null,
       lastGameDate: newest?.gameDate ?? null,
     },
     snapshots,
