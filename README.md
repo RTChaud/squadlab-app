@@ -14,6 +14,16 @@ Imported extracts are stored only in this browser's IndexedDB. They are never up
 
 Nine tiles: Squad · Lineups · Tactic, Shortlists · Tags · Comparison, Development · Snapshots · Data. Above them, the club banner shows the crest, club name and in-game date; the date opens Snapshots.
 
+**My Club** (tap the club banner): a dashboard for the active career, driven by one squad selector (All club players, First Team, Reserves, Youth, Out on loan; club players only, one per player ID). It shows:
+- **Header:** crest, club, in-game date and *Manager since*, the earliest in-game date recorded for the career. This date is stored per career (`careerMeta:<careerId>`), only moves earlier, survives snapshot deletion and is part of app backups.
+- **Squad statistics:** CA, PA and headroom (PA − CA), monthly salary and age, with record holders and ties.
+- **Development:** periods shared with Development; actual dates are shown, and shorter history is labelled. The cohort is the squad's current members, compared only where they were at the club with a CA at both dates.
+- **Distributions:** age, CA, PA and salary bands, each tappable.
+- **Squad evolution:** across snapshots, using each date's own squad.
+- **Other sections:** nationalities, contract outlook (cumulative 6/12/24-month windows), wage concentration, position coverage (familiarity 15+), and snapshot changes (by recorded club membership; squad moves are listed separately).
+
+Salaries are monthly, from the weekly wage of a contract with your club. A player on loan at your club keeps his parent club's contract, so his salary counts as unknown. Missing values are left out and counted, never treated as 0.
+
 **Club crest and colours** (`data/clubs.json`): one entry per club, keyed by the club's FM `unique_id` (the extract's `club.unique_id`; the club name is used as a fallback match):
 
 ```json
@@ -58,6 +68,7 @@ js/data/attributeInfo.js  short attribute explanations + source (SI FM24 manual)
 js/data/changes.js     "Show changes" preferences and change colouring rules
 js/data/players.js     persistent player identity (player_key), metrics (incl. club membership and squad per snapshot), history
 js/data/clubIdentity.js Home banner crest and colours from data/clubs.json
+js/data/clubDashboard.js My Club calculations (statistics, development, distributions, evolution, contracts, wages, positions, changes)
 js/data/development.js Development ranking rules, season grouping, snapshot comparison
 js/data/nations.js     reads data/fm-nation-mapping.json to show nationalities
 js/data/flags.js       nation → flag emoji
@@ -78,6 +89,6 @@ js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, de
                        playerBrowser.js, playerTable.js, filterSheet.js, viewSheet.js, attributePicker.js, familiarityPitch.js,
                        attributeInfoSheet.js, playerPicker.js, radarAttributePicker.js, roleControls.js, roleExplorer.js, contractSheet.js,
                        aiAnalysis.js (AI Analysis + Copy for ChatGPT buttons, report sheet), playerReport.js (Development / Recruitment Report views)
-js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js (one player's graph), devBoard.js (Development ranking), snapshots.js (timeline, view, compare), lineups.js, lineup.js (pitch + slot roles), lineupPicker.js, compare.js, tactic.js (position + roles → Find matching players)
+js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js (one player's graph), devBoard.js (Development ranking), club.js (My Club), snapshots.js (timeline, view, compare), lineups.js, lineup.js (pitch + slot roles), lineupPicker.js, compare.js, tactic.js (position + roles → Find matching players)
 worker/worker.js       Cloudflare Worker (paste into the dashboard's Edit code): POST /compare with access code, rate limit, fixed analyst instructions, report checks
 ```
