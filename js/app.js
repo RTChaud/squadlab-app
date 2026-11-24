@@ -4,6 +4,7 @@ import * as store from './store.js';
 import { currentRoute, onRouteChange } from './router.js';
 import { formatGameDate } from './data/snapshot.js';
 import { showError } from './ui/components/feedback.js';
+import { h } from './ui/dom.js';
 import { pick, wireFileInput } from './ui/dataMenu.js';
 import { HomeView } from './ui/views/home.js';
 import { SquadView } from './ui/views/squad.js';
@@ -24,11 +25,23 @@ const els = {
   header: document.querySelector('.topbar'),
   view: document.getElementById('view'),
   back: document.getElementById('back-btn'),
+  home: document.getElementById('home-btn'),
   brand: document.getElementById('brand'),
   title: document.getElementById('page-title'),
   titleMain: document.getElementById('page-title-main'),
   titleSub: document.getElementById('page-title-sub'),
 };
+
+function problemView(title, detail) {
+  return {
+    title: 'SquadLab',
+    back: '#/',
+    body: h('div', { class: 'empty problem' },
+      h('p', { class: 'empty-title' }, title),
+      h('p', { class: 'empty-text' }, detail),
+      h('a', { class: 'btn btn-secondary', href: '#/' }, 'Back to Home')),
+  };
+}
 
 const VIEWS = {
   home: () => HomeView({ onImport: () => pick('snapshot'), onRestore: () => pick('backup') }),
@@ -71,11 +84,24 @@ async function render() {
   // The picker returns to the pitch with Back when it was opened from it.
   if (route.name === 'lineupPick' && lastRoute?.name !== 'lineupPick') pickerOpenedFrom(lastRoute ? `#${lastRoute.full}` : null);
 
-  const vm = VIEWS[route.name] ? await VIEWS[route.name](route.params, route.query) : null;
+  // A page that can't be found or fails to build says so, rather than
+  // silently returning to Home.
+  let vm = null;
+  try {
+    vm = VIEWS[route.name] ? await VIEWS[route.name](route.params, route.query) : null;
+  } catch (e) {
+    console.error(e);
+    if (token !== renderToken) return;
+    vm = problemView('This page couldn’t be shown', String(e?.message || e));
+  }
   if (token !== renderToken) return; // a newer render started
   if (!vm) {
-    location.replace('#/');
-    return;
+    if (route.name === 'notFound' && route.path && route.path !== '/') {
+      vm = problemView('Page not found', `#${route.path} isn’t a SquadLab page. If you’ve just updated SquadLab, close the app completely and open it again so every file is up to date.`);
+    } else {
+      location.replace('#/');
+      return;
+    }
   }
 
   // Header
@@ -83,6 +109,7 @@ async function render() {
   els.back.hidden = !vm.back;
   if (vm.back) els.back.setAttribute('href', vm.back);
   els.brand.hidden = !vm.isHome;
+  els.home.hidden = !!vm.isHome; // one tap back to Home from any inner page
   document.documentElement.classList.toggle('on-home', !!vm.isHome);
   els.title.hidden = !!vm.isHome;
   els.titleMain.textContent = vm.title;
