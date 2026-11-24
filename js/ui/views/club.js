@@ -11,10 +11,11 @@ import { resolveNation, loadNations } from '../../data/nations.js';
 import { clubIdentity, FALLBACK_CREST } from '../../data/clubIdentity.js';
 import { openSheet } from '../components/sheet.js';
 import { DevChart } from '../components/devChart.js';
+import { FamiliarityPitch } from '../components/familiarityPitch.js';
 import {
   SQUADS, PERIODS, SQUAD_LABEL, clubPlayers, inSquad, squadStats, distribution, DISTRIBUTIONS,
   periodEndpoints, developmentSummary, squadEvolution, nationalities, contractOutlook, wageConcentration,
-  positionCoverage, membershipChanges, daysBetween, COVER_MIN,
+  positionCoverage, membershipChanges, daysBetween, monthsBetween, COVER_MIN,
 } from '../../data/clubDashboard.js';
 
 const PREF = 'club';
@@ -27,7 +28,17 @@ const money = (v) => (isNum(v) ? formatMoneyDisplay(v) : '—');
 const signed = (v, dp = 1) => { if (!isNum(v)) return '—'; const d = !Number.isInteger(v) && Math.abs(v) < 0.1 ? 2 : dp; return v > 0 ? `+${num(v, d)}` : v < 0 ? `−${num(Math.abs(v), d)}` : '0'; };
 const pct = (v) => (isNum(v) ? `${(v * 100).toFixed(v * 100 >= 10 || v === 0 ? 0 : 1)}%` : '—');
 const playerHref = (pid) => `#/player/${encodeURIComponent(pid)}?from=${encodeURIComponent(HERE)}`;
-const SECTIONS = ['nations', 'contracts', 'wages', 'positions', 'changes'];
+const SECTIONS = ['nations', 'contracts', 'wages', 'positions'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const monthYear = (iso) => `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
+
+/** "1 year 2 months", "3 months", "1 year", or "less than a month". */
+function tenure(from, to) {
+  const m = monthsBetween(from, to);
+  const y = Math.floor(m / 12), r = m % 12;
+  const parts = [y ? plural(y, 'year') : null, r ? plural(r, 'month') : null].filter(Boolean);
+  return parts.length ? parts.join(' ') : 'less than a month';
+}
 
 function readPrefs() {
   const p = getPrefSync(PREF, null) || {};
@@ -35,7 +46,7 @@ function readPrefs() {
     squad: SQUADS.some((x) => x.id === p.squad) ? p.squad : 'all',
     period: PERIODS.some((x) => x.id === p.period) ? p.period : 'overall',
     dist: Object.hasOwn(DISTRIBUTIONS, p.dist) ? p.dist : 'age',
-    open: Object.fromEntries(SECTIONS.map((k) => [k, typeof p.open?.[k] === 'boolean' ? p.open[k] : k !== 'changes'])),
+    open: Object.fromEntries(SECTIONS.map((k) => [k, typeof p.open?.[k] === 'boolean' ? p.open[k] : true])),
   };
 }
 
@@ -62,13 +73,13 @@ function playerSheet(title, rows, right, sub = null) {
   });
 }
 
-/** Record holders: first three names, then "+N more" opening the full list. */
-function holders(list, title, valueText) {
+/** Record holders: the first `max` names, then "+N more" opening the full list. */
+function holders(list, title, valueText, max = 3) {
   if (!list.length) return h('span', { class: 'muted' }, '—');
-  const shown = list.slice(0, 3);
+  const shown = list.slice(0, max);
   return h('span', { class: 'cl-holders' },
     shown.flatMap((r, i) => [i ? ', ' : null, who(r)]),
-    list.length > 3 ? h('button', { type: 'button', class: 'cl-more', onclick: () => playerSheet(title, list, () => valueText) }, ` +${list.length - 3} more`) : null);
+    list.length > max ? h('button', { type: 'button', class: 'cl-more', onclick: () => playerSheet(title, list, () => valueText) }, ` +${list.length - max} more`) : null);
 }
 
 const section = (key, title, open, onToggle, ...body) => {
@@ -92,8 +103,7 @@ function header(model, meta) {
     h('div', { class: 'club-text' },
       h('h1', { class: 'club-name cl-name' }, name),
       h('p', { class: 'cl-date' }, formatGameDate(model.gameDate)),
-      meta.managerSince ? h('p', { class: 'cl-since' }, `Manager since ${formatGameDate(meta.managerSince)}`,
-        h('span', { class: 'cl-since-note' }, 'Based on your first recorded snapshot.')) : null));
+      meta.managerSince ? h('p', { class: 'cl-since' }, `Manager since ${formatGameDate(meta.managerSince)} (${tenure(meta.managerSince, model.gameDate)})`) : null));
   clubIdentity(model.club).then((id) => {
     const [a, b] = id.colours;
     if (a) { el.style.setProperty('--club-a', a); el.style.setProperty('--club-b', b || a); el.classList.add('has-colours'); }
@@ -105,10 +115,10 @@ function header(model, meta) {
   return el;
 }
 
-function statGroup(title, s, { fmt = (v) => num(v), total = false, minLabel = 'Minimum', maxLabel = 'Maximum', explain = null, holdersFor = 'both', unit = '', coverNote = null } = {}) {
+function statGroup(title, s, { fmt = (v) => num(v), total = false, minLabel = 'Minimum', maxLabel = 'Maximum', holdersFor = 'both', showMin = true, unit = '', holderMax = 3, minHolders = s.minHolders, maxHolders = s.maxHolders, showCoverage = true } = {}) {
   const cell = (label, value) => h('div', { class: 'cl-stat' }, h('span', { class: 'cl-stat-label' }, label), h('span', { class: 'cl-stat-value' }, value));
   const cells = [
-    holdersFor !== 'none' ? cell(minLabel, fmt(s.min)) : null,
+    showMin ? cell(minLabel, fmt(s.min)) : null,
     cell(maxLabel, fmt(s.max)),
     cell('Average', fmt(s.mean)),
     cell('Median', fmt(s.median)),
@@ -116,19 +126,22 @@ function statGroup(title, s, { fmt = (v) => num(v), total = false, minLabel = 'M
   ].filter(Boolean);
   return h('div', { class: 'cl-group', 'data-group': title },
     h('p', { class: 'cl-group-title' }, title),
-    h('div', { class: 'cl-stats' }, cells),
+    h('div', { class: `cl-stats n${cells.length}${total ? ' with-total' : ''}` }, cells),
     s.known ? h('div', { class: 'cl-records' },
-      holdersFor === 'both' ? h('p', { class: 'cl-record', 'data-record': 'min' }, h('span', { class: 'cl-record-label' }, `${minLabel} ${fmt(s.min)}${unit}`), holders(s.minHolders, `${title}: ${minLabel.toLowerCase()}`, fmt(s.min))) : null,
-      h('p', { class: 'cl-record', 'data-record': 'max' }, h('span', { class: 'cl-record-label' }, `${maxLabel} ${fmt(s.max)}${unit}`), holders(s.maxHolders, `${title}: ${maxLabel.toLowerCase()}`, fmt(s.max)))) : null,
-    s.known < s.count ? h('p', { class: 'cl-cover' }, `${title} known for ${s.known} of ${s.count} players${coverNote ? ` · ${coverNote}` : ''}`) : null,
-    explain ? note(explain) : null);
+      holdersFor === 'both' ? h('p', { class: 'cl-record', 'data-record': 'min' }, h('span', { class: 'cl-record-label' }, `${minLabel} ${fmt(s.min)}${unit}`), holders(minHolders, `${title}: ${minLabel.toLowerCase()}`, fmt(s.min), holderMax)) : null,
+      h('p', { class: 'cl-record', 'data-record': 'max' }, h('span', { class: 'cl-record-label' }, `${maxLabel} ${fmt(s.max)}${unit}`), holders(maxHolders, `${title}: ${maxLabel.toLowerCase()}`, fmt(s.max), holderMax))) : null,
+    showCoverage && s.known < s.count ? h('p', { class: 'cl-cover' }, `${title} known for ${s.known} of ${s.count} players`) : null);
 }
 
-/** "2 on loan here under another club's contract" for unknown salaries, when that's why. */
-function loanedInNote(rows) {
-  const n = rows.filter((r) => r.salary === null && r.p.contract?.club_uid != null && r.p.contract.club_uid !== r.p.club_uid).length;
-  return n ? `${n} on loan here under another club’s contract` : null;
-}
+/** Birth date as a sortable string, or null. */
+const dob = (r) => (typeof r.p.birth_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.p.birth_date) ? r.p.birth_date : null);
+/** Players sharing the youngest/oldest age, the actual youngest/oldest (by birth date) first. */
+const byBirth = (list, youngestFirst) => [...list].sort((a, b) => {
+  const x = dob(a), y = dob(b);
+  if (x && y && x !== y) return youngestFirst ? y.localeCompare(x) : x.localeCompare(y);
+  if (!x !== !y) return x ? -1 : 1;
+  return a.name.localeCompare(b.name);
+});
 
 function headline(rows) {
   const st = squadStats(rows);
@@ -137,9 +150,10 @@ function headline(rows) {
     h('div', { class: 'cl-groups' },
       statGroup('CA', st.ca),
       statGroup('PA', st.pa),
-      statGroup('Development headroom', st.headroom, { holdersFor: 'max', explain: 'PA minus CA: potential capacity, not guaranteed growth.' }),
-      statGroup('Monthly salary', st.salary, { fmt: money, total: true, coverNote: loanedInNote(rows) }),
-      statGroup('Age', st.age, { minLabel: 'Youngest', maxLabel: 'Oldest' })));
+      statGroup('Development headroom', st.headroom, { holdersFor: 'max', showMin: false }),
+      statGroup('Monthly salary', st.salary, { fmt: money, total: true, showCoverage: false }),
+      statGroup('Age', st.age, { minLabel: 'Youngest', maxLabel: 'Oldest', holderMax: 1,
+        minHolders: byBirth(st.age.minHolders, true), maxHolders: byBirth(st.age.maxHolders, false) })));
 }
 
 function periodLine(ep, periodId) {
@@ -170,7 +184,7 @@ function developmentBlock(metrics, rows, prefs, squad, setPeriod) {
     : `Current ${squadName} players, including any who were in another club squad on the start date.`;
   const body = d.compared
     ? [
-      h('div', { class: 'cl-stats cl-dev-stats' },
+      h('div', { class: 'cl-stats n3 cl-dev-stats' },
         h('div', { class: 'cl-stat' }, h('span', { class: 'cl-stat-label' }, 'Net CA change'), h('span', { class: `cl-stat-value ${d.total > 0 ? 'up' : d.total < 0 ? 'down' : ''}` }, signed(d.total, 0))),
         h('div', { class: 'cl-stat' }, h('span', { class: 'cl-stat-label' }, 'Average'), h('span', { class: 'cl-stat-value' }, signed(d.mean))),
         h('div', { class: 'cl-stat' }, h('span', { class: 'cl-stat-label' }, 'Median'), h('span', { class: 'cl-stat-value' }, signed(d.median)))),
@@ -190,15 +204,12 @@ function developmentBlock(metrics, rows, prefs, squad, setPeriod) {
     : [h('div', { class: 'empty cl-empty' }, h('p', { class: 'empty-title' }, 'No comparable players'),
       h('p', { class: 'empty-text' }, `None of these players were recorded at the club with a CA on ${formatGameDate(ep.start.gameDate)}.`))];
   return block('development', 'Development', seg, periodLine(ep, prefs.period),
-    h('p', { class: 'cl-count small' }, h('b', {}, `${d.compared} of ${d.cohort}`), ' players comparable',
-      d.notAtStart ? h('span', { class: 'muted' }, ` · ${d.notAtStart} not at the club on ${formatGameDate(ep.start.gameDate)}`) : null,
-      d.missingCa ? h('span', { class: 'muted' }, ` · ${d.missingCa} without a CA at both dates`) : null),
     note(cohortNote),
     ...body);
 }
 
 function bars(dist, kind, title) {
-  const max = Math.max(1, ...dist.bands.map((b) => b.rows.length), dist.unknown.length);
+  const max = Math.max(1, ...dist.bands.map((b) => b.rows.length), kind === 'salary' ? 0 : dist.unknown.length);
   const valueText = (r) => {
     const v = DISTRIBUTIONS[kind].valueOf(r);
     return DISTRIBUTIONS[kind].money ? money(v) : num(v);
@@ -213,7 +224,7 @@ function bars(dist, kind, title) {
   h('span', { class: 'cl-bar-count' }, String(rows.length))));
   return h('ul', { class: 'cl-bars' },
     dist.bands.map((b) => bar(b.label, b.rows, b.detail)),
-    dist.unknown.length ? bar('Unknown', dist.unknown, 'unknown', 'unknown') : null);
+    dist.unknown.length && kind !== 'salary' ? bar('Unknown', dist.unknown, 'unknown', 'unknown') : null);
 }
 
 function distributionBlock(rows, prefs, setDist) {
@@ -261,25 +272,29 @@ function evolutionBlock(metrics, squad) {
     panel('count', 'Players', [{ key: 'count', label: 'Players', color: '#e6e6e6', shape: 'circle' }], { floor0: true, minSpan: 10 }),
   ].filter(Boolean);
   const width = Math.min(document.querySelector('.view')?.clientWidth || 360, 720) - 30;
-  const partial = ev.filter((e) => e.known.salary < e.count);
   return block('evolution', 'Squad evolution',
     note('Changing-squad trends: signings, departures and promotions move these figures without any player developing.'),
-    DevChart({ points, panels, width, marginLeft: 44 }),
-    partial.length ? h('p', { class: 'cl-cover' }, `Salary known for: ${partial.map((e) => `${e.known.salary} of ${e.count} on ${formatGameDate(e.gameDate)}`).join('; ')}. Totals on those dates cover known salaries only.`) : null);
+    DevChart({ points, panels, width, marginLeft: 44, perPanel: true }));
 }
 
 function nationsSection(rows, careerId, open, onToggle) {
   const n = nationalities(rows, (id) => resolveNation(id, careerId));
+  const row = (cls, flag, name, count, share, onclick, attrs = {}) => h('li', {}, h('button', { type: 'button', class: `cl-row ${cls}`, onclick, ...attrs },
+    h('span', { class: 'cl-flag', 'aria-hidden': 'true' }, flag),
+    h('span', { class: 'cl-row-main' }, name),
+    h('span', { class: 'cl-row-num' }, String(count)),
+    h('span', { class: 'cl-row-pct' }, pct(share))));
   return section('nations', 'Nationalities', open, onToggle,
     h('ul', { class: 'cl-list' },
-      n.rows.map((x) => h('li', {}, h('button', { type: 'button', class: 'cl-row', 'data-nation': x.name, onclick: () => playerSheet(x.name, x.players, (r) => (r.squad ? '' : '')) },
-        h('span', { class: 'cl-flag', 'aria-hidden': 'true' }, x.flag || '·'),
-        h('span', { class: 'cl-row-main' }, x.name),
-        h('span', { class: 'cl-row-num' }, String(x.count)),
-        h('span', { class: 'cl-row-pct' }, pct(x.share))))),
-      n.unknown.length ? h('li', {}, h('button', { type: 'button', class: 'cl-row unknown', onclick: () => playerSheet('Nationality unknown', n.unknown, () => '') },
-        h('span', { class: 'cl-flag' }, '?'), h('span', { class: 'cl-row-main' }, 'Unknown'), h('span', { class: 'cl-row-num' }, String(n.unknown.length)), h('span', { class: 'cl-row-pct' }, pct(n.unknown.length / n.total)))) : null),
-    n.rows.length ? null : h('p', { class: 'muted small' }, 'No nationalities could be resolved.'));
+      n.rows.map((x) => row('', x.flag || '·', x.name, x.count, x.share, () => playerSheet(x.name, x.players, () => ''), { 'data-nation': x.name })),
+      n.others.count ? row('others', '·', 'Others', n.others.count, n.others.share,
+        () => playerSheet('Others', n.others.players, (r) => othersOf(r, careerId, n.others.nations)), { 'data-nation': 'Others' }) : null));
+}
+
+/** For the Others list: which of the grouped nationalities this player holds. */
+function othersOf(r, careerId, nations) {
+  const ids = [r.p.nation_id, ...(Array.isArray(r.p.second_nation_ids) ? r.p.second_nation_ids : [])].filter((id) => Number.isInteger(id) && id > 0);
+  return [...new Set(ids.map((id) => resolveNation(id, careerId)?.name).filter((x) => x && nations.includes(x)))].join(', ');
 }
 
 function contractsSection(rows, model, open, onToggle) {
@@ -291,7 +306,6 @@ function contractsSection(rows, model, open, onToggle) {
   h('span', { class: 'cl-row-main' }, label, salary !== undefined ? h('span', { class: 'cl-row-sub' }, list.length ? `${money(salary)} a month${salaryKnown < list.length ? ` · salary known for ${salaryKnown} of ${list.length}` : ''}` : '') : null),
   h('span', { class: 'cl-row-num' }, String(list.length))));
   return section('contracts', 'Contract outlook', open, onToggle,
-    note(`From ${formatGameDate(model.gameDate)}. Each window includes the shorter ones.`),
     h('ul', { class: 'cl-list' },
       c.windows.map((w) => line(`Expiring within ${w.months} months`, w.rows, w.salary, w.salaryKnown, `Contracts expiring by ${formatGameDate(w.limit)}`)),
       c.expired.length ? line('Already expired', c.expired, undefined, 0, 'Expired contracts', 'warn') : null,
@@ -305,47 +319,42 @@ function wagesSection(rows, open, onToggle) {
     w.top.length ? h('ol', { class: 'cl-list cl-top' }, w.top.map((r) => h('li', {}, h(r.pid ? 'a' : 'span', { class: 'cl-row', href: r.pid ? playerHref(r.pid) : null },
       h('span', { class: 'cl-row-main' }, r.name, r.squad ? h('span', { class: 'cl-row-sub' }, SQUAD_LABEL[r.squad]) : null),
       h('span', { class: 'cl-row-val' }, money(r.salary)))))) : h('p', { class: 'muted small' }, 'No salaries recorded.'),
-    w.top.length ? h('div', { class: 'cl-stats' },
-      h('div', { class: 'cl-stat' }, h('span', { class: 'cl-stat-label' }, `Top ${w.top.length} combined`), h('span', { class: 'cl-stat-value' }, money(w.topSum))),
-      h('div', { class: 'cl-stat' }, h('span', { class: 'cl-stat-label' }, 'Share of known wage bill'), h('span', { class: 'cl-stat-value' }, w.share === null ? '—' : pct(w.share))),
-      h('div', { class: 'cl-stat' }, h('span', { class: 'cl-stat-label' }, 'Known wage bill'), h('span', { class: 'cl-stat-value' }, money(w.total)))) : null,
-    w.known < w.count ? h('p', { class: 'cl-cover' }, `Salary known for ${w.known} of ${w.count} players${loanedInNote(rows) ? ` (${loanedInNote(rows)})` : ''}, so the share covers the known wage bill only.`) : null,
-    w.known && w.total === 0 ? h('p', { class: 'cl-cover' }, 'The known wage bill is £0, so there is no share to show.') : null);
+    w.top.length ? h('div', { class: 'cl-stats n2' },
+      h('div', { class: 'cl-stat', 'data-stat': 'top' }, h('span', { class: 'cl-stat-label' }, `Top ${w.top.length} combined`),
+        h('span', { class: 'cl-stat-value' }, money(w.topSum), w.share === null ? null : [' ', h('span', { class: 'cl-stat-pct' }, `(${pct(w.share)})`)])),
+      h('div', { class: 'cl-stat', 'data-stat': 'bill' }, h('span', { class: 'cl-stat-label' }, 'Wage bill'), h('span', { class: 'cl-stat-value' }, money(w.total)))) : null);
 }
 
 function positionsSection(rows, open, onToggle) {
   const pc = positionCoverage(rows);
+  const by = Object.fromEntries(pc.positions.map((p) => [p.code, p.rows]));
   return section('positions', 'Position coverage', open, onToggle,
-    note(`Players with familiarity ${COVER_MIN} or more. Players can cover several positions, so counts overlap; familiarity is not suitability for every role.`),
-    h('ul', { class: 'cl-pos' }, pc.positions.map((p) => {
-      const label = formatPositions([p.code.toUpperCase()]);
-      return h('li', {}, h('button', { type: 'button', class: `cl-pos-item${p.rows.length ? '' : ' none'}`, 'data-pos': p.code,
-        onclick: () => playerSheet(`${label}: familiarity ${COVER_MIN}+`, p.rows, (r) => `Familiarity ${r.fam}`) },
-      h('span', { class: 'cl-pos-label' }, label), h('b', {}, String(p.rows.length))));
-    })),
-    pc.unknown.length ? h('p', { class: 'cl-cover' }, `Familiarity unavailable for ${plural(pc.unknown.length, 'player')}.`) : null);
+    FamiliarityPitch(null, {
+      counts: Object.fromEntries(pc.positions.map((p) => [p.code, p.rows.length])),
+      onSelect: (code) => playerSheet(`${formatPositions([code.toUpperCase()])}: familiarity ${COVER_MIN}+`, by[code] || [], (r) => `Familiarity ${r.fam}`),
+    }));
 }
 
-function changesSection(metrics, prefs, squad, open, onToggle) {
+function changesSection(metrics, prefs, squad) {
   const ep = periodEndpoints(metrics, prefs.period);
   if (ep.insufficient) {
-    return section('changes', 'Snapshot changes', open, onToggle, h('p', { class: 'muted small' }, 'Changes appear once a second snapshot is stored.'));
+    return block('changes', 'Snapshot changes', h('p', { class: 'muted small' }, 'Changes appear once a second snapshot is stored.'));
   }
-  const ch = membershipChanges(ep.start, ep.end, squad);
+  const ch = membershipChanges(ep.start, ep.end, squad, metrics);
   const squadName = SQUADS.find((x) => x.id === squad).label;
   const pidOf = (key) => key.slice(key.lastIndexOf(':') + 1);
-  const list = (title, items, meta) => h('div', { class: 'cl-change', 'data-change': title },
+  const list = (key, title, items, meta) => h('div', { class: 'cl-change', 'data-change': key },
     h('p', { class: 'cl-group-title' }, title, h('span', { class: 'group-count' }, String(items.length))),
     items.length ? h('ul', { class: 'cl-list' }, items.map((x) => h('li', {}, h('a', { class: 'cl-row', href: playerHref(pidOf(x.key)) },
-      h('span', { class: 'cl-row-main' }, (x.after || x.before).name, h('span', { class: 'cl-row-sub' }, meta(x))))))) : h('p', { class: 'muted small' }, 'None.'));
+      h('span', { class: 'cl-row-main' }, (x.after || x.before).name, meta(x) ? h('span', { class: 'cl-row-sub' }, meta(x)) : null),
+      h('span', { class: 'cl-row-when' }, monthYear(x.date)))))) : h('p', { class: 'muted small' }, 'None.'));
   const sq = (r) => (r?.squad ? SQUAD_LABEL[r.squad] : 'Club');
-  return section('changes', 'Snapshot changes', open, onToggle,
+  return block('changes', 'Snapshot changes',
     h('p', { class: 'cl-dates' }, `${formatGameDate(ep.start.gameDate)} → ${formatGameDate(ep.end.gameDate)}`),
-    note('Based on what each export recorded — not confirmed transfers, releases or retirements.'),
-    list('Newly recorded at club', ch.joinedClub, (x) => [sq(x.after), x.before?.club ? `previously recorded at ${x.before.club}` : null].filter(Boolean).join(' · ')),
-    list('No longer recorded at club', ch.leftClub, (x) => [sq(x.before), x.after?.club ? `now recorded at ${x.after.club}` : x.after ? null : 'not in the later export'].filter(Boolean).join(' · ')),
-    squad !== 'all' ? list(`Moved into ${squadName} from another club squad`, ch.movedIn, (x) => `from ${sq(x.before)}`) : null,
-    squad !== 'all' ? list(`Moved from ${squadName} to another club squad`, ch.movedOut, (x) => `now ${sq(x.after)}`) : null);
+    list('in', 'Transfers in', ch.joinedClub, (x) => (x.before?.club ? `from ${x.before.club}` : null)),
+    list('out', 'Transfers out', ch.leftClub, (x) => (x.after?.club ? `to ${x.after.club}` : null)),
+    squad !== 'all' ? list('moved-in', `Moved into ${squadName} from another club squad`, ch.movedIn, (x) => `from ${sq(x.before)}`) : null,
+    squad !== 'all' ? list('moved-out', `Moved from ${squadName} to another club squad`, ch.movedOut, (x) => `now ${sq(x.after)}`) : null);
 }
 
 // ---- View ---------------------------------------------------------------------------------
@@ -367,18 +376,26 @@ export async function ClubView() {
     const select = h('select', { class: 'select', id: 'club-squad', 'aria-label': 'Squad',
       onchange: (e) => { prefs.squad = e.target.value; save(); draw(); } },
     SQUADS.map((x) => h('option', { value: x.id, selected: x.id === prefs.squad }, `${x.label} (${counts[x.id]})`)));
+    // Each section is built on its own: one that fails shows why, the rest still appear.
+    const safe = (title, fn) => {
+      try { return fn(); } catch (e) {
+        console.error(e);
+        return h('section', { class: 'card cl-block cl-failed', 'aria-label': title }, h('h2', { class: 'cl-h' }, title),
+          h('p', { class: 'cl-cover' }, `This section couldn’t be shown: ${String(e?.message || e)}`));
+      }
+    };
     body.replaceChildren(
-      header(model, getCareerMeta()),
+      safe('My Club', () => header(model, getCareerMeta())),
       h('div', { class: 'field cl-squad' }, h('label', { class: 'field-label', for: 'club-squad' }, 'Squad'), select),
-      headline(rows),
-      developmentBlock(metrics, rows, prefs, prefs.squad, (id) => { prefs.period = id; save(); draw(); }),
-      distributionBlock(rows, prefs, (k) => { prefs.dist = k; save(); draw(); }),
-      evolutionBlock(metrics, prefs.squad),
-      nationsSection(rows, careerId, prefs.open.nations, onToggle),
-      contractsSection(rows, model, prefs.open.contracts, onToggle),
-      wagesSection(rows, prefs.open.wages, onToggle),
-      positionsSection(rows, prefs.open.positions, onToggle),
-      changesSection(metrics, prefs, prefs.squad, prefs.open.changes, onToggle));
+      safe('Squad statistics', () => headline(rows)),
+      safe('Development', () => developmentBlock(metrics, rows, prefs, prefs.squad, (id) => { prefs.period = id; save(); draw(); })),
+      safe('Distributions', () => distributionBlock(rows, prefs, (k) => { prefs.dist = k; save(); draw(); })),
+      safe('Squad evolution', () => evolutionBlock(metrics, prefs.squad)),
+      safe('Nationalities', () => nationsSection(rows, careerId, prefs.open.nations, onToggle)),
+      safe('Contract outlook', () => contractsSection(rows, model, prefs.open.contracts, onToggle)),
+      safe('Wage concentration', () => wagesSection(rows, prefs.open.wages, onToggle)),
+      safe('Position coverage', () => positionsSection(rows, prefs.open.positions, onToggle)),
+      safe('Snapshot changes', () => changesSection(metrics, prefs, prefs.squad)));
   };
   draw();
   return { title: 'My Club', back: '#/', body };
