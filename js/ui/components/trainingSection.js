@@ -103,8 +103,8 @@ export function TrainingSection(p, playerKey) {
     return h('table', { class: 'train-table', 'data-train': 'ok' },
       h('colgroup', {}, h('col', { class: 'train-c1' }), h('col', { class: 'train-c2' })),
       h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, 'Training focus'), h('th', { scope: 'col' }, 'Relevant attributes trained'))),
-      h('tbody', {}, r.items.map((it, i) => h('tr', { 'data-focus': it.focus.id },
-        h('td', { class: 'train-focus' }, h('div', { class: 'train-focus-in' }, h('span', { class: 'train-rank' }, String(i + 1)), h('span', { class: 'train-name' }, it.focus.label))),
+      h('tbody', {}, r.items.map((it) => h('tr', { 'data-focus': it.focus.id },
+        h('td', { class: 'train-focus' }, it.focus.label),
         h('td', {}, h('ul', { class: 'train-attrs' }, it.attrs.map((a) => h('li', {
           class: `train-attr${a.atMax ? ' at-max' : ''}`, 'data-attr': a.key,
           'aria-label': `${a.label} ${a.value}${a.atMax ? ', at maximum' : ''}`,
