@@ -53,7 +53,7 @@ To test locally, run `python3 -m http.server` in the folder and open `http://loc
 ```
 index.html, manifest.webmanifest
 data/fm-nation-mapping.json   nation ID → name map from the save (replace when regenerated)
-data/fm27-role-catalogue-fminside.json  FMInside role catalogue: roles per position and phase, Key and Preferred attributes
+data/role-catalogue.json  role catalogue (from "Roles and positions"): roles per position and phase, each with its key attributes
 css/styles.css
 icons/logo.png
 js/app.js              shell, import flow, view dispatch
@@ -75,7 +75,7 @@ js/data/flags.js       nation → flag emoji
 js/data/tags.js        player tags (app data, kept in backups)
 js/data/lineups.js     4-2-3-1 slot definitions, default/custom lineups, Squad slot ranks, saved role pair per slot (shared by First / Backup / Future XI)
 js/data/radar.js       radar overviews, selectable attributes, radar preferences
-js/data/roles.js       role catalogue loading/validation, position + attribute mapping, role score (mean of Key attributes × 5), saved-role resolution
+js/data/roles.js       role catalogue loading/validation, position + attribute mapping, role score (equal-weight mean of the role's key attributes, 1–20; unavailable if one is missing), saved-role resolution
 js/data/listView.js    Squad/Shortlists columns, filters (incl. Tactic → filters), sorting, change columns, saved views
 js/data/money.js       GBP formatting (two decimals, display rounded up: next £1,000 below £1m, next £100,000 from £1m), weekly → monthly salary, typed amounts
 js/data/contract.js    Contract data shared by the Contract sheet, table columns and filters: expiry, salary, value, clauses (FM26 codes 0, 27, 1 and 55 read only in the tested FM26 format)
@@ -87,7 +87,7 @@ js/ui/dom.js           DOM helper + icons
 js/ui/dataMenu.js      Data menu and import/export/reset flows
 js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js, tagSheet.js, promptSheet.js, radarChart.js, radarSection.js,
                        playerBrowser.js, playerTable.js, filterSheet.js, viewSheet.js, attributePicker.js, familiarityPitch.js,
-                       attributeInfoSheet.js, playerPicker.js, radarAttributePicker.js, roleControls.js, roleExplorer.js, contractSheet.js,
+                       attributeInfoSheet.js, playerPicker.js, radarAttributePicker.js, roleExplorer.js, contractSheet.js,
                        aiAnalysis.js (AI Analysis + Copy for ChatGPT buttons, report sheet), playerReport.js (Development / Recruitment Report views)
 js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js (one player's graph), devBoard.js (Development ranking), club.js (My Club), snapshots.js (timeline, view, compare), lineups.js, lineup.js (pitch + slot roles), lineupPicker.js, compare.js, tactic.js (position + roles → Find matching players)
 worker/worker.js       Cloudflare Worker (paste into the dashboard's Edit code): POST /compare with access code, rate limit, fixed analyst instructions, report checks
