@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "data_version": "2026-11-26-dummy-1",
+  "provisional": true,
+  "notes": [
+    "Dummy dataset for implementation. Most mappings are documented for earlier FM versions and have not been independently verified in FM27.",
+    "Focuses without an established mapping have been omitted, including all goalkeeper-specific focuses.",
+    "The +1 ranking simulation belongs in application logic, not in this attribute mapping.",
+    "Keep focus IDs and canonical attribute IDs stable when revising labels or mappings."
+  ],
+  "sources": [
+    "https://www.reddit.com/r/footballmanagergames/comments/1os168n/what_does_each_individual_training_focus_do_in/",
+    "https://sortitoutsi.net/content/78226/optimal-training-schedules"
+  ],
+  "training_focuses": [
+    {
+      "id": "quickness",
+      "label": "Quickness",
+      "applies_to": "all",
+      "trained_attributes": [
+        "acceleration",
+        "pace"
+      ]
+    },
+    {
+      "id": "agility_balance",
+      "label": "Agility and Balance",
+      "applies_to": "all",
+      "trained_attributes": [
+        "agility",
+        "balance"
+      ]
+    },
+    {
+      "id": "resistance",
+      "label": "Resistance",
+      "applies_to": "all",
+      "trained_attributes": [
+        "strength",
+        "jumping_reach"
+      ]
+    },
+    {
+      "id": "endurance",
+      "label": "Endurance",
+      "applies_to": "all",
+      "trained_attributes": [
+        "stamina",
+        "work_rate"
+      ]
+    },
+    {
+      "id": "defensive_positioning",
+      "label": "Defensive Positioning",
+      "applies_to": "outfield",
+      "trained_attributes": [
+        "marking",
+        "positioning",
+        "decisions"
+      ]
+    },
+    {
+      "id": "attacking_movement",
+      "label": "Attacking Movement",
+      "applies_to": "outfield",
+      "trained_attributes": [
+        "off_the_ball",
+        "anticipation",
+        "decisions"
+      ]
+    },
+    {
+      "id": "final_third",
+      "label": "Final Third",
+      "applies_to": "outfield",
+      "trained_attributes": [
+        "composure",
+        "decisions"
+      ]
+    },
+    {
+      "id": "shooting",
+      "label": "Shooting",
+      "applies_to": "outfield",
+      "trained_attributes": [
+        "finishing",
+        "long_shots",
+        "technique"
+      ]
+    },
+    {
+      "id": "passing",
+      "label": "Passing",
+      "applies_to": "outfield",
+      "trained_attributes": [
+        "passing",
+        "vision",
+        "technique"
+      ]
+    },
+    {
+      "id": "crossing",
+      "label": "Crossing",
+      "applies_to": "outfield",
+      "trained_attributes": [
+        "crossing",
+        "technique"
+      ]
+    },
+    {
+      "id": "ball_control",
+      "label": "Ball Control",
+      "applies_to": "outfield",
+      "trained_attributes": [
+        "first_touch",
+        "dribbling",
+        "technique"
+      ]
+    },
+    {
+      "id": "aerial",
+      "label": "Aerial",
+      "applies_to": "outfield",
+      "trained_attributes": [
+        "heading",
+        "bravery"
+      ]
+    },
+    {
+      "id": "free_kick_taking",
+      "label": "Free Kick Taking",
+      "applies_to": "all",
+      "trained_attributes": [
+        "free_kick_taking",
+        "technique"
+      ]
+    },
+    {
+      "id": "corner_taking",
+      "label": "Corner Taking",
+      "applies_to": "all",
+      "trained_attributes": [
+        "corners",
+        "technique"
+      ]
+    },
+    {
+      "id": "penalty_taking",
+      "label": "Penalty Taking",
+      "applies_to": "all",
+      "trained_attributes": [
+        "penalty_taking",
+        "technique"
+      ]
+    },
+    {
+      "id": "long_throws",
+      "label": "Long Throws",
+      "applies_to": "all",
+      "trained_attributes": [
+        "long_throws"
+      ]
+    }
+  ]
+}
