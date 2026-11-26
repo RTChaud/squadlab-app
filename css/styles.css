@@ -435,7 +435,6 @@ button.app-tile:disabled { opacity: 0.6; }
 .tac-phase { margin: 0; font-size: 11px; font-weight: 750; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
 .tac-col .role-pick { min-height: 48px; }
 .tac-col .role-pick.tac-off { opacity: 0.6; }
-.tac-desc { margin: 0; font-size: 13px; line-height: 1.4; color: var(--text-2); }
 .tac-sub { margin: 2px 0 0; font-size: 11px; font-weight: 750; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
 .tac-attrs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .tac-attr { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
@@ -1016,7 +1015,14 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 /* Reserved for future role key attributes (orange), separate from value colours. */
 /* Reserved for future role key attributes: small orange marker before the name. */
 .attr-mark { flex: none; width: 3px; height: 16px; margin-right: -3px; border-radius: 2px; background: transparent; }
-.attr.key-attr .attr-mark { background: var(--accent); }
+.attr.key-attr .attr-mark, .attr.key-ip .attr-mark { background: var(--accent); }
+.attr.key-oop .attr-mark { background: rgba(247, 134, 30, 0.45); }
+.attr.key-ip.key-oop .attr-mark { background: linear-gradient(var(--accent) 50%, rgba(247, 134, 30, 0.45) 50%); }
+.key-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0 0 8px; font-size: 12.5px; font-weight: 650; color: var(--text-2); }
+.key-legend[hidden] { display: none; }
+.key-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.key-legend-mark { width: 3px; height: 14px; border-radius: 2px; background: var(--accent); }
+.key-legend-item.oop .key-legend-mark { background: rgba(247, 134, 30, 0.45); }
 
 .hidden-group > p { margin: 0 14px 6px; }
 .sub-head { margin: 8px 14px 2px !important; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
@@ -1882,8 +1888,6 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .cmp-roles-head { margin: 0; font-size: 16px; font-weight: 750; }
 .cmp-roles .cmp-phase { display: flex; flex-direction: column; gap: 10px; }
 /* Role descriptions sheet */
-.role-desc + .role-desc { margin-top: 14px; }
-.role-desc-name { margin: 0 0 4px; font-size: 16px; font-weight: 750; color: var(--text); }
 /* Filters · role filter (one position) */
 .frole { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--border); }
 .frole .fsub { margin: 0; }
@@ -1955,18 +1959,12 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .fnat-name { min-width: 0; overflow-wrap: anywhere; }
 .fnat-none { margin-top: 8px; }
 
-/* Role catalogue: Key / Preferred lists, empty phases, roles to reselect. */
+/* Role catalogue: key attribute lists, empty phases, a slot's role scores. */
 .role-attr-tier { margin: 8px 0 2px; font-size: 12px; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .role-attr-tier:first-child { margin-top: 0; }
 .role-none { margin: 6px 0 0; }
-.role-legacy { margin: 6px 0 0; font-size: 13px; font-weight: 650; color: var(--accent); }
-.tac-pref .tac-attr-name { color: var(--text-2); }
-.slot-roles dd.slot-legacy { color: var(--accent); font-weight: 650; }
-.pslot-roles.stale { color: var(--accent); }
-.lineup-stale { padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--accent); background: var(--accent-soft); }
-.lineup-stale p { margin: 0; }
-.lineup-stale-title { font-weight: 750; color: var(--text); }
-.lineup-stale .small + .small { margin-top: 4px; }
+.slot-role-score { margin-left: 8px; padding: 0 6px; border-radius: 999px; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--accent); background: var(--accent-soft); }
+.slot-role-score.none { color: var(--muted); background: transparent; }
 
 /* Add FM snapshot: destination and incoming snapshot, Switch career */
 .import-warn { color: var(--danger); }
