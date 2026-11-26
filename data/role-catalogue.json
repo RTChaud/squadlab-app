@@ -1,0 +1,1542 @@
+{
+ "game": "Football Manager 27",
+ "source": "Roles and positions (user-supplied, 2026-11-25)",
+ "positions": {
+  "GK": {
+   "position": "Goalkeeper",
+   "source_heading": "GK",
+   "in_possession": [
+    {
+     "role": "Goalkeeper",
+     "key_attributes": [
+      "Handling",
+      "Aerial Reach",
+      "Command of Area",
+      "Communication",
+      "Positioning",
+      "Reflexes",
+      "Agility",
+      "Concentration"
+     ],
+     "source_line": 5
+    },
+    {
+     "role": "Ball-Playing Goalkeeper",
+     "key_attributes": [
+      "Handling",
+      "Aerial Reach",
+      "Command of Area",
+      "Communication",
+      "Kicking",
+      "Positioning",
+      "Reflexes",
+      "Agility"
+     ],
+     "source_line": 6
+    },
+    {
+     "role": "No-Nonsense Goalkeeper",
+     "key_attributes": [
+      "Handling",
+      "Aerial Reach",
+      "Command of Area",
+      "Communication",
+      "Positioning",
+      "Reflexes",
+      "Agility",
+      "Concentration"
+     ],
+     "source_line": 7
+    }
+   ],
+   "out_of_possession": [
+    {
+     "role": "Goalkeeper",
+     "key_attributes": [
+      "Handling",
+      "Aerial Reach",
+      "Command of Area",
+      "Communication",
+      "Positioning",
+      "Reflexes",
+      "Agility",
+      "Concentration"
+     ],
+     "source_line": 72
+    },
+    {
+     "role": "Sweeper Keeper",
+     "key_attributes": [
+      "Handling",
+      "Aerial Reach",
+      "Command of Area",
+      "Communication",
+      "Anticipation",
+      "Decisions",
+      "One on Ones",
+      "Reflexes"
+     ],
+     "source_line": 73
+    },
+    {
+     "role": "Line-Holding Keeper",
+     "key_attributes": [
+      "Handling",
+      "Aerial Reach",
+      "Command of Area",
+      "Communication",
+      "Positioning",
+      "Reflexes",
+      "Agility",
+      "Concentration"
+     ],
+     "source_line": 74
+    }
+   ]
+  },
+  "DR": {
+   "position": "Right full-back",
+   "source_heading": "RB/LB",
+   "in_possession": [
+    {
+     "role": "Full-Back",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Teamwork",
+      "Acceleration",
+      "Concentration"
+     ],
+     "source_line": 10
+    },
+    {
+     "role": "Wing-Back",
+     "key_attributes": [
+      "Crossing",
+      "Marking",
+      "Tackling",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration",
+      "Stamina",
+      "Pace"
+     ],
+     "source_line": 11
+    },
+    {
+     "role": "Inside Wing-Back",
+     "key_attributes": [
+      "Passing",
+      "Tackling",
+      "Anticipation",
+      "Decisions",
+      "Positioning",
+      "Teamwork",
+      "Acceleration",
+      "Composure"
+     ],
+     "source_line": 12
+    },
+    {
+     "role": "Inside Full-Back",
+     "key_attributes": [
+      "Heading",
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Strength"
+     ],
+     "source_line": 13
+    },
+    {
+     "role": "Playmaking Wing-Back",
+     "key_attributes": [
+      "Passing",
+      "Tackling",
+      "Vision",
+      "Decisions",
+      "First Touch",
+      "Technique",
+      "Teamwork",
+      "Acceleration"
+     ],
+     "source_line": 14
+    }
+   ],
+   "out_of_possession": [
+    {
+     "role": "Full-Back",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Teamwork",
+      "Acceleration"
+     ],
+     "source_line": 77
+    },
+    {
+     "role": "Pressing Full-Back",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration",
+      "Aggression"
+     ],
+     "source_line": 78
+    },
+    {
+     "role": "Holding Full-Back",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Decisions",
+      "Positioning",
+      "Acceleration",
+      "Concentration"
+     ],
+     "source_line": 79
+    }
+   ]
+  },
+  "DC": {
+   "position": "Centre-back",
+   "source_heading": "CB",
+   "in_possession": [
+    {
+     "role": "Centre-Back",
+     "key_attributes": [
+      "Heading",
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Strength",
+      "Jumping Reach"
+     ],
+     "source_line": 17
+    },
+    {
+     "role": "Advanced Centre-Back",
+     "key_attributes": [
+      "Heading",
+      "Marking",
+      "Passing",
+      "Tackling",
+      "Anticipation",
+      "Decisions",
+      "Positioning",
+      "Technique"
+     ],
+     "source_line": 18
+    },
+    {
+     "role": "Ball-Playing Centre-Back",
+     "key_attributes": [
+      "Heading",
+      "Marking",
+      "Passing",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Strength",
+      "Jumping Reach"
+     ],
+     "source_line": 19
+    },
+    {
+     "role": "No-Nonsense Centre-Back",
+     "key_attributes": [
+      "Heading",
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Strength",
+      "Jumping Reach"
+     ],
+     "source_line": 20
+    }
+   ],
+   "out_of_possession": [
+    {
+     "role": "Centre-Back",
+     "key_attributes": [
+      "Heading",
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Strength",
+      "Jumping Reach"
+     ],
+     "source_line": 82
+    },
+    {
+     "role": "Stopping Centre-Back",
+     "key_attributes": [
+      "Heading",
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Strength",
+      "Jumping Reach",
+      "Bravery"
+     ],
+     "source_line": 83
+    },
+    {
+     "role": "Covering Centre-Back",
+     "key_attributes": [
+      "Heading",
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Strength",
+      "Pace"
+     ],
+     "source_line": 84
+    }
+   ]
+  },
+  "DL": {
+   "position": "Left full-back",
+   "source_heading": "RB/LB",
+   "in_possession": [
+    {
+     "role": "Full-Back",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Teamwork",
+      "Acceleration",
+      "Concentration"
+     ],
+     "source_line": 10
+    },
+    {
+     "role": "Wing-Back",
+     "key_attributes": [
+      "Crossing",
+      "Marking",
+      "Tackling",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration",
+      "Stamina",
+      "Pace"
+     ],
+     "source_line": 11
+    },
+    {
+     "role": "Inside Wing-Back",
+     "key_attributes": [
+      "Passing",
+      "Tackling",
+      "Anticipation",
+      "Decisions",
+      "Positioning",
+      "Teamwork",
+      "Acceleration",
+      "Composure"
+     ],
+     "source_line": 12
+    },
+    {
+     "role": "Inside Full-Back",
+     "key_attributes": [
+      "Heading",
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Strength"
+     ],
+     "source_line": 13
+    },
+    {
+     "role": "Playmaking Wing-Back",
+     "key_attributes": [
+      "Passing",
+      "Tackling",
+      "Vision",
+      "Decisions",
+      "First Touch",
+      "Technique",
+      "Teamwork",
+      "Acceleration"
+     ],
+     "source_line": 14
+    }
+   ],
+   "out_of_possession": [
+    {
+     "role": "Full-Back",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Teamwork",
+      "Acceleration"
+     ],
+     "source_line": 77
+    },
+    {
+     "role": "Pressing Full-Back",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration",
+      "Aggression"
+     ],
+     "source_line": 78
+    },
+    {
+     "role": "Holding Full-Back",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Decisions",
+      "Positioning",
+      "Acceleration",
+      "Concentration"
+     ],
+     "source_line": 79
+    }
+   ]
+  },
+  "WBR": {
+   "position": "Right wing-back",
+   "source_heading": "WBR/WBL",
+   "in_possession": [
+    {
+     "role": "Wing-Back",
+     "key_attributes": [
+      "Crossing",
+      "Marking",
+      "Tackling",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration",
+      "Stamina",
+      "Pace"
+     ],
+     "source_line": 23
+    },
+    {
+     "role": "Advanced Wing-Back",
+     "key_attributes": [
+      "Crossing",
+      "Dribbling",
+      "Off the Ball",
+      "Technique",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration",
+      "Stamina"
+     ],
+     "source_line": 24
+    },
+    {
+     "role": "Inside Wing-Back",
+     "key_attributes": [
+      "Passing",
+      "Tackling",
+      "Anticipation",
+      "Decisions",
+      "Positioning",
+      "Teamwork",
+      "Acceleration",
+      "Composure"
+     ],
+     "source_line": 25
+    },
+    {
+     "role": "Playmaking Wing-Back",
+     "key_attributes": [
+      "Passing",
+      "Tackling",
+      "Vision",
+      "Decisions",
+      "First Touch",
+      "Technique",
+      "Teamwork",
+      "Acceleration"
+     ],
+     "source_line": 26
+    }
+   ],
+   "out_of_possession": [
+    {
+     "role": "Wing-Back",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Teamwork",
+      "Acceleration",
+      "Stamina"
+     ],
+     "source_line": 87
+    },
+    {
+     "role": "Pressing Wing-Back",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration",
+      "Stamina"
+     ],
+     "source_line": 88
+    },
+    {
+     "role": "Holding Wing-Back",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Decisions",
+      "Positioning",
+      "Acceleration",
+      "Concentration"
+     ],
+     "source_line": 89
+    }
+   ]
+  },
+  "WBL": {
+   "position": "Left wing-back",
+   "source_heading": "WBR/WBL",
+   "in_possession": [
+    {
+     "role": "Wing-Back",
+     "key_attributes": [
+      "Crossing",
+      "Marking",
+      "Tackling",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration",
+      "Stamina",
+      "Pace"
+     ],
+     "source_line": 23
+    },
+    {
+     "role": "Advanced Wing-Back",
+     "key_attributes": [
+      "Crossing",
+      "Dribbling",
+      "Off the Ball",
+      "Technique",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration",
+      "Stamina"
+     ],
+     "source_line": 24
+    },
+    {
+     "role": "Inside Wing-Back",
+     "key_attributes": [
+      "Passing",
+      "Tackling",
+      "Anticipation",
+      "Decisions",
+      "Positioning",
+      "Teamwork",
+      "Acceleration",
+      "Composure"
+     ],
+     "source_line": 25
+    },
+    {
+     "role": "Playmaking Wing-Back",
+     "key_attributes": [
+      "Passing",
+      "Tackling",
+      "Vision",
+      "Decisions",
+      "First Touch",
+      "Technique",
+      "Teamwork",
+      "Acceleration"
+     ],
+     "source_line": 26
+    }
+   ],
+   "out_of_possession": [
+    {
+     "role": "Wing-Back",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Teamwork",
+      "Acceleration",
+      "Stamina"
+     ],
+     "source_line": 87
+    },
+    {
+     "role": "Pressing Wing-Back",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration",
+      "Stamina"
+     ],
+     "source_line": 88
+    },
+    {
+     "role": "Holding Wing-Back",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Decisions",
+      "Positioning",
+      "Acceleration",
+      "Concentration"
+     ],
+     "source_line": 89
+    }
+   ]
+  },
+  "DM": {
+   "position": "Defensive midfielder",
+   "source_heading": "DM",
+   "in_possession": [
+    {
+     "role": "Defensive Midfielder",
+     "key_attributes": [
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Teamwork",
+      "Concentration"
+     ],
+     "source_line": 29
+    },
+    {
+     "role": "Deep-Lying Playmaker",
+     "key_attributes": [
+      "Passing",
+      "Vision",
+      "Decisions",
+      "First Touch",
+      "Technique",
+      "Teamwork",
+      "Composure"
+     ],
+     "source_line": 30
+    },
+    {
+     "role": "Box-to-Box Midfielder",
+     "key_attributes": [
+      "Off the Ball",
+      "Passing",
+      "Tackling",
+      "Teamwork",
+      "Work Rate",
+      "Stamina"
+     ],
+     "source_line": 31
+    },
+    {
+     "role": "Half Back",
+     "key_attributes": [
+      "Heading",
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Positioning",
+      "Teamwork",
+      "Strength",
+      "Jumping Reach"
+     ],
+     "source_line": 32
+    },
+    {
+     "role": "Box-to-Box Playmaker",
+     "key_attributes": [
+      "Off the Ball",
+      "Passing",
+      "Vision",
+      "Decisions",
+      "First Touch",
+      "Technique",
+      "Teamwork",
+      "Work Rate"
+     ],
+     "source_line": 33
+    }
+   ],
+   "out_of_possession": [
+    {
+     "role": "Defensive Midfielder",
+     "key_attributes": [
+      "Tackling",
+      "Anticipation",
+      "Decisions",
+      "Positioning",
+      "Teamwork",
+      "Work Rate"
+     ],
+     "source_line": 92
+    },
+    {
+     "role": "Dropping Defensive Midfielder",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Decisions",
+      "Positioning",
+      "Teamwork",
+      "Work Rate",
+      "Strength"
+     ],
+     "source_line": 93
+    },
+    {
+     "role": "Pressing Defensive Midfielder",
+     "key_attributes": [
+      "Tackling",
+      "Anticipation",
+      "Decisions",
+      "Positioning",
+      "Teamwork",
+      "Work Rate",
+      "Stamina",
+      "Aggression"
+     ],
+     "source_line": 94
+    },
+    {
+     "role": "Screening Defensive Midfielder",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Decisions",
+      "Positioning",
+      "Concentration"
+     ],
+     "source_line": 95
+    },
+    {
+     "role": "Wide Covering Defensive Midfielder",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Anticipation",
+      "Decisions",
+      "Positioning",
+      "Teamwork",
+      "Work Rate",
+      "Stamina"
+     ],
+     "source_line": 96
+    }
+   ]
+  },
+  "MR": {
+   "position": "Right midfielder",
+   "source_heading": "RM/LM",
+   "in_possession": [
+    {
+     "role": "Winger",
+     "key_attributes": [
+      "Crossing",
+      "Dribbling",
+      "Technique",
+      "Teamwork",
+      "Acceleration",
+      "Pace",
+      "Agility"
+     ],
+     "source_line": 36
+    },
+    {
+     "role": "Inside Forward",
+     "key_attributes": [
+      "Dribbling",
+      "Off the Ball",
+      "Anticipation",
+      "First Touch",
+      "Technique",
+      "Acceleration",
+      "Agility",
+      "Composure"
+     ],
+     "source_line": 37
+    },
+    {
+     "role": "Playmaking Winger",
+     "key_attributes": [
+      "Crossing",
+      "Dribbling",
+      "Off the Ball",
+      "Passing",
+      "Vision",
+      "Decisions",
+      "First Touch",
+      "Technique"
+     ],
+     "source_line": 38
+    },
+    {
+     "role": "Wide Forward",
+     "key_attributes": [
+      "Dribbling",
+      "Off the Ball",
+      "Anticipation",
+      "First Touch",
+      "Technique",
+      "Acceleration",
+      "Pace",
+      "Agility"
+     ],
+     "source_line": 39
+    },
+    {
+     "role": "Inside Winger",
+     "key_attributes": [
+      "Dribbling",
+      "First Touch",
+      "Technique",
+      "Teamwork",
+      "Acceleration",
+      "Agility",
+      "Composure"
+     ],
+     "source_line": 40
+    }
+   ],
+   "out_of_possession": [
+    {
+     "role": "Wide Midfielder",
+     "key_attributes": [
+      "Decisions",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration"
+     ],
+     "source_line": 99
+    },
+    {
+     "role": "Tracking Wide Midfielder",
+     "key_attributes": [
+      "Anticipation",
+      "Decisions",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration",
+      "Stamina",
+      "Aggression"
+     ],
+     "source_line": 100
+    },
+    {
+     "role": "Wide Outlet Wide Midfielder",
+     "key_attributes": [
+      "Off the Ball",
+      "Anticipation",
+      "Decisions",
+      "Teamwork",
+      "Pace",
+      "Concentration"
+     ],
+     "source_line": 101
+    }
+   ]
+  },
+  "MC": {
+   "position": "Central midfielder",
+   "source_heading": "CM",
+   "in_possession": [
+    {
+     "role": "Central Midfielder",
+     "key_attributes": [
+      "Passing",
+      "Tackling",
+      "Decisions",
+      "First Touch",
+      "Teamwork"
+     ],
+     "source_line": 43
+    },
+    {
+     "role": "Attacking Midfielder",
+     "key_attributes": [
+      "Long Shots",
+      "Off the Ball",
+      "Passing",
+      "First Touch",
+      "Technique",
+      "Flair",
+      "Composure"
+     ],
+     "source_line": 44
+    },
+    {
+     "role": "Advanced Playmaker",
+     "key_attributes": [
+      "Off the Ball",
+      "Passing",
+      "Vision",
+      "Decisions",
+      "First Touch",
+      "Technique",
+      "Teamwork",
+      "Composure"
+     ],
+     "source_line": 45
+    },
+    {
+     "role": "Channel Midfielder",
+     "key_attributes": [
+      "Crossing",
+      "Off the Ball",
+      "Passing",
+      "First Touch",
+      "Technique",
+      "Work Rate",
+      "Acceleration",
+      "Composure"
+     ],
+     "source_line": 46
+    },
+    {
+     "role": "Midfield Playmaker",
+     "key_attributes": [
+      "Off the Ball",
+      "Passing",
+      "Vision",
+      "Decisions",
+      "First Touch",
+      "Technique",
+      "Teamwork",
+      "Composure"
+     ],
+     "source_line": 47
+    }
+   ],
+   "out_of_possession": [
+    {
+     "role": "Central Midfielder",
+     "key_attributes": [
+      "Tackling",
+      "Decisions",
+      "Teamwork",
+      "Work Rate"
+     ],
+     "source_line": 104
+    },
+    {
+     "role": "Pressing Central Midfielder",
+     "key_attributes": [
+      "Tackling",
+      "Anticipation",
+      "Decisions",
+      "Teamwork",
+      "Work Rate",
+      "Stamina",
+      "Aggression"
+     ],
+     "source_line": 105
+    },
+    {
+     "role": "Screening Central Midfielder",
+     "key_attributes": [
+      "Marking",
+      "Tackling",
+      "Decisions",
+      "Positioning",
+      "Concentration"
+     ],
+     "source_line": 106
+    }
+   ]
+  },
+  "ML": {
+   "position": "Left midfielder",
+   "source_heading": "RM/LM",
+   "in_possession": [
+    {
+     "role": "Winger",
+     "key_attributes": [
+      "Crossing",
+      "Dribbling",
+      "Technique",
+      "Teamwork",
+      "Acceleration",
+      "Pace",
+      "Agility"
+     ],
+     "source_line": 36
+    },
+    {
+     "role": "Inside Forward",
+     "key_attributes": [
+      "Dribbling",
+      "Off the Ball",
+      "Anticipation",
+      "First Touch",
+      "Technique",
+      "Acceleration",
+      "Agility",
+      "Composure"
+     ],
+     "source_line": 37
+    },
+    {
+     "role": "Playmaking Winger",
+     "key_attributes": [
+      "Crossing",
+      "Dribbling",
+      "Off the Ball",
+      "Passing",
+      "Vision",
+      "Decisions",
+      "First Touch",
+      "Technique"
+     ],
+     "source_line": 38
+    },
+    {
+     "role": "Wide Forward",
+     "key_attributes": [
+      "Dribbling",
+      "Off the Ball",
+      "Anticipation",
+      "First Touch",
+      "Technique",
+      "Acceleration",
+      "Pace",
+      "Agility"
+     ],
+     "source_line": 39
+    },
+    {
+     "role": "Inside Winger",
+     "key_attributes": [
+      "Dribbling",
+      "First Touch",
+      "Technique",
+      "Teamwork",
+      "Acceleration",
+      "Agility",
+      "Composure"
+     ],
+     "source_line": 40
+    }
+   ],
+   "out_of_possession": [
+    {
+     "role": "Wide Midfielder",
+     "key_attributes": [
+      "Decisions",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration"
+     ],
+     "source_line": 99
+    },
+    {
+     "role": "Tracking Wide Midfielder",
+     "key_attributes": [
+      "Anticipation",
+      "Decisions",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration",
+      "Stamina",
+      "Aggression"
+     ],
+     "source_line": 100
+    },
+    {
+     "role": "Wide Outlet Wide Midfielder",
+     "key_attributes": [
+      "Off the Ball",
+      "Anticipation",
+      "Decisions",
+      "Teamwork",
+      "Pace",
+      "Concentration"
+     ],
+     "source_line": 101
+    }
+   ]
+  },
+  "AMR": {
+   "position": "Right attacking midfielder",
+   "source_heading": "RW/LW",
+   "in_possession": [
+    {
+     "role": "Winger",
+     "key_attributes": [
+      "Crossing",
+      "Dribbling",
+      "Technique",
+      "Teamwork",
+      "Acceleration",
+      "Pace",
+      "Agility"
+     ],
+     "source_line": 50
+    },
+    {
+     "role": "Inside Forward",
+     "key_attributes": [
+      "Dribbling",
+      "Off the Ball",
+      "Anticipation",
+      "First Touch",
+      "Technique",
+      "Acceleration",
+      "Agility",
+      "Composure"
+     ],
+     "source_line": 51
+    },
+    {
+     "role": "Playmaking Winger",
+     "key_attributes": [
+      "Crossing",
+      "Dribbling",
+      "Off the Ball",
+      "Passing",
+      "Vision",
+      "Decisions",
+      "First Touch",
+      "Technique"
+     ],
+     "source_line": 52
+    },
+    {
+     "role": "Wide Forward",
+     "key_attributes": [
+      "Dribbling",
+      "Off the Ball",
+      "Anticipation",
+      "First Touch",
+      "Technique",
+      "Acceleration",
+      "Pace",
+      "Agility"
+     ],
+     "source_line": 53
+    },
+    {
+     "role": "Inside Winger",
+     "key_attributes": [
+      "Dribbling",
+      "First Touch",
+      "Technique",
+      "Teamwork",
+      "Acceleration",
+      "Agility",
+      "Composure"
+     ],
+     "source_line": 54
+    }
+   ],
+   "out_of_possession": [
+    {
+     "role": "Wide Midfielder",
+     "key_attributes": [
+      "Decisions",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration"
+     ],
+     "source_line": 109
+    },
+    {
+     "role": "Tracking Wide Midfielder",
+     "key_attributes": [
+      "Anticipation",
+      "Decisions",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration",
+      "Stamina",
+      "Aggression"
+     ],
+     "source_line": 110
+    },
+    {
+     "role": "Wide Outlet Wide Midfielder",
+     "key_attributes": [
+      "Off the Ball",
+      "Anticipation",
+      "Decisions",
+      "Teamwork",
+      "Pace",
+      "Concentration"
+     ],
+     "source_line": 111
+    }
+   ]
+  },
+  "AMC": {
+   "position": "Central attacking midfielder",
+   "source_heading": "CAM",
+   "in_possession": [
+    {
+     "role": "Attacking Midfielder",
+     "key_attributes": [
+      "Long Shots",
+      "Off the Ball",
+      "Passing",
+      "First Touch",
+      "Technique",
+      "Flair",
+      "Composure"
+     ],
+     "source_line": 57
+    },
+    {
+     "role": "Advanced Playmaker",
+     "key_attributes": [
+      "Off the Ball",
+      "Passing",
+      "Vision",
+      "Decisions",
+      "First Touch",
+      "Technique",
+      "Teamwork",
+      "Composure"
+     ],
+     "source_line": 58
+    },
+    {
+     "role": "Free Role",
+     "key_attributes": [
+      "Dribbling",
+      "Long Shots",
+      "Off the Ball",
+      "Passing",
+      "Vision",
+      "First Touch",
+      "Technique",
+      "Flair"
+     ],
+     "source_line": 59
+    },
+    {
+     "role": "Second Striker",
+     "key_attributes": [
+      "Finishing",
+      "Off the Ball",
+      "Anticipation",
+      "First Touch",
+      "Acceleration",
+      "Composure"
+     ],
+     "source_line": 60
+    },
+    {
+     "role": "Channel Midfielder",
+     "key_attributes": [
+      "Crossing",
+      "Off the Ball",
+      "Passing",
+      "First Touch",
+      "Technique",
+      "Work Rate",
+      "Acceleration",
+      "Composure"
+     ],
+     "source_line": 61
+    }
+   ],
+   "out_of_possession": [
+    {
+     "role": "Attacking Midfielder",
+     "key_attributes": [
+      "Anticipation",
+      "Decisions",
+      "Work Rate"
+     ],
+     "source_line": 114
+    },
+    {
+     "role": "Tracking Attacking Midfielder",
+     "key_attributes": [
+      "Anticipation",
+      "Decisions",
+      "Teamwork",
+      "Work Rate",
+      "Stamina",
+      "Aggression"
+     ],
+     "source_line": 115
+    },
+    {
+     "role": "Central Outlet Attacking Midfielder",
+     "key_attributes": [
+      "Off the Ball",
+      "Anticipation",
+      "Decisions",
+      "Teamwork",
+      "Balance",
+      "Concentration"
+     ],
+     "source_line": 116
+    }
+   ]
+  },
+  "AML": {
+   "position": "Left attacking midfielder",
+   "source_heading": "RW/LW",
+   "in_possession": [
+    {
+     "role": "Winger",
+     "key_attributes": [
+      "Crossing",
+      "Dribbling",
+      "Technique",
+      "Teamwork",
+      "Acceleration",
+      "Pace",
+      "Agility"
+     ],
+     "source_line": 50
+    },
+    {
+     "role": "Inside Forward",
+     "key_attributes": [
+      "Dribbling",
+      "Off the Ball",
+      "Anticipation",
+      "First Touch",
+      "Technique",
+      "Acceleration",
+      "Agility",
+      "Composure"
+     ],
+     "source_line": 51
+    },
+    {
+     "role": "Playmaking Winger",
+     "key_attributes": [
+      "Crossing",
+      "Dribbling",
+      "Off the Ball",
+      "Passing",
+      "Vision",
+      "Decisions",
+      "First Touch",
+      "Technique"
+     ],
+     "source_line": 52
+    },
+    {
+     "role": "Wide Forward",
+     "key_attributes": [
+      "Dribbling",
+      "Off the Ball",
+      "Anticipation",
+      "First Touch",
+      "Technique",
+      "Acceleration",
+      "Pace",
+      "Agility"
+     ],
+     "source_line": 53
+    },
+    {
+     "role": "Inside Winger",
+     "key_attributes": [
+      "Dribbling",
+      "First Touch",
+      "Technique",
+      "Teamwork",
+      "Acceleration",
+      "Agility",
+      "Composure"
+     ],
+     "source_line": 54
+    }
+   ],
+   "out_of_possession": [
+    {
+     "role": "Wide Midfielder",
+     "key_attributes": [
+      "Decisions",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration"
+     ],
+     "source_line": 109
+    },
+    {
+     "role": "Tracking Wide Midfielder",
+     "key_attributes": [
+      "Anticipation",
+      "Decisions",
+      "Teamwork",
+      "Work Rate",
+      "Acceleration",
+      "Stamina",
+      "Aggression"
+     ],
+     "source_line": 110
+    },
+    {
+     "role": "Wide Outlet Wide Midfielder",
+     "key_attributes": [
+      "Off the Ball",
+      "Anticipation",
+      "Decisions",
+      "Teamwork",
+      "Pace",
+      "Concentration"
+     ],
+     "source_line": 111
+    }
+   ]
+  },
+  "STC": {
+   "position": "Striker",
+   "source_heading": "ST",
+   "in_possession": [
+    {
+     "role": "Deep-Lying Forward",
+     "key_attributes": [
+      "Finishing",
+      "Off the Ball",
+      "First Touch",
+      "Technique",
+      "Strength",
+      "Composure"
+     ],
+     "source_line": 64
+    },
+    {
+     "role": "Centre Forward",
+     "key_attributes": [
+      "Finishing",
+      "Heading",
+      "Off the Ball",
+      "First Touch",
+      "Technique",
+      "Acceleration",
+      "Strength",
+      "Composure"
+     ],
+     "source_line": 65
+    },
+    {
+     "role": "Target Forward",
+     "key_attributes": [
+      "Finishing",
+      "Heading",
+      "Off the Ball",
+      "Strength",
+      "Jumping Reach",
+      "Balance",
+      "Bravery",
+      "Aggression"
+     ],
+     "source_line": 66
+    },
+    {
+     "role": "Poacher",
+     "key_attributes": [
+      "Finishing",
+      "Heading",
+      "Off the Ball",
+      "Anticipation",
+      "Acceleration",
+      "Composure",
+      "Concentration"
+     ],
+     "source_line": 67
+    },
+    {
+     "role": "Channel Forward",
+     "key_attributes": [
+      "Dribbling",
+      "Finishing",
+      "Off the Ball",
+      "First Touch",
+      "Technique",
+      "Work Rate",
+      "Acceleration",
+      "Composure"
+     ],
+     "source_line": 68
+    }
+   ],
+   "out_of_possession": [
+    {
+     "role": "Centre Forward",
+     "key_attributes": [
+      "Anticipation",
+      "Decisions",
+      "Work Rate"
+     ],
+     "source_line": 119
+    },
+    {
+     "role": "Tracking Centre Forward",
+     "key_attributes": [
+      "Anticipation",
+      "Decisions",
+      "Teamwork",
+      "Work Rate",
+      "Stamina",
+      "Aggression"
+     ],
+     "source_line": 120
+    },
+    {
+     "role": "Central Outlet Centre Forward",
+     "key_attributes": [
+      "Off the Ball",
+      "Anticipation",
+      "Decisions",
+      "Teamwork",
+      "Balance",
+      "Concentration"
+     ],
+     "source_line": 121
+    }
+   ]
+  }
+ }
+}
