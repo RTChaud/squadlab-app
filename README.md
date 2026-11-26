@@ -76,7 +76,7 @@ js/data/tags.js        player tags (app data, kept in backups)
 js/data/lineups.js     4-2-3-1 slot definitions, default/custom lineups, Squad slot ranks, saved role pair per slot (shared by First / Backup / Future XI)
 js/data/radar.js       radar overviews, selectable attributes, radar preferences
 js/data/roles.js       role catalogue loading/validation, position + attribute mapping, role score (equal-weight mean of the role's key attributes, 1–20; unavailable if one is missing), saved-role resolution
-js/data/listView.js    Squad/Shortlists columns, filters (incl. Tactic → filters), sorting, change columns, saved views
+js/data/listView.js    Squad/Shortlists columns, filters (incl. Tactic → filters), sorting, change columns, role attribute columns (View), saved views
 js/data/money.js       GBP formatting (two decimals, display rounded up: next £1,000 below £1m, next £100,000 from £1m), weekly → monthly salary, typed amounts
 js/data/contract.js    Contract data shared by the Contract sheet, table columns and filters: expiry, salary, value, clauses (FM26 codes 0, 27, 1 and 55 read only in the tested FM26 format)
 js/data/comparisonRequest.js  AI Analysis: builds the structured comparison (players, position/roles, fees, benchmarks) sent to the Worker
