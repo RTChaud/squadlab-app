@@ -623,7 +623,8 @@ a.prow:active { background: var(--surface-2); }
   .phead.with-xi, .prow.with-xi { grid-template-columns: 3.4rem minmax(0, 1fr) 9rem 3rem 3.5rem 3.5rem; }
   .prow { padding-top: 8px; padding-bottom: 8px; }
   .pname { flex-direction: row; align-items: baseline; gap: 6px; }
-  .pfirst { font-size: 16px; color: var(--text-2); flex: none; max-width: 45%; }
+  /* Player list rows only (the Squad/Shortlists table keeps its stacked name). */
+  .pname .pfirst { font-size: 16px; color: var(--text-2); flex: none; max-width: 45%; }
   .ppos { font-size: 14px; }
   .ppos-alt { display: inline; margin-left: 6px; }
 }
@@ -1173,10 +1174,7 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .train-table th { padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 750; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
 .train-table td { padding: 9px 8px 9px 10px; vertical-align: top; border-top: 1px solid var(--border); }
 .train-table tbody tr:first-child td { border-top: 0; }
-.train-focus { font-weight: 700; }
-.train-focus-in { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.train-rank { font-size: 12px; color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; }
-.train-name { font-size: 14px; line-height: 1.25; overflow-wrap: break-word; }
+.train-focus { font-size: 14px; font-weight: 700; line-height: 1.25; overflow-wrap: break-word; }
 .train-attrs { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 12px; }
 .train-attr { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
 .train-attr-name { color: var(--text-2); overflow-wrap: break-word; }
