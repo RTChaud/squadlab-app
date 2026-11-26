@@ -49,11 +49,26 @@ One career is active at a time, and backups cover the active career. Restoring a
 
 To test locally, run `python3 -m http.server` in the folder and open `http://localhost:8000/`. ES modules won't load if you open the file directly with `file://`.
 
+## Individual training configuration
+The Development screen recommends up to five individual training focuses for the selected position and roles. Every focus comes from `data/individual_training.json`; no focus is named in the code.
+
+- `schema_version` is the file format (the app supports 1). `data_version` names the mapping revision: change it whenever focuses or attributes change.
+- Each entry in `training_focuses` has a stable `id`, a display `label`, `applies_to` (`all`, `outfield` or `goalkeeper`) and `trained_attributes` (attribute ids such as `first_touch`, `jumping_reach`, `work_rate`).
+- `provisional`, `notes`, `sources` and any other extra fields are ignored by the calculation.
+- Adding, removing, renaming (same `id`), reordering, or changing a focus's attributes or `applies_to` needs no code change.
+- An attribute id the app doesn't record, an unknown `applies_to` or a duplicate `id` leaves that focus out. When testing locally, each problem is listed under the recommendations and logged in the browser console as "[SquadLab training] …". If an id needs translating to the app's name, add it to `CANONICAL_ATTRIBUTE_ALIASES` in `js/data/training.js`.
+
+To replace it:
+1. Keep the file name `individual_training.json` and the same structure, and update `data_version`.
+2. Optional: run `python3 -m http.server`, open a player's Development screen at `http://localhost:8000/` and check that no issue list appears under the recommendations.
+3. Upload it to `data/` in the repository, replacing the old file. GitHub Pages redeploys automatically; reopen the app.
+
 ## Structure
 ```
 index.html, manifest.webmanifest
 data/fm-nation-mapping.json   nation ID → name map from the save (replace when regenerated)
 data/role-catalogue.json  role catalogue (from "Roles and positions"): roles per position and phase, each with its key attributes
+data/individual_training.json  individual training focuses (id, label, applies_to, trained attributes) for the Development screen's recommendations
 css/styles.css
 icons/logo.png
 js/app.js              shell, import flow, view dispatch
@@ -76,6 +91,7 @@ js/data/tags.js        player tags (app data, kept in backups)
 js/data/lineups.js     4-2-3-1 slot definitions, default/custom lineups, Squad slot ranks, saved role pair per slot (shared by First / Backup / Future XI)
 js/data/radar.js       radar overviews, selectable attributes, radar preferences
 js/data/roles.js       role catalogue loading/validation, position + attribute mapping, role score (equal-weight mean of the role's key attributes, 1–20; unavailable if one is missing), saved-role resolution
+js/data/training.js    individual training: loads and validates data/individual_training.json, maps its attribute ids to the app's (one adapter), ranks focuses for the selected roles
 js/data/listView.js    Squad/Shortlists columns, filters (incl. Tactic → filters), sorting, change columns, role attribute columns (View), saved views
 js/data/money.js       GBP formatting (two decimals, display rounded up: next £1,000 below £1m, next £100,000 from £1m), weekly → monthly salary, typed amounts
 js/data/contract.js    Contract data shared by the Contract sheet, table columns and filters: expiry, salary, value, clauses (FM26 codes 0, 27, 1 and 55 read only in the tested FM26 format)
@@ -87,8 +103,8 @@ js/ui/dom.js           DOM helper + icons
 js/ui/dataMenu.js      Data menu and import/export/reset flows
 js/ui/components/      playerList.js, feedback.js, sheet.js, backupExport.js, devChart.js, metricPicker.js, tagSheet.js, promptSheet.js, radarChart.js, radarSection.js,
                        playerBrowser.js, playerTable.js, filterSheet.js, viewSheet.js, attributePicker.js, familiarityPitch.js,
-                       attributeInfoSheet.js, playerPicker.js, radarAttributePicker.js, roleExplorer.js, contractSheet.js,
+                       attributeInfoSheet.js, playerPicker.js, radarAttributePicker.js, roleExplorer.js, contractSheet.js, trainingSection.js,
                        aiAnalysis.js (AI Analysis + Copy for ChatGPT buttons, report sheet), playerReport.js (Development / Recruitment Report views)
-js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js (one player's graph), devBoard.js (Development ranking), club.js (My Club), snapshots.js (timeline, view, compare), lineups.js, lineup.js (pitch + slot roles), lineupPicker.js, compare.js, tactic.js (position + roles → Find matching players)
+js/ui/views/           home.js, squad.js, shortlists.js, tags.js, player.js, development.js (one player's graph + individual training), devBoard.js (Development ranking), club.js (My Club), snapshots.js (timeline, view, compare), lineups.js, lineup.js (pitch + slot roles), lineupPicker.js, compare.js, tactic.js (position + roles → Find matching players)
 worker/worker.js       Cloudflare Worker (paste into the dashboard's Edit code): POST /compare with access code, rate limit, fixed analyst instructions, report checks
 ```
