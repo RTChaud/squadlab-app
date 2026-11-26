@@ -1,14 +1,16 @@
 // Development screen: historical graphs of CA and/or football attributes for
-// one player, across every stored snapshot of the active career.
+// one player, across every stored snapshot of the active career, then
+// individual training recommendations (current values; see data/training.js).
 
 import { h } from '../dom.js';
-import { getPlayerProfile, getPlayerHistory, getPref, setPref } from '../../store.js';
+import { getPlayerProfile, getPlayerHistory, getPref, setPref, playerKeyOf } from '../../store.js';
 import { formatGameDate } from '../../data/snapshot.js';
 import { ATTR_BY_KEY, attributeDirection } from '../../data/attributes.js';
 import { metricChange } from '../../data/development.js';
 import { backTarget } from '../../router.js';
 import { DevChart } from '../components/devChart.js';
 import { MetricPicker } from '../components/metricPicker.js';
+import { TrainingSection } from '../components/trainingSection.js';
 
 const MAX_ATTRS = 5;
 const CA_SERIES = { key: 'ca', label: 'CA', color: '#f7861e', shape: 'circle' };
@@ -136,6 +138,7 @@ export async function DevelopmentView({ pid, query }) {
       profile.current ? null : h('p', { class: 'dev-summary muted' }, `Not in the latest snapshot; last recorded ${formatGameDate(profile.model.gameDate)}.`),
       picker,
       chartArea,
+      TrainingSection(p, playerKeyOf(p)),
     ),
   };
 }
