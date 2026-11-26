@@ -194,7 +194,7 @@ function sanitizeRoleFilter(raw, positions) {
 // The Tactic screen's search, as ordinary filters (so its count and the Shortlists
 // results use the same matching): familiarity ≥ 16 at the position, and each key
 // attribute of the chosen role(s) ≥ 15 — once per attribute even when both phases
-// list it. Tendencies are listed but left unset, as in the Filters sheet.
+// list it.
 export const TACTIC_MIN_FAM = 16;
 
 /** @param roles { in_possession: role | null, out_of_possession: role | null } (catalogue roles) */
@@ -202,10 +202,10 @@ export function tacticFilters(position, roles) {
   const conds = [];
   const seen = new Set();
   for (const phase of ['in_possession', 'out_of_possession']) {
-    for (const a of (roles[phase]?.attrs || []).filter((x) => x.tier === 'key')) {
+    for (const a of roles[phase]?.attrs || []) {
       if (!a.mapped || !ATTR_CHOICE[a.key] || seen.has(a.key)) continue;
       seen.add(a.key);
-      conds.push(a.tendency ? { key: a.key, op: null, value: null, tendency: true } : { key: a.key, op: 'gte', value: ROLE_DEFAULT_MIN, tendency: false });
+      conds.push({ key: a.key, op: 'gte', value: ROLE_DEFAULT_MIN, tendency: false });
     }
   }
   const pick = (r) => (r ? { id: r.id, name: r.name } : null);
@@ -215,6 +215,34 @@ export function tacticFilters(position, roles) {
     minFam: TACTIC_MIN_FAM,
     roles: { position, in_possession: pick(roles.in_possession), out_of_possession: pick(roles.out_of_possession), conds },
   });
+}
+
+/**
+ * Bring a saved role filter in line with the role catalogue: each role id is
+ * resolved at its position and phase (`resolve(position, phase, id)` → catalogue
+ * role | null, migrations included); a role that can't be mapped is cleared, and
+ * the conditions follow the remaining roles' key attributes (kept thresholds
+ * stay, new attributes get the default). No role left → no role filter.
+ * Returns the same object when nothing changes.
+ */
+export function reconcileRoleFilter(f, resolve) {
+  const r = f?.roles;
+  if (!r) return f;
+  const roles = {};
+  for (const phase of ['in_possession', 'out_of_possession']) roles[phase] = r[phase] ? resolve(r.position, phase, r[phase].id) : null;
+  if (!roles.in_possession && !roles.out_of_possession) return { ...f, roles: null };
+  const pick = (x) => (x ? { id: x.id, name: x.name } : null);
+  const old = new Map(r.conds.map((c) => [c.key, c]));
+  const conds = [];
+  for (const phase of ['in_possession', 'out_of_possession']) {
+    for (const a of roles[phase]?.attrs || []) {
+      if (!a.mapped || !ATTR_CHOICE[a.key] || conds.some((c) => c.key === a.key)) continue;
+      const kept = old.get(a.key);
+      conds.push(kept && !kept.tendency && kept.op ? { ...kept } : { key: a.key, op: 'gte', value: ROLE_DEFAULT_MIN, tendency: false });
+    }
+  }
+  const next = { position: r.position, in_possession: pick(roles.in_possession), out_of_possession: pick(roles.out_of_possession), conds };
+  return JSON.stringify(next) === JSON.stringify(r) ? f : { ...f, roles: next };
 }
 
 export function sanitizeFilters(raw) {

@@ -9,10 +9,10 @@ import { shortNames, verdictKind, plainReportText } from './aiClient.js';
 const PHASE_LABEL = { in_possession: 'In Possession', out_of_possession: 'Out of Possession' };
 const VERDICT_LABEL = { recruitment: 'Recruitment Verdict', mixed: 'Recruitment Verdict', squad: 'Squad Verdict' };
 
-/** A score, or why it's missing: incomplete when a Key attribute has no recorded value. */
-const scoreOrIncomplete = (f) => (f?.score_incomplete ? `incomplete (no value for ${(f.missing_key_attributes || []).join(', ')})` : score(f?.squadlab_role_score_out_of_100));
+/** A score (1–20), or why it's missing: unavailable when a key attribute has no recorded value. */
+const scoreOrIncomplete = (f) => (f?.score_unavailable ? `unavailable (no value for ${(f.missing_key_attributes || []).join(', ')})` : score(f?.role_score_1_to_20));
 const unknown = (v) => (v === null || v === undefined || v === '' ? 'unknown' : v);
-const score = (v) => (typeof v === 'number' && Number.isFinite(v) ? String(Math.round(v * 100) / 100) : 'unknown');
+const score = (v) => (typeof v === 'number' && Number.isFinite(v) ? (Math.round(v * 10) / 10).toFixed(1) : 'unknown');
 const list = (obj) => Object.entries(obj || {}).map(([k, v]) => `${k} ${unknown(v)}`).join(', ');
 const dateText = (iso) => (iso ? formatGameDate(iso) || iso : 'unknown');
 
@@ -69,14 +69,11 @@ function rolesSection(payload, names) {
     const role = c.roles[ph];
     const fa = A.role_fit?.[ph] || {}, fb = B.role_fit?.[ph] || {};
     out.push('');
-    out.push(`${PHASE_LABEL[ph]}: ${role.name}${role.description ? ` (${role.description})` : ''}`);
+    out.push(`${PHASE_LABEL[ph]}: ${role.name} at ${c.position.code}`);
     out.push(`Key attributes (the SquadLab score inputs): ${role.key_attributes.join(', ')}`);
-    if (role.preferred_attributes?.length) out.push(`Preferred attributes (extra suitability context, not scored): ${role.preferred_attributes.join(', ')}`);
-    out.push(`SquadLab role score (out of 100): ${names.A} ${scoreOrIncomplete(fa)}, ${names.B} ${scoreOrIncomplete(fb)}`);
+    out.push(`SquadLab role score (1–20): ${names.A} ${scoreOrIncomplete(fa)}, ${names.B} ${scoreOrIncomplete(fb)}`);
     const keys = Object.keys(fa.key_attributes || fb.key_attributes || {});
     if (keys.length) out.push(`Key attribute values: ${keys.map((k) => `${k} ${names.A} ${unknown(fa.key_attributes?.[k])} / ${names.B} ${unknown(fb.key_attributes?.[k])}`).join('; ')}`);
-    const pref = Object.keys(fa.preferred_attributes || fb.preferred_attributes || {});
-    if (pref.length) out.push(`Preferred attribute values: ${pref.map((k) => `${k} ${names.A} ${unknown(fa.preferred_attributes?.[k])} / ${names.B} ${unknown(fb.preferred_attributes?.[k])}`).join('; ')}`);
   }
   return out.join('\n');
 }
@@ -86,7 +83,7 @@ function benchmarkSection(payload) {
   if (!payload.benchmarks?.length) return null;
   const out = [`CURRENT ${c.position ? c.position.code : ''} OPTIONS IN MY LINEUPS`.replace(/\s+/g, ' ')];
   for (const b of payload.benchmarks) {
-    const scores = c.assessed_phases.map((ph) => `${PHASE_LABEL[ph]} score ${score(b.role_fit?.[ph]?.squadlab_role_score_out_of_100)}`).join(', ');
+    const scores = c.assessed_phases.map((ph) => `${PHASE_LABEL[ph]} score ${score(b.role_fit?.[ph]?.role_score_1_to_20)}`).join(', ');
     out.push(`${b.benchmark === 'starter' ? 'Starter' : 'Backup'} (${b.lineup}): ${b.name}${b.is_compared_player ? ' (one of the two compared players)' : ''}, age ${unknown(b.age)}, CA ${unknown(b.ca)}, PA ${unknown(b.pa)}, familiarity ${unknown(b.familiarity_at_position)}${scores ? `, ${scores}` : ''}`);
   }
   return out.join('\n');
@@ -109,7 +106,7 @@ export function reportText(report, payload) {
   for (const x of b.by_phase || []) {
     if (!PHASE_LABEL[x.phase]) continue;
     const role = c.roles?.[x.phase];
-    const sa = payload.players[0].role_fit?.[x.phase]?.squadlab_role_score_out_of_100, sb = payload.players[1].role_fit?.[x.phase]?.squadlab_role_score_out_of_100;
+    const sa = payload.players[0].role_fit?.[x.phase]?.role_score_1_to_20, sb = payload.players[1].role_fit?.[x.phase]?.role_score_1_to_20;
     out.push(`${PHASE_LABEL[x.phase]}${role ? ` (${role.name})` : ''}: ${x.choice === 'level' ? 'Level' : names[x.choice]} (${names.A} ${score(sa)}, ${names.B} ${score(sb)}). ${say(x.explanation)}`);
   }
   out.push('');
@@ -139,7 +136,7 @@ export function buildChatPrompt(payload, report = null) {
 
 Assess each selected role separately using positional familiarity, the key attributes and the supplied SquadLab scores. Explain what drives the gap and give the other player's strongest relevant counterargument. Weigh asking price, age and PA alongside immediate fit. A cheaper player with more upside can be the better signing even if the other player is stronger today. Use the actual figures, treat PA as a ceiling, and only say what would change the verdict if the data supports it.
 
-How to read the data: attributes, positional familiarity and hidden attributes run from 1 to 20. CA and PA run up to 200. A SquadLab role score is the average of the role's Key attributes multiplied by 5, out of 100; Preferred attributes are extra suitability context and aren't scored. The roles come from FMInside's FM27 role calculator, without descriptions of their duties. The asking price is the assumed transfer fee; "unknown" means it isn't known, so don't estimate it. Money is in GBP.`);
+How to read the data: attributes, positional familiarity and hidden attributes run from 1 to 20. CA and PA run up to 200. A SquadLab role score is the equal-weight average of the key attributes listed for that position, phase and role, on the same 1–20 scale as attributes; In Possession and Out of Possession are scored separately and never combined. A score is unavailable when one of its key attributes has no recorded value. The roles have no descriptions of their duties. The asking price is the assumed transfer fee; "unknown" means it isn't known, so don't estimate it. Money is in GBP.`);
 
   const ctx = ['CONTEXT', `My club: ${unknown(club)}`, `In-game date of the data: ${dateText(payload.game_date)}`];
   ctx.push(`${A.name}: ${statusOf(A, club)}`);
@@ -181,15 +178,13 @@ export function adviceText(price, payload) {
 
 export const verdictText = (v) => VERDICT_TEXT[v] || v;
 
-/** A phase's duties as the role catalogue describes them, or a plain note that they aren't. */
-const dutyText = (r) => (r?.description ? `Duties: ${r.description}` : 'Duties for this phase are not described in the role catalogue, so keep to the score and its inputs.');
-/** "score 80; Key … ; Preferred …" for one role fit. */
-const fitText = (f) => `score ${scoreOrIncomplete(f)}; Key ${list(f.key_attributes)}${f.preferred_attributes && Object.keys(f.preferred_attributes).length ? `; Preferred ${list(f.preferred_attributes)}` : ''}`;
-const roleLine = (fit) => PHASES_TXT.filter((ph) => fit?.[ph]).map((ph) => `${PHASE_LABEL[ph]} ${fit[ph].role}${fit[ph].role_source ? ` (${fit[ph].role_source})` : ''}: ${fitText(fit[ph])}${'description' in fit[ph] ? `. ${dutyText(fit[ph])}` : ''}`).join(' | ');
+/** "score 14.25; key attributes …" for one role fit. */
+const fitText = (f) => `score ${scoreOrIncomplete(f)}; key attributes ${list(f.key_attributes)}`;
+const roleLine = (fit) => PHASES_TXT.filter((ph) => fit?.[ph]).map((ph) => `${PHASE_LABEL[ph]} ${fit[ph].role}${fit[ph].role_source ? ` (${fit[ph].role_source})` : ''}: ${fitText(fit[ph])}`).join(' | ');
 const PHASES_TXT = ['in_possession', 'out_of_possession'];
 
 function positionsSection(payload) {
-  const out = ['POSITIONS (familiarity out of 20; his best SquadLab role scores out of 100)'];
+  const out = ['POSITIONS (familiarity out of 20; his best SquadLab role scores, 1–20)'];
   for (const x of payload.positions) {
     out.push('');
     out.push(`${x.position} (${x.name}): familiarity ${unknown(x.familiarity)}${x.needs_retraining ? ', would need retraining' : ''}`);
@@ -197,7 +192,7 @@ function positionsSection(payload) {
       const roles = x.best_roles?.[ph] || [];
       if (!roles.length) continue;
       out.push(`${PHASE_LABEL[ph]}:`);
-      for (const r of roles) out.push(`- ${r.name}: ${fitText(r)}. ${dutyText(r)}`);
+      for (const r of roles) out.push(`- ${r.name}: ${fitText(r)}`);
     }
     if (x.position_attributes && Object.keys(x.position_attributes).length) out.push(`Attributes that matter at ${x.position} (lowest first): ${list(x.position_attributes)}`);
   }
@@ -214,7 +209,7 @@ function lineupSection(payload) {
     out.push(`${a.lineup} ${a.slot} at ${a.position}${a.primary ? ' (primary job)' : ''}, familiarity ${unknown(a.familiarity)}`);
     for (const ph of PHASES_TXT) {
       const f = a.role_fit?.[ph];
-      if (f) { out.push(`${PHASE_LABEL[ph]}: ${f.role} (saved for this slot): ${fitText(f)}. ${dutyText(f)}`); continue; }
+      if (f) { out.push(`${PHASE_LABEL[ph]}: ${f.role} (saved for this slot): ${fitText(f)}`); continue; }
       const cands = a.candidate_roles?.[ph] || [];
       out.push(`${PHASE_LABEL[ph]}: not set for this slot.${a.primary && cands.length ? ` Possible roles (any you pick is a suggestion, not my setup): ${cands.map((r) => `${r.name} (${fitText(r)})`).join('; ')}` : ''}`);
     }
@@ -252,7 +247,7 @@ function squadFitSection(payload) {
       const f = s.his_role_fit?.[ph];
       if (!f) continue;
       out.push(s.saved_roles?.[ph]
-        ? `${PHASE_LABEL[ph]}: ${f.role} (saved for ${s.slot}). ${dutyText(f)} ${payload.player.name}: ${fitText(f)}`
+        ? `${PHASE_LABEL[ph]}: ${f.role} (saved for ${s.slot}). ${payload.player.name}: ${fitText(f)}`
         : `${PHASE_LABEL[ph]}: not set for ${s.slot}, so this is general positional fit using ${f.role}. ${payload.player.name}: ${fitText(f)}`);
     }
     out.push(`Holders: First XI ${s.holders?.['First XI'] || 'empty'}, Backup XI ${s.holders?.['Backup XI'] || 'empty'}, Future XI ${s.holders?.['Future XI'] || 'empty'}`);
@@ -330,11 +325,11 @@ Ground every claim in the figures, treat SquadLab role scores as evidence and ex
 
 Use the attribute definitions below and don't stretch them. In particular: Positioning is defensive positioning (where he places himself when defending, such as screening passing lanes or covering space), so only recommend it for a concrete defensive responsibility; Off the Ball is attacking movement (finding pockets, offering passing options, moving after releasing the ball); Work Rate is the urgency and effort he puts into his duties (sustained pressing, recovery runs), not speed, which is Acceleration and Pace.
 
-Keep In Possession and Out of Possession distinct, and describe each phase's duties only from that role's description for that phase. A SquadLab score just averages the role's Key attributes (its score inputs), and Preferred attributes are suitability context, not duties: an input such as Passing or First Touch in an out-of-possession score is not an out-of-possession duty. Where a phase's duties aren't described, stick to the score and its inputs.
+Keep In Possession and Out of Possession distinct and never add their scores together. A SquadLab score just averages the role's key attributes (its score inputs) for that position and phase; an input is not a duty, so stick to the score and its inputs.
 
 Use age, CA, PA and any observed development history for the outlook. PA is a ceiling, not a promise: with a single snapshot, describe the current baseline and don't predict whether or when he'll reach it. Contract length only tells us how long he's signed for.
 
-How to read the data: attributes, positional familiarity and hidden attributes run from 1 to 20 (15+ familiarity means he can play the position now). CA and PA run up to 200. A SquadLab role score is the average of the role's Key attributes multiplied by 5, out of 100; Preferred attributes are extra suitability context and aren't scored. The roles come from FMInside's FM27 role calculator, without descriptions of their duties. Money is in GBP.`);
+How to read the data: attributes, positional familiarity and hidden attributes run from 1 to 20 (15+ familiarity means he can play the position now). CA and PA run up to 200. A SquadLab role score is the equal-weight average of the key attributes listed for that position, phase and role, on the same 1–20 scale as attributes; In Possession and Out of Possession are scored separately and never combined. A score is unavailable when one of its key attributes has no recorded value. The roles have no descriptions of their duties. Money is in GBP.`);
   parts.push(['CONTEXT', `My club: ${unknown(club)}`, `In-game date of the data: ${dateText(payload.game_date)}`, `${p.name}: ${statusOf(p, club)}`, `Report: ${dev ? 'Development Report (my player)' : 'Recruitment Report (external player)'}`].join('\n'));
   parts.push(playerSection(p, { position: null }, club));
   parts.push(positionsSection(payload));

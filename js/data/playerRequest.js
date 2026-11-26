@@ -8,7 +8,8 @@
 // change that.
 //
 // Everything comes from data SquadLab already holds: the player record, the
-// role catalogue and SquadLab role scores, First / Backup / Future XI, the
+// role catalogue and SquadLab role scores (1–20, the mean of the role's key
+// attributes for that position and phase; phases never combined), First / Backup / Future XI, the
 // role pair saved for each formation slot on the Lineups page (the career's
 // tactical setup), and his development history. A phase without a saved role
 // is never presented as one.
@@ -26,7 +27,7 @@ import { playerBlock, managerClub, roleFit, comparisonId } from './comparisonReq
 export const PLAYER_SCHEMA = 'squadlab.player.v1';
 
 const FAMILIAR = 15;          // familiarity from which a position counts as one he can play now
-const RETRAIN_MARGIN = 0;     // an unfamiliar position is worth a mention when his best roles there score at least as well
+const RETRAIN_MARGIN = 0;     // an unfamiliar position is worth a mention when his best role there (in some phase) scores at least as well
 const MAX_FAMILIAR = 3;
 const MAX_RETRAIN = 1;
 const TOP_ROLES = 3;
@@ -48,23 +49,37 @@ function rankedRoles(cat, p, code, phase) {
     .sort((a, b) => b.score - a.score);
 }
 
-/** Per position: familiarity and the best roles in each phase. */
+/** Per position: familiarity and the best roles in each phase (each phase ranked on its own). */
 function positionProfile(cat, p, pos) {
   const best = {};
   for (const ph of PHASES) best[ph.id] = rankedRoles(cat, p, pos.code, ph.id);
-  const tops = PHASES.map((ph) => best[ph.id][0]?.score).filter((v) => typeof v === 'number');
-  return { pos, familiarity: familiarityAt(p, pos.code), best, strength: tops.length ? tops.reduce((s, v) => s + v, 0) / tops.length : null };
+  const top = Object.fromEntries(PHASES.map((ph) => [ph.id, best[ph.id][0]?.score ?? null]));
+  return { pos, familiarity: familiarityAt(p, pos.code), best, top, scored: PHASES.some((ph) => top[ph.id] !== null) };
 }
+
+/**
+ * Orders positions by his best In Possession role score, then his best Out of
+ * Possession one (the phases are compared in turn, never added together).
+ */
+const phaseOrder = (a, b) => {
+  for (const ph of PHASES) {
+    const d = (b[ph.id] ?? -1) - (a[ph.id] ?? -1);
+    if (d) return d;
+  }
+  return 0;
+};
 
 /** The positions worth discussing: his best familiar ones, his lineup positions, and close unfamiliar ones. */
 function candidatePositions(cat, p, extraCodes) {
   const gk = isNaturalGoalkeeper(p);
-  const all = cat.positions.filter((pos) => (gk ? pos.code === 'gk' : pos.code !== 'gk')).map((pos) => positionProfile(cat, p, pos)).filter((x) => x.strength !== null);
-  const byStrength = (a, b) => b.strength - a.strength || (b.familiarity || 0) - (a.familiarity || 0);
+  const all = cat.positions.filter((pos) => (gk ? pos.code === 'gk' : pos.code !== 'gk')).map((pos) => positionProfile(cat, p, pos)).filter((x) => x.scored);
+  const byStrength = (a, b) => phaseOrder(a.top, b.top) || (b.familiarity || 0) - (a.familiarity || 0);
   const familiar = all.filter((x) => (x.familiarity || 0) >= FAMILIAR).sort(byStrength);
   const picked = familiar.slice(0, MAX_FAMILIAR);
-  const bestFamiliar = familiar[0]?.strength ?? null;
-  const retrain = all.filter((x) => (x.familiarity || 0) < FAMILIAR && (bestFamiliar === null || x.strength >= bestFamiliar - RETRAIN_MARGIN)).sort(byStrength).slice(0, MAX_RETRAIN);
+  const bestFamiliar = familiar[0] || null;
+  // An unfamiliar position is worth a mention when, in some phase, his best role there scores at least as well.
+  const closeTo = (x) => !bestFamiliar || PHASES.some((ph) => x.top[ph.id] !== null && x.top[ph.id] >= (bestFamiliar.top[ph.id] ?? -1) - RETRAIN_MARGIN);
+  const retrain = all.filter((x) => (x.familiarity || 0) < FAMILIAR && closeTo(x)).sort(byStrength).slice(0, MAX_RETRAIN);
   const out = [...picked];
   for (const code of extraCodes) { const x = all.find((y) => y.pos.code === code); if (x && !out.includes(x)) out.push(x); }
   for (const x of retrain) if (!out.includes(x)) out.push(x);
@@ -76,7 +91,7 @@ function positionAttributes(cat, p, code) {
   const seen = new Map();
   for (const ph of PHASES) for (const role of rolesFor(cat, code, ph.id)) {
     for (const a of role.attrs) {
-      if (!a.mapped || a.tendency || seen.has(a.label)) continue;
+      if (!a.mapped || seen.has(a.label)) continue;
       const v = intOrNull(p?.[a.block]?.[a.key]);
       if (v !== null) seen.set(a.label, v);
     }
@@ -84,24 +99,8 @@ function positionAttributes(cat, p, code) {
   return Object.fromEntries([...seen.entries()].sort((a, b) => a[1] - b[1]));
 }
 
-/**
- * A role's description for its own phase. Some catalogue entries repeat the
- * in-possession text for the out-of-possession role of the same name (e.g.
- * AM (C) Attacking Midfielder); then that phase's duties aren't described and
- * the description is withheld rather than misapplied.
- */
-export function phaseDescription(cat, role) {
-  const d = role.description || '';
-  if (!d) return { description: null, description_note: 'The role catalogue has no description for this role yet.' };
-  if (role.phase === 'out_of_possession') {
-    const twin = rolesFor(cat, role.position, 'in_possession').find((r) => r.name === role.name && r.description === d);
-    if (twin) return { description: null, description_note: 'The role catalogue only repeats the in-possession description for this role, so its out-of-possession duties are not described.' };
-  }
-  return { description: d };
-}
-
-/** A role with its phase description and this player's SquadLab score inputs. */
-const roleEntry = (cat, p, role, code) => ({ name: role.name, ...phaseDescription(cat, role), ...roleFit(p, role, code) });
+/** A role with this player's SquadLab score and its inputs. */
+const roleEntry = (cat, p, role, code) => ({ name: role.name, ...roleFit(p, role, code) });
 
 function positionBlock(cat, p, x) {
   const roles = {};
@@ -145,15 +144,14 @@ function savedPair(cat, slotRoles, slotId) {
   const code = SLOT_BY_ID[slotId].fam;
   return Object.fromEntries(PHASES.map((ph) => {
     const id = slotRoles?.[slotId]?.[ph.id];
-    // Renamed roles map; one no longer listed counts as not set (it's reselected on the Lineups page).
+    // Migrated ids map; one that can't be mapped counts as not set (it's cleared on the Lineups page).
     const role = id ? resolveSavedRole(cat, code, ph.id, id).role : null;
     return [ph.id, role || null];
   }));
 }
 
-const fitFor = (p, assessed, code, cat = null) => Object.fromEntries(PHASES.filter((ph) => assessed[ph.id]).map((ph) => [ph.id, {
+const fitFor = (p, assessed, code) => Object.fromEntries(PHASES.filter((ph) => assessed[ph.id]).map((ph) => [ph.id, {
   role: assessed[ph.id].role.name, role_source: assessed[ph.id].source,
-  ...(cat ? phaseDescription(cat, assessed[ph.id].role) : {}),
   ...roleFit(p, assessed[ph.id].role, code),
 }]));
 
@@ -163,7 +161,7 @@ const CORE_DEFINITIONS = ['positioning', 'off_the_ball', 'work_rate', 'accelerat
 /** SquadLab's attribute definitions (attributeInfo.js) for the attributes in play, by label. */
 function attributeDefinitions(cat, codes) {
   const keys = new Set(CORE_DEFINITIONS);
-  for (const code of codes) for (const ph of PHASES) for (const role of rolesFor(cat, code, ph.id)) for (const a of role.attrs) if (a.mapped && !a.tendency) keys.add(a.key);
+  for (const code of codes) for (const ph of PHASES) for (const role of rolesFor(cat, code, ph.id)) for (const a of role.attrs) if (a.mapped) keys.add(a.key);
   const out = {};
   for (const k of keys) { const label = ATTR_BY_KEY[k]?.label; if (label && ATTRIBUTE_INFO[k]) out[label] = ATTRIBUTE_INFO[k]; }
   return out;
@@ -229,7 +227,7 @@ function personBrief(p, code, assessed, places, cat) {
     age: intOrNull(p.age), ca: caOf(p), pa: paOf(p),
     familiarity: familiarityAt(p, code),
     lineup_places: places.map((x) => `${x.lineup} ${x.slot}`),
-    role_fit: fitFor(p, assessed, code, null),
+    role_fit: fitFor(p, assessed, code),
   };
 }
 
@@ -238,10 +236,11 @@ function internalOptions(cat, data, code, assessed, exclude, n) {
   return (data.players || [])
     .filter((p) => isClubOwned(p, data) && !exclude.has(persistentId(p)) && (familiarityAt(p, code) || 0) >= 12)
     .map((p) => {
-      const scores = Object.values(fitFor(p, assessed, code)).map((f) => f.squadlab_role_score_out_of_100).filter((v) => typeof v === 'number');
-      return { p, avg: scores.length ? scores.reduce((s, v) => s + v, 0) / scores.length : 0 };
+      const fit = fitFor(p, assessed, code);
+      return { p, top: Object.fromEntries(PHASES.map((ph) => [ph.id, fit[ph.id]?.role_score_1_to_20 ?? null])) };
     })
-    .sort((a, b) => b.avg - a.avg || (paOf(b.p) || 0) - (paOf(a.p) || 0))
+    // Phases compared in turn (In Possession first), never added together.
+    .sort((a, b) => phaseOrder(a.top, b.top) || (paOf(b.p) || 0) - (paOf(a.p) || 0))
     .slice(0, n)
     .map((x) => x.p);
 }
@@ -280,8 +279,8 @@ function squadFit(cat, target, positions, ctx) {
         slot: s.id,
         position: x.pos.short, name: x.pos.label,
         his_familiarity: x.familiarity,
-        saved_roles: Object.fromEntries(PHASES.map((ph) => [ph.id, saved[ph.id] ? { name: saved[ph.id].name, ...phaseDescription(cat, saved[ph.id]) } : null])),
-        his_role_fit: fitFor(target, assessed, code, cat),
+        saved_roles: Object.fromEntries(PHASES.map((ph) => [ph.id, saved[ph.id] ? { name: saved[ph.id].name, key_attributes: saved[ph.id].attrs.map((a) => a.label) } : null])),
+        his_role_fit: fitFor(target, assessed, code),
         holders,
         club_players: players,
       });
@@ -302,7 +301,7 @@ function assignmentBlocks(cat, p, places, slotRoles) {
       lineup: x.lineup, slot: x.slot, position: pos?.short || x.code,
       primary: DEFAULT_LINEUPS.findIndex((d) => d.id === x.lineupId) === topTier,
       familiarity: familiarityAt(p, x.code),
-      role_fit: fitFor(p, assessed, x.code, cat),
+      role_fit: fitFor(p, assessed, x.code),
       unset_phases: unset,
     };
     if (unset.length) {

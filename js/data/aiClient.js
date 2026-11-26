@@ -157,7 +157,7 @@ export function plainReportText(s, names) {
   const a = names.A, b = names.B;
   return s
     .replace(/\bin_possession\b/g, 'in possession').replace(/\bout_of_possession\b/g, 'out of possession')
-    .replace(/\bsquadlab_role_score_out_of_100\b/g, 'role score')
+    .replace(/\b(?:role_score_1_to_20|squadlab_role_score_out_of_100)\b/g, 'role score')
     .replace(/\b(?:recruitment_verdict|better_today|by_phase|would_change|asking_price|role_fit|key_attributes)\b/g, (m) => m.replace(/_/g, ' '))
     .replace(/\b[Pp]layer\s+A\b/g, a).replace(/\b[Pp]layer\s+B\b/g, b)
     .replace(/\bA(['’])s\b/g, `${a}$1s`).replace(/\bB(['’])s\b/g, `${b}$1s`)

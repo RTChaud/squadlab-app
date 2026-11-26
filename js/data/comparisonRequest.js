@@ -8,12 +8,15 @@
 // Pure: no DOM, no store; the caller passes the context in.
 
 import { ATTRIBUTE_GROUPS, HIDDEN_ATTRS, PERSONALITY_ATTRS, describeTraits, intOrNull } from './attributes.js';
-import { PHASES, positionByCode, rolesFor, roleScore, roleValue, familiarityAt } from './roles.js';
+import { PHASES, positionByCode, roleScore, roleValue, familiarityAt, resolveSavedRole } from './roles.js';
 import { askingPrice, monthlySalary, contractEnd, timeRemaining, clausesOf, clauseStatus, CLAUSE_TYPES } from './contract.js';
 import { formatMoneyDisplay } from './money.js';
 import { profileNameOf, isClubOwned, findInSnapshot, persistentId } from './players.js';
 import { formatPositions, PITCH_CODES } from './positions.js';
 import { SLOTS } from './lineups.js';
+
+/** "M (C)" for an app position code. */
+const positionLabel = (code) => (code ? formatPositions([String(code).toUpperCase()]) : null);
 
 export const REQUEST_SCHEMA = 'squadlab.compare.v1';
 export const LABELS = ['A', 'B'];
@@ -91,18 +94,21 @@ function squadOf(p, model, teamLabelOf) {
 }
 
 /**
- * Role evidence for one player in one phase: the SquadLab score (mean of the
- * Key attributes × 5), his Key attribute values (the score inputs) and his
- * Preferred attribute values (suitability context, not scored). A Key value
- * missing from the data makes the score incomplete (null), never zero.
+ * Role evidence for one player at one position, phase and role: the SquadLab
+ * role score (the equal-weight mean of that role's key attributes, 1–20) and
+ * his key attribute values (the score inputs). A key value missing from the
+ * data makes the score unavailable (null), never zero or a partial mean.
  */
 export function roleFit(p, role, posCode) {
   const s = roleScore(role, p);
-  const val = (tier) => Object.fromEntries(role.attrs.filter((a) => a.tier === tier).map((a) => [a.label, roleValue(p, a)]));
-  const fit = { squadlab_role_score_out_of_100: s.value === null ? null : round2(s.value), key_attributes: val('key') };
-  if (s.incomplete) { fit.score_incomplete = true; fit.missing_key_attributes = s.missing; }
-  const pref = val('preferred');
-  if (Object.keys(pref).length) fit.preferred_attributes = pref;
+  const fit = {
+    position: positionLabel(posCode),
+    phase: role.phase,
+    role_name: role.name,
+    role_score_1_to_20: s.value === null ? null : round2(s.value),
+    key_attributes: Object.fromEntries(role.attrs.map((a) => [a.label, roleValue(p, a)])),
+  };
+  if (s.value === null) { fit.score_unavailable = true; fit.missing_key_attributes = s.missing; }
   return fit;
 }
 
@@ -117,7 +123,7 @@ export function comparisonBasis(compare, cat) {
   const roles = {};
   for (const ph of PHASES) {
     const id = compare.roleByPos?.[compare.rolePos]?.[ph.id];
-    roles[ph.id] = id ? rolesFor(cat, position.code, ph.id).find((r) => r.id === id) || null : null;
+    roles[ph.id] = id ? resolveSavedRole(cat, position.code, ph.id, id).role : null;
   }
   return { position, roles };
 }
@@ -184,12 +190,7 @@ export function playerBlock(res, label, ctx, basis, club) {
 }
 
 export function roleBlock(role) {
-  const list = (tier) => role.attrs.filter((a) => a.tier === tier).map((a) => a.label);
-  const out = { name: role.name, key_attributes: list('key') };
-  if (role.description) out.description = role.description;
-  const pref = list('preferred');
-  if (pref.length) out.preferred_attributes = pref;
-  return out;
+  return { name: role.name, phase: role.phase, key_attributes: role.attrs.map((a) => a.label) };
 }
 
 /**
