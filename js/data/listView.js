@@ -3,7 +3,8 @@
 // No DOM here — the UI lives in ui/components/playerBrowser.js and friends.
 //
 // A "config" is everything a saved view stores:
-//   { filters, columns: [columnId], sort: { key, dir }, baseline: 'first' | 'YYYY-MM-DD' }
+//   { filters, columns: [columnId] (manual), sort: { key, dir }, baseline: 'first' | 'YYYY-MM-DD',
+//     roleCols: { position, in_possession, out_of_possession, hidden } (role attribute columns) }
 // The temporary name search and scroll positions are never part of it.
 
 import { ATTRIBUTE_GROUPS, HIDDEN_ATTRS, PERSONALITY_ATTRS, attributeDirection, intOrNull } from './attributes.js';
@@ -653,7 +654,95 @@ export function sortRows(rows, sort, dev) {
 export const DEFAULT_SORT = { key: 'ca', dir: 'desc' };
 
 export function defaultConfig(section) {
-  return { filters: emptyFilters(), columns: [...DEFAULT_COLUMNS[section] || DEFAULT_COLUMNS.squad], sort: { ...DEFAULT_SORT }, baseline: 'first' };
+  return { filters: emptyFilters(), columns: [...DEFAULT_COLUMNS[section] || DEFAULT_COLUMNS.squad], sort: { ...DEFAULT_SORT }, baseline: 'first', roleCols: emptyRoleCols() };
+}
+
+// ---- Role attribute columns (View) ---------------------------------------------------------------
+//
+// config.columns holds only the manually chosen columns. config.roleCols picks a
+// position and up to one role per phase; their key attributes (from the role
+// catalogue) are shown as extra attribute columns after the manual ones, in the
+// app's attribute order, never twice. `hidden` lists role columns the user
+// removed for the current selection; it is reset whenever the position or a
+// role changes. This is display only: it never affects which players appear.
+
+export const emptyRoleCols = () => ({ position: null, in_possession: null, out_of_possession: null, hidden: [] });
+const ROLE_PHASE_IDS = ['in_possession', 'out_of_possession'];
+const ATTR_ORDER = new Map(ATTRIBUTE_CHOICES.flatMap((g) => g.attrs.map((a) => a.key)).map((k, i) => [k, i]));
+
+export function sanitizeRoleCols(raw) {
+  const out = emptyRoleCols();
+  if (!raw || typeof raw !== 'object') return out;
+  const pos = POSITION_CHOICES.some((p) => p.code === raw.position) ? raw.position : null;
+  if (!pos) return out;
+  out.position = pos;
+  for (const ph of ROLE_PHASE_IDS) {
+    const id = raw[ph];
+    if (typeof id === 'string' && id.startsWith(`${pos}:${ph}:`)) out[ph] = id;
+  }
+  out.hidden = uniq((Array.isArray(raw.hidden) ? raw.hidden : []).filter((id) => /^a:/.test(id) && columnDef(id)));
+  return out;
+}
+
+export const roleColsActive = (rc) => !!(rc && (rc.in_possession || rc.out_of_possession));
+
+/** A new roleCols after choosing a position (roles reset, exceptions cleared). */
+export const roleColsWithPosition = (code) => ({ ...emptyRoleCols(), position: code || null });
+/** A new roleCols after choosing a role for a phase (exceptions cleared). */
+export const roleColsWithRole = (rc, phase, id) => ({ ...rc, [phase]: id || null, hidden: [] });
+
+/**
+ * The role-derived attribute column ids for a selection, in the app's attribute
+ * order. `resolve(position, phase, id)` returns the catalogue role (or null).
+ */
+export function roleColumnIds(rc, resolve) {
+  if (!rc?.position) return [];
+  const keys = new Set();
+  for (const ph of ROLE_PHASE_IDS) {
+    const role = rc[ph] ? resolve(rc.position, ph, rc[ph]) : null;
+    for (const a of role?.attrs || []) if (a.mapped && ATTR_CHOICE[a.key]) keys.add(a.key);
+  }
+  return [...keys].sort((a, b) => ATTR_ORDER.get(a) - ATTR_ORDER.get(b)).map((k) => `a:${k}`);
+}
+
+/**
+ * Columns to display: the manual columns in their order, then the role columns
+ * not already shown and not hidden for this selection.
+ * Returns { columns, auto: Set(id of columns shown only because of a role), required: Set(all role column ids) }.
+ */
+export function displayColumns(cfg, resolve) {
+  const required = roleColumnIds(cfg.roleCols, resolve);
+  const hidden = new Set(cfg.roleCols?.hidden || []);
+  const manual = cfg.columns.filter((id) => !hidden.has(id));
+  const auto = required.filter((id) => !manual.includes(id) && !hidden.has(id));
+  return { columns: [...manual, ...auto], auto: new Set(auto), required: new Set(required) };
+}
+
+/**
+ * Remove a displayed column. A column required by the selected roles is also
+ * hidden for this selection (whether it was manual or automatic).
+ */
+export function hideColumn(cfg, id, required) {
+  const columns = cfg.columns.filter((x) => x !== id);
+  const rc = cfg.roleCols || emptyRoleCols();
+  const hidden = required.has(id) ? uniq([...rc.hidden, id]) : rc.hidden.filter((x) => x !== id);
+  return { ...cfg, columns, roleCols: { ...rc, hidden } };
+}
+
+/** Add a column manually (kept as manual even if a role also shows it; un-hides it). */
+export function addManualColumn(cfg, id) {
+  const rc = cfg.roleCols || emptyRoleCols();
+  return { ...cfg, columns: uniq([...cfg.columns, id]), roleCols: { ...rc, hidden: rc.hidden.filter((x) => x !== id) } };
+}
+
+/** Bring roleCols in line with the role catalogue (migrated ids; unmappable roles cleared). */
+export function reconcileRoleCols(cfg, resolveId) {
+  const rc = cfg.roleCols;
+  if (!rc?.position) return cfg;
+  const next = { ...rc };
+  for (const ph of ROLE_PHASE_IDS) if (rc[ph]) next[ph] = resolveId(rc.position, ph, rc[ph]);
+  if (ROLE_PHASE_IDS.every((ph) => next[ph] === rc[ph])) return cfg;
+  return { ...cfg, roleCols: { ...next, hidden: [] } };
 }
 
 /** Sort keys allowed for a column set: any shown column, plus XI (Squad slot) and Nationality even when hidden. */
@@ -665,12 +754,14 @@ export function sanitizeConfig(raw, section) {
   let columns = uniq((Array.isArray(raw.columns) ? raw.columns : []).filter((id) => columnDef(id)));
   if (!columns.length) columns = base.columns;
   if (!columns.includes('name')) columns.splice(columns[0] === 'xi' ? 1 : 0, 0, 'name'); // Name is always shown
+  const roleCols = sanitizeRoleCols(raw.roleCols);
   const s = raw.sort && typeof raw.sort === 'object' ? raw.sort : {};
-  const sort = sortableKeys(columns).includes(s.key)
+  // A role attribute column can be the sort key while a role is selected.
+  const sort = sortableKeys(columns).includes(s.key) || (roleColsActive(roleCols) && /^a:/.test(s.key || '') && columnDef(s.key))
     ? { key: s.key, dir: s.dir === 'asc' ? 'asc' : 'desc' }
     : (columns.includes('ca') ? { ...DEFAULT_SORT } : { key: 'name', dir: 'asc' });
   const baseline = typeof raw.baseline === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.baseline) ? raw.baseline : 'first';
-  return { filters: sanitizeFilters(raw.filters), columns, sort, baseline };
+  return { filters: sanitizeFilters(raw.filters), columns, sort, baseline, roleCols };
 }
 
 export const sameConfig = (a, b) => JSON.stringify(a) === JSON.stringify(b);
