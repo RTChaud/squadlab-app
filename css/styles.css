@@ -1540,6 +1540,14 @@ button.attr-name:focus-visible { outline: 2px solid var(--accent); outline-offse
 .col-btn:disabled { opacity: 0.25; cursor: default; }
 .col-btn-spacer { display: block; flex: none; width: 38px; height: 38px; }
 .col-restore { align-self: flex-start; padding: 0; }
+/* View → Role attributes: role-derived columns (subtle tag; dotted heading in the table). */
+.vrole-picks { margin-top: 4px; }
+.col-auto .col-name { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.col-auto-tag {
+  display: inline-block; margin-left: 8px; padding: 1px 6px; border: 1px solid rgba(247, 134, 30, 0.45); border-radius: 999px;
+  font-size: 10.5px; font-weight: 750; letter-spacing: 0.05em; text-transform: uppercase; color: var(--accent); vertical-align: 2px;
+}
+.th-auto .th-text { text-decoration: underline dotted rgba(247, 134, 30, 0.8); text-underline-offset: 3px; }
 /* Long sheets (Filters, View): actions stay reachable at the bottom. */
 .sheet-tall .sheet-actions {
   position: sticky; bottom: -18px; z-index: 2; flex-direction: row;
