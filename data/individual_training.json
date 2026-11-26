@@ -1,16 +1,13 @@
 {
   "schema_version": 1,
-  "data_version": "2026-11-26-dummy-1",
-  "provisional": true,
+  "data_version": "2026-11-26-fm27-1",
+  "provisional": false,
   "notes": [
-    "Dummy dataset for implementation. Most mappings are documented for earlier FM versions and have not been independently verified in FM27.",
-    "Focuses without an established mapping have been omitted, including all goalkeeper-specific focuses.",
-    "The +1 ranking simulation belongs in application logic, not in this attribute mapping.",
+    "Individual training focuses and trained attributes as listed by Romain for FM27.",
     "Keep focus IDs and canonical attribute IDs stable when revising labels or mappings."
   ],
   "sources": [
-    "https://www.reddit.com/r/footballmanagergames/comments/1os168n/what_does_each_individual_training_focus_do_in/",
-    "https://sortitoutsi.net/content/78226/optimal-training-schedules"
+    "Romain, 26 Nov 2026"
   ],
   "training_focuses": [
     {
@@ -18,8 +15,8 @@
       "label": "Quickness",
       "applies_to": "all",
       "trained_attributes": [
-        "acceleration",
-        "pace"
+        "pace",
+        "acceleration"
       ]
     },
     {
@@ -50,11 +47,87 @@
       ]
     },
     {
+      "id": "chance_conversion",
+      "label": "Chance Conversion",
+      "applies_to": "outfield",
+      "trained_attributes": [
+        "finishing",
+        "heading",
+        "long_shots",
+        "technique",
+        "anticipation",
+        "composure",
+        "off_the_ball"
+      ]
+    },
+    {
+      "id": "chance_creation",
+      "label": "Chance Creation",
+      "applies_to": "outfield",
+      "trained_attributes": [
+        "crossing",
+        "passing",
+        "technique",
+        "decisions",
+        "flair",
+        "vision"
+      ]
+    },
+    {
+      "id": "ball_retention",
+      "label": "Ball Retention",
+      "applies_to": "outfield",
+      "trained_attributes": [
+        "first_touch",
+        "concentration",
+        "composure",
+        "decisions",
+        "teamwork"
+      ]
+    },
+    {
+      "id": "ball_progression",
+      "label": "Ball Progression",
+      "applies_to": "outfield",
+      "trained_attributes": [
+        "dribbling",
+        "passing",
+        "anticipation",
+        "decisions",
+        "teamwork",
+        "vision"
+      ]
+    },
+    {
+      "id": "pressing",
+      "label": "Pressing",
+      "applies_to": "outfield",
+      "trained_attributes": [
+        "tackling",
+        "aggression",
+        "anticipation",
+        "decisions",
+        "work_rate"
+      ]
+    },
+    {
+      "id": "containment",
+      "label": "Containment",
+      "applies_to": "outfield",
+      "trained_attributes": [
+        "marking",
+        "anticipation",
+        "concentration",
+        "positioning",
+        "teamwork"
+      ]
+    },
+    {
       "id": "defensive_positioning",
       "label": "Defensive Positioning",
       "applies_to": "outfield",
       "trained_attributes": [
-        "marking",
+        "concentration",
         "positioning",
         "decisions"
       ]
@@ -75,7 +148,8 @@
       "applies_to": "outfield",
       "trained_attributes": [
         "composure",
-        "decisions"
+        "decisions",
+        "vision"
       ]
     },
     {
@@ -94,7 +168,6 @@
       "applies_to": "outfield",
       "trained_attributes": [
         "passing",
-        "vision",
         "technique"
       ]
     },
@@ -118,6 +191,24 @@
       ]
     },
     {
+      "id": "tackling",
+      "label": "Tackling",
+      "applies_to": "outfield",
+      "trained_attributes": [
+        "tackling",
+        "aggression"
+      ]
+    },
+    {
+      "id": "marking",
+      "label": "Marking",
+      "applies_to": "outfield",
+      "trained_attributes": [
+        "marking",
+        "concentration"
+      ]
+    },
+    {
       "id": "aerial",
       "label": "Aerial",
       "applies_to": "outfield",
@@ -132,6 +223,7 @@
       "applies_to": "all",
       "trained_attributes": [
         "free_kick_taking",
+        "tackling",
         "technique"
       ]
     },
@@ -159,6 +251,52 @@
       "applies_to": "all",
       "trained_attributes": [
         "long_throws"
+      ]
+    },
+    {
+      "id": "gk_shot_stopping",
+      "label": "GK Shot Stopping",
+      "applies_to": "goalkeeper",
+      "trained_attributes": [
+        "reflexes",
+        "anticipation",
+        "positioning",
+        "agility"
+      ]
+    },
+    {
+      "id": "gk_handling",
+      "label": "GK Handling",
+      "applies_to": "goalkeeper",
+      "trained_attributes": [
+        "aerial_reach",
+        "handling",
+        "concentration",
+        "balance"
+      ]
+    },
+    {
+      "id": "gk_sweeping",
+      "label": "GK Sweeping",
+      "applies_to": "goalkeeper",
+      "trained_attributes": [
+        "one_on_ones",
+        "communication",
+        "command_of_area",
+        "rushing_out"
+      ]
+    },
+    {
+      "id": "gk_distribution",
+      "label": "GK Distribution",
+      "applies_to": "goalkeeper",
+      "trained_attributes": [
+        "kicking",
+        "throwing",
+        "first_touch",
+        "passing",
+        "composure",
+        "vision"
       ]
     }
   ]
