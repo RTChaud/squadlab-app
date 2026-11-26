@@ -1,17 +1,26 @@
-// View menu for the Squad, Shortlists and Tags tables: saved views, columns and the
-// development baseline. Column and baseline changes apply straight away; a
-// saved view is only overwritten by "Save changes".
+// View menu for the Squad, Shortlists and Tags tables: saved views, role
+// attribute columns, columns and the development baseline. Changes apply
+// straight away; a saved view is only overwritten by "Save changes".
+//
+// Role attributes: a position and up to one role per phase add those roles' key
+// attribute columns after the manual ones (display only; Filters are separate).
 
 import { h } from '../dom.js';
 import { openSheet, confirmSheet } from './sheet.js';
 import { promptSheet } from './promptSheet.js';
 import { pickAttribute } from './attributePicker.js';
-import { columnDef, INFO_COLUMNS, CONTRACT_COLUMNS, DEFAULT_COLUMNS, DEFAULT_VIEW_ID } from '../../data/listView.js';
+import {
+  columnDef, INFO_COLUMNS, CONTRACT_COLUMNS, DEFAULT_COLUMNS, DEFAULT_VIEW_ID,
+  emptyRoleCols, roleColsWithPosition, roleColsWithRole, hideColumn, addManualColumn,
+} from '../../data/listView.js';
+import { PHASES, positionByCode, rolesFor, NO_ROLES_TEXT } from '../../data/roles.js';
+import { positionGrid, rolePickControl, POS_LABEL } from './filterSheet.js';
 import { formatGameDate } from '../../data/snapshot.js';
 
 /**
  * @param {object} api
- *   state() → { config, viewId, modified, views: [{id,name}] }, section, latestDate, earlierDates
+ *   state() → { config, display: { columns, auto, required }, viewId, modified, views: [{id,name}] },
+ *   section, latestDate, earlierDates, catalogue (role catalogue)
  *   setConfig(config), applyView(id), saveAs(name) (throws on bad name), saveChanges(), rename(id, name), remove(id)
  */
 export function openViewSheet(api) {
@@ -52,18 +61,58 @@ export function openViewSheet(api) {
         st.viewId !== DEFAULT_VIEW_ID || st.modified ? btn('Back to Default', () => { api.applyView(DEFAULT_VIEW_ID); render(); }) : null));
   }
 
+  function roleSection(st) {
+    const cat = api.catalogue;
+    const rc = st.config.roleCols || emptyRoleCols();
+    const set = (roleCols) => { api.setConfig({ ...st.config, roleCols }); render(); };
+    const grid = positionGrid((code) => rc.position === code, (code) => set(roleColsWithPosition(rc.position === code ? null : code)));
+    let picks = null;
+    if (rc.position) {
+      if (!cat) picks = h('p', { class: 'fhint' }, 'Loading roles…');
+      else if (cat.error) picks = h('p', { class: 'fhint' }, cat.error);
+      else if (!positionByCode(cat, rc.position)) picks = h('p', { class: 'fhint' }, `The role catalogue has no roles for ${POS_LABEL[rc.position]}.`);
+      else {
+        picks = h('div', { class: 'frole-picks vrole-picks' }, PHASES.map((ph) => {
+          const roles = rolesFor(cat, rc.position, ph.id);
+          return h('div', { class: 'frole-col', 'data-phase': ph.id },
+            h('p', { class: 'frole-phase' }, ph.label),
+            roles.length
+              ? rolePickControl({
+                roles, value: rc[ph.id], noneLabel: 'None', label: `${ph.label} role for columns`,
+                dataset: { roleCols: ph.id }, onChange: (id) => set(roleColsWithRole(rc, ph.id, id)),
+              })
+              : h('p', { class: 'role-none muted small' }, NO_ROLES_TEXT));
+        }));
+      }
+    }
+    return sec('Role attributes',
+      grid,
+      picks,
+      rc.position ? h('button', { type: 'button', class: 'chip-clear col-restore', onclick: () => set(emptyRoleCols()) }, 'Clear role attributes') : null);
+  }
+
   function columnsSection(st) {
-    const cols = st.config.columns;
-    const set = (next) => { api.setConfig({ ...st.config, columns: next }); render(); };
-    const move = (i, d) => { const n = [...cols]; [n[i], n[i + d]] = [n[i + d], n[i]]; set(n); };
-    const rows = cols.map((id, i) => {
+    const cfg = st.config;
+    const cols = cfg.columns; // manual columns
+    const shown = st.display.columns;
+    const set = (next) => { api.setConfig(next); render(); };
+    const setManual = (columns) => set({ ...cfg, columns });
+    const move = (i, d) => { const n = [...cols]; [n[i], n[i + d]] = [n[i + d], n[i]]; setManual(n); };
+    const rows = shown.map((id) => {
       const c = columnDef(id);
-      return h('li', { class: 'col-row' },
+      const auto = st.display.auto.has(id);
+      const i = cols.indexOf(id);
+      const hide = h('button', { type: 'button', class: 'col-btn', 'aria-label': `Hide ${c.label}`, onclick: () => set(hideColumn(cfg, id, st.display.required)) }, '×');
+      if (auto) {
+        return h('li', { class: 'col-row col-auto', 'data-col': id },
+          h('span', { class: 'col-name' }, c.label, h('span', { class: 'col-auto-tag', title: 'Shown for the selected roles' }, 'Role')),
+          hide);
+      }
+      return h('li', { class: 'col-row', 'data-col': id },
         h('span', { class: 'col-name' }, c.label),
         h('button', { type: 'button', class: 'col-btn', 'aria-label': `Move ${c.label} earlier`, disabled: i === 0, onclick: () => move(i, -1) }, '↑'),
         h('button', { type: 'button', class: 'col-btn', 'aria-label': `Move ${c.label} later`, disabled: i === cols.length - 1, onclick: () => move(i, 1) }, '↓'),
-        c.locked ? h('span', { class: 'col-btn-spacer' })
-          : h('button', { type: 'button', class: 'col-btn', 'aria-label': `Hide ${c.label}`, onclick: () => set(cols.filter((x) => x !== id)) }, '×'));
+        c.locked ? h('span', { class: 'col-btn-spacer' }) : hide);
     });
     const groups = [
       { label: 'Player', cols: [...INFO_COLUMNS, columnDef('d:ca')] },
@@ -71,13 +120,13 @@ export function openViewSheet(api) {
     ].map((g) => ({ ...g, cols: g.cols.filter((c) => !cols.includes(c.id)) })).filter((g) => g.cols.length);
     const addSel = h('select', {
       class: 'select select-sm', 'aria-label': 'Add a column',
-      onchange: (e) => { if (e.target.value) set([...cols, e.target.value]); },
+      onchange: (e) => { if (e.target.value) set(addManualColumn(cfg, e.target.value)); },
     }, h('option', { value: '' }, groups.length ? 'Add column…' : 'All columns shown'),
       groups.map((g) => h('optgroup', { label: g.label }, g.cols.map((c) => h('option', { value: c.id }, c.label)))));
     const addAttr = (prefix, title) => async () => {
       const used = new Set(cols.filter((id) => id.startsWith(prefix)).map((id) => id.slice(2)));
       const key = await pickAttribute({ title, exclude: used, excludeNote: 'Shown' });
-      if (key) set([...cols, `${prefix}${key}`]);
+      if (key) set(addManualColumn(cfg, `${prefix}${key}`));
     };
     return sec('Columns',
       h('ol', { class: 'col-list' }, rows),
@@ -86,7 +135,7 @@ export function openViewSheet(api) {
         h('button', { type: 'button', class: 'tool-btn', onclick: addAttr('a:', 'Add attribute column') }, '+ Attribute'),
         h('button', { type: 'button', class: 'tool-btn', onclick: addAttr('d:', 'Add attribute change') }, '+ Change')),
       h('button', {
-        type: 'button', class: 'chip-clear col-restore', onclick: () => set([...DEFAULT_COLUMNS[api.section]]),
+        type: 'button', class: 'chip-clear col-restore', onclick: () => set({ ...cfg, columns: [...DEFAULT_COLUMNS[api.section]], roleCols: emptyRoleCols() }),
       }, 'Restore default columns'));
   }
 
@@ -110,7 +159,7 @@ export function openViewSheet(api) {
   function render() {
     const st = api.state();
     const scroll = sheet?.el.scrollTop ?? 0;
-    body.replaceChildren(viewsSection(st), columnsSection(st), baselineSection(st));
+    body.replaceChildren(viewsSection(st), roleSection(st), columnsSection(st), baselineSection(st));
     if (sheet) sheet.el.scrollTop = scroll;
   }
 

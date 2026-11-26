@@ -25,7 +25,36 @@ import { PHASES, loadRoleCatalogue, positionByCode, rolesFor, resolveSavedRole, 
 
 // Familiarity codes laid out like the profile pitch (front to back).
 const POS_LAYOUT = [[null, 'stc', null], ['aml', 'amc', 'amr'], ['ml', 'mc', 'mr'], ['wbl', 'dm', 'wbr'], ['dl', 'dc', 'dr'], [null, 'gk', null]];
-const POS_LABEL = Object.fromEntries(POSITION_CHOICES.map((p) => [p.code, p.label]));
+export const POS_LABEL = Object.fromEntries(POSITION_CHOICES.map((p) => [p.code, p.label]));
+
+/** Toggle chip, as used throughout Filters. */
+export const tchip = (label, pressed, onclick, extra = {}) => h('button', {
+  type: 'button', class: `tchip${pressed ? ' on' : ''}${extra.cls ? ` ${extra.cls}` : ''}`, 'aria-pressed': String(pressed),
+  'aria-label': extra.aria || null, onclick,
+}, label);
+
+/** The pitch-shaped position selector shared by Filters and View. */
+export const positionGrid = (isOn, onToggle) => h('div', { class: 'fpitch' }, POS_LAYOUT.map((row) => h('div', { class: 'fpitch-row' }, row.map((code) => (code
+  ? tchip(POS_LABEL[code], isOn(code), () => onToggle(code), { aria: `Position ${POS_LABEL[code]}` })
+  : h('span', { class: 'fpitch-gap' }))))));
+
+/**
+ * A role dropdown in the shared role-pick style.
+ * @param o  roles (catalogue roles), value (id|null), noneLabel, label (aria), dataset, onChange(id|null)
+ */
+export function rolePickControl(o) {
+  const role = o.roles.find((r) => r.id === o.value) || null;
+  const select = h('select', {
+    class: 'role-pick-select', 'aria-label': o.label, dataset: o.dataset || {},
+    onchange: (e) => o.onChange(e.target.value || null),
+  },
+    h('option', { value: '', selected: !role }, o.noneLabel),
+    o.roles.map((r) => h('option', { value: r.id, selected: role?.id === r.id }, r.name)));
+  return h('div', { class: `role-pick${role ? '' : ' role-pick-none'}` },
+    h('span', { class: 'role-pick-name' }, role ? role.name : o.noneLabel),
+    h('span', { class: 'role-pick-chev', 'aria-hidden': 'true' }),
+    select);
+}
 
 /** Draft role filter: ids per phase and conditions with raw text values. */
 function draftRole(r) {
@@ -144,11 +173,6 @@ export function openFilterSheet(o) {
   const body = h('div', { class: 'filter-form' });
   let sheet;
 
-  const tchip = (label, pressed, onclick, extra = {}) => h('button', {
-    type: 'button', class: `tchip${pressed ? ' on' : ''}${extra.cls ? ` ${extra.cls}` : ''}`, 'aria-pressed': String(pressed),
-    'aria-label': extra.aria || null, onclick,
-  }, label);
-
   const section = (title, ...children) => h('fieldset', { class: 'fsec' }, h('legend', { class: 'fsec-title' }, title), ...children);
 
   function errors() {
@@ -224,18 +248,12 @@ export function openFilterSheet(o) {
       if (!rolesFor(cat, pos, ph.id).length) {
         return h('div', { class: 'frole-col', 'data-phase': ph.id }, h('p', { class: 'frole-phase' }, ph.label), h('p', { class: 'role-none muted small' }, NO_ROLES_TEXT));
       }
-      const select = h('select', {
-        class: 'role-pick-select', 'data-role-filter': ph.id, 'aria-label': `${ph.label} role`,
-        onchange: (e) => { d.role[ph.id] = e.target.value || null; render(); },
-      },
-        h('option', { value: '', selected: !role }, 'Any role'),
-        rolesFor(cat, pos, ph.id).map((r) => h('option', { value: r.id, selected: role?.id === r.id }, r.name)));
       return h('div', { class: 'frole-col', 'data-phase': ph.id },
         h('p', { class: 'frole-phase' }, ph.label),
-        h('div', { class: `role-pick${role ? '' : ' role-pick-none'}` },
-          h('span', { class: 'role-pick-name' }, role ? role.name : 'Any role'),
-          h('span', { class: 'role-pick-chev', 'aria-hidden': 'true' }),
-          select));
+        rolePickControl({
+          roles: rolesFor(cat, pos, ph.id), value: role?.id || null, noneLabel: 'Any role', label: `${ph.label} role`,
+          dataset: { roleFilter: ph.id }, onChange: (id) => { d.role[ph.id] = id; render(); },
+        }));
     }));
     const req = requiredAttrs();
     const rows = d.role.conds.map((c) => {
@@ -272,9 +290,7 @@ export function openFilterSheet(o) {
   }
 
   function positionsSection() {
-    const grid = h('div', { class: 'fpitch' }, POS_LAYOUT.map((row) => h('div', { class: 'fpitch-row' }, row.map((code) => (code
-      ? tchip(POS_LABEL[code], d.positions.includes(code), () => { d.positions = toggleIn(d.positions, code); render(); }, { aria: `Position ${POS_LABEL[code]}` })
-      : h('span', { class: 'fpitch-gap' }))))));
+    const grid = positionGrid((code) => d.positions.includes(code), (code) => { d.positions = toggleIn(d.positions, code); render(); });
     const fam = h('select', {
       class: 'select select-sm', id: 'f-minfam', 'aria-label': 'Minimum familiarity',
       onchange: (e) => { d.minFam = Number(e.target.value); updateErrors(); },

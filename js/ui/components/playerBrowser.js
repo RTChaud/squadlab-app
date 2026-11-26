@@ -3,7 +3,7 @@
 // component never adds players from elsewhere.
 //
 // Remembered per section (Squad, Shortlists, Tags): the configuration (filters,
-// columns, sort, change baseline) and active saved view — stored with the
+// columns, role attribute columns, sort, change baseline) and active saved view — stored with the
 // career, so it is in backups. Search text and horizontal scroll are kept for
 // the session so Back from a profile restores them; vertical scroll is
 // restored by the app shell.
@@ -19,7 +19,7 @@ import { resolveNation, loadNations } from '../../data/nations.js';
 import {
   buildRow, matchesSearch, matchesFilters, filterChips, activeFilterCount, sortRows, sortableKeys,
   columnDef, defaultConfig, sanitizeConfig, sameConfig, emptyFilters, buildDevContext, DEFAULT_VIEW_ID,
-  nationOptions, tacticPoolFilters, reconcileRoleFilter,
+  nationOptions, tacticPoolFilters, reconcileRoleFilter, reconcileRoleCols, displayColumns, DEFAULT_SORT,
 } from '../../data/listView.js';
 import { loadRoleCatalogue, resolveSavedRole } from '../../data/roles.js';
 import { PlayerTable } from './playerTable.js';
@@ -71,7 +71,15 @@ export async function PlayerBrowser(o) {
   const [metrics, cat] = await Promise.all([getCareerMetrics(), loadRoleCatalogue(), loadNations()]);
   // Saved role filters follow the role catalogue (migrated ids, cleared roles, current key attributes).
   const resolveRole = (position, phase, id) => (cat && !cat.error ? resolveSavedRole(cat, position, phase, id).role : null);
-  const withRoles = (c) => (!c?.filters?.roles || !cat || cat.error ? c : { ...c, filters: reconcileRoleFilter(c.filters, resolveRole) });
+  const resolveRoleId = (position, phase, id) => (cat && !cat.error ? resolveSavedRole(cat, position, phase, id).id : id);
+  const withRoles = (c) => {
+    if (!c || !cat || cat.error) return c;
+    const f = c.filters?.roles ? reconcileRoleFilter(c.filters, resolveRole) : c.filters;
+    const out = reconcileRoleCols(f === c.filters ? c : { ...c, filters: f }, resolveRoleId);
+    return out;
+  };
+  /** Displayed columns: manual ones, then the selected roles' key attributes (View → Role attributes). */
+  const shown = (c) => displayColumns(c, resolveRole);
 
   const ses = session[o.section] || (session[o.section] = { search: '', scrollX: 0, source: null });
   const sourceChanged = ses.source !== null && ses.source !== o.source;
@@ -145,7 +153,8 @@ export async function PlayerBrowser(o) {
     section: o.section,
     latestDate: model.gameDate,
     earlierDates: buildDevContext(metrics, model.gameDate, 'first').earlierDates,
-    state: () => ({ config: config(), viewId: current().viewId, modified: isModified(), views: getListPrefs().views }),
+    state: () => ({ config: config(), display: shown(config()), viewId: current().viewId, modified: isModified(), views: getListPrefs().views }),
+    catalogue: cat,
     setConfig: (c) => setConfig(c),
     applyView: (id) => {
       // Keeps the selected squad/shortlist; only the configuration changes.
@@ -168,7 +177,7 @@ export async function PlayerBrowser(o) {
   function refresh() {
     let cfg = config();
     const reconciled = withRoles(cfg);
-    if (reconciled.filters !== cfg.filters) {
+    if (reconciled !== cfg) {
       setListSection(o.section, { config: sanitizeConfig(reconciled, o.section) });
       cfg = config();
     }
@@ -182,6 +191,10 @@ export async function PlayerBrowser(o) {
       }
     }
     const f = cfg.filters;
+    const disp = shown(cfg);
+    // The sort key must be a displayed column (or Squad slot / Nationality); otherwise the default.
+    const sortable = sortableKeys(disp.columns);
+    const sort = sortable.includes(cfg.sort.key) ? cfg.sort : (disp.columns.includes('ca') ? { ...DEFAULT_SORT } : { key: 'name', dir: 'asc' });
     const nFilters = activeFilterCount(f);
     filtersBtn.replaceChildren(...[icon('settings'), 'Filters', nFilters ? h('span', { class: 'count-badge' }, String(nFilters)) : null].filter(Boolean));
     filtersBtn.setAttribute('aria-label', nFilters ? `Filters, ${nFilters} active` : 'Filters');
@@ -193,7 +206,7 @@ export async function PlayerBrowser(o) {
     // Results
     const dev = buildDevContext(metrics, model.gameDate, cfg.baseline);
     const filtered = allRows.filter((r) => (!ses.search.trim() || matchesSearch(r, ses.search)) && matchesFilters(r, f));
-    const sorted = sortRows(filtered, cfg.sort, dev);
+    const sorted = sortRows(filtered, sort, dev);
     const total = allRows.length;
     const narrowed = !!ses.search.trim() || nFilters > 0;
 
@@ -210,8 +223,8 @@ export async function PlayerBrowser(o) {
 
     // Count + sort
     // Nationality has its own A–Z and Z–A entries; other keys use the direction button.
-    const sortKeys = sortableKeys(cfg.columns).filter((k) => k !== 'nat');
-    const sortValueOf = cfg.sort.key === 'nat' ? `nat:${cfg.sort.dir}` : cfg.sort.key;
+    const sortKeys = sortable.filter((k) => k !== 'nat');
+    const sortValueOf = sort.key === 'nat' ? `nat:${sort.dir}` : sort.key;
     const sortSel = h('select', {
       class: 'select select-sm', 'aria-label': 'Sort by',
       onchange: (e) => {
@@ -225,11 +238,11 @@ export async function PlayerBrowser(o) {
       h('option', { value: 'nat:desc', selected: sortValueOf === 'nat:desc' }, 'Sort: Nationality Z–A'),
     ]);
     const dirBtn = h('button', {
-      type: 'button', class: 'tool-btn', 'aria-label': cfg.sort.dir === 'asc' ? 'Ascending — switch to descending' : 'Descending — switch to ascending',
-      onclick: () => setConfig({ ...cfg, sort: { ...cfg.sort, dir: cfg.sort.dir === 'asc' ? 'desc' : 'asc' } }),
-    }, cfg.sort.dir === 'asc' ? '▲' : '▼');
+      type: 'button', class: 'tool-btn', 'aria-label': sort.dir === 'asc' ? 'Ascending — switch to descending' : 'Descending — switch to ascending',
+      onclick: () => setConfig({ ...cfg, sort: { ...sort, dir: sort.dir === 'asc' ? 'desc' : 'asc' } }),
+    }, sort.dir === 'asc' ? '▲' : '▼');
     const countText = narrowed ? `${sorted.length} of ${total} player${total === 1 ? '' : 's'}` : `${total} player${total === 1 ? '' : 's'}`;
-    const devCols = cfg.columns.filter((id) => columnDef(id)?.dev);
+    const devCols = disp.columns.filter((id) => columnDef(id)?.dev);
     metaEl.replaceChildren(
       h('div', { class: 'bcount' },
         h('span', { class: 'bcount-n' }, countText),
@@ -255,11 +268,11 @@ export async function PlayerBrowser(o) {
           nFilters ? h('button', { type: 'button', class: 'btn btn-secondary', onclick: () => setConfig({ ...cfg, filters: emptyFilters() }) }, 'Clear filters') : null)));
     } else {
       table = PlayerTable({
-        rows: sorted, columns: cfg.columns, sort: cfg.sort, dev, from: o.from,
+        rows: sorted, columns: disp.columns, auto: disp.auto, sort, dev, from: o.from,
         onSort: (id) => {
           const c = columnDef(id);
-          const sort = cfg.sort.key === id ? { key: id, dir: cfg.sort.dir === 'asc' ? 'desc' : 'asc' } : { key: id, dir: c.dir };
-          setConfig({ ...cfg, sort });
+          const next = sort.key === id ? { key: id, dir: sort.dir === 'asc' ? 'desc' : 'asc' } : { key: id, dir: c.dir };
+          setConfig({ ...cfg, sort: next });
         },
         onScrollX: (x) => { ses.scrollX = x; },
       });

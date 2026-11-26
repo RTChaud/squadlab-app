@@ -116,7 +116,7 @@ function cell(row, col, ctx) {
 
 /**
  * @param {object} o
- *   rows (already filtered + sorted), columns [ids], sort { key, dir },
+ *   rows (already filtered + sorted), columns [ids], auto (Set of role-derived column ids), sort { key, dir },
  *   onSort(colId), from (route to return to), dev (change context),
  *   scrollX, onScrollX(x)
  */
@@ -136,9 +136,9 @@ export function PlayerTable(o) {
     const active = o.sort.key === c.id;
     return h('button', {
       type: 'button', role: 'columnheader',
-      class: `th${c.num ? ' num' : ''}${c.id === 'name' ? ' name-cell' : ''}${active ? ' active' : ''}`,
+      class: `th${c.num ? ' num' : ''}${c.id === 'name' ? ' name-cell' : ''}${active ? ' active' : ''}${o.auto?.has(c.id) ? ' th-auto' : ''}`,
       'aria-sort': active ? (o.sort.dir === 'asc' ? 'ascending' : 'descending') : 'none',
-      'aria-label': `Sort by ${c.label}`, title: c.label,
+      'aria-label': `Sort by ${c.label}${o.auto?.has(c.id) ? ' (role attribute)' : ''}`, title: c.label,
       onclick: () => o.onSort(c.id),
     }, h('span', { class: 'th-text' }, c.head), active ? h('span', { class: 'sort-arrow' }, o.sort.dir === 'asc' ? '▲' : '▼') : null);
   }));
