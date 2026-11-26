@@ -9,8 +9,8 @@
 //   Position / role     — tap a position on the shared familiarity grid (both
 //                         players' values per tile; tap again to close), then
 //                         In Possession and Out of Possession one after the other:
-//                         role dropdown (sorted by score), Role attributes /100,
-//                         overlaid radar and the role's attributes with Net advantage
+//                         role dropdown (sorted by score), role score (1–20),
+//                         overlaid radar and the role's key attributes with Net advantage
 // Rows: left value | shared attribute name | right value. The leading side is
 // shaded and the gap drawn as a bar (same scale on every row, full at 8 points).
 // Players, mode and selected attributes are remembered per career; values are
@@ -33,11 +33,10 @@ import { openPlayerPicker } from '../components/playerPicker.js';
 import { openAttributeInfo } from '../components/attributeInfoSheet.js';
 import { RadarCompareChart } from '../components/radarChart.js';
 import { RadarAttributePicker } from '../components/radarAttributePicker.js';
-import { openRoleInfo } from '../components/roleControls.js';
 import { FamiliarityPitch } from '../components/familiarityPitch.js';
 import {
   PHASES, loadRoleCatalogue, positionByCode, rolesFor, roleScore, roleValue, fmtScore,
-  keyAttrs, preferredAttrs, resolveSavedRole, NO_ROLES_TEXT,
+  keyAttrs, resolveSavedRole, NO_ROLES_TEXT,
 } from '../../data/roles.js';
 import { formatPositions } from '../../data/positions.js';
 import { linkWithFrom } from '../../router.js';
@@ -221,8 +220,8 @@ function radarContent(mode, keys, L, R, present, switchToSelected) {
 // ---- Position / role ------------------------------------------------------------------
 // One position (tapped on the shared grid) and, for each phase, one role applied
 // to both players. The last role per position + phase is remembered. The role's
-// attributes drive that phase's radar, table and Net advantage; the Role
-// attributes /100 score is shown per player.
+// key attributes drive that phase's radar, table and Net advantage; the role
+// score (1–20) is shown per player. Phases are never combined.
 
 /** Score row: verdict only when both players have a score (full precision). */
 function scoreRow(L, R, sL, sR) {
@@ -231,22 +230,22 @@ function scoreRow(L, R, sL, sR) {
   const diff = decided ? sL.value - sR.value : 0;
   const lead = decided && diff !== 0 ? { side: diff > 0 ? 'left' : 'right', gap: Math.abs(diff) } : null;
   const cell = (res, s) => h('span', { class: 'cmp-val' }, res
-    ? h('span', { class: `role-cmp-score${s.value === null ? ' none' : ''}`, title: s.incomplete ? `Incomplete: no value for ${s.missing.join(', ')}` : null }, s.value === null ? (s.incomplete ? 'Incomplete' : DASH) : fmtScore(s.value))
+    ? h('span', { class: `role-cmp-score${s.value === null ? ' none' : ''}`, title: s.incomplete ? `Unavailable: no value for ${s.missing.join(', ')}` : null }, s.value === null ? DASH : fmtScore(s.value))
     : null);
   const verdict = !both ? null : !decided ? 'undecided' : lead ? null : 'level';
   const gap = (side) => h('span', { class: `cmp-gap cmp-gap-${side}`, 'aria-hidden': 'true' }, lead && lead.side === side ? `+${fmtScore(lead.gap)}` : '');
-  const said = !both ? `Role attributes out of 100: ${(L || R).name} ${(L ? sL : sR).value === null ? 'unavailable' : fmtScore((L ? sL : sR).value)}`
-    : `Role attributes out of 100: ${L.name} ${sL.value === null ? 'unavailable' : fmtScore(sL.value)}, ${R.name} ${sR.value === null ? 'unavailable' : fmtScore(sR.value)}${lead ? `; ${(lead.side === 'left' ? L : R).name} leads by ${fmtScore(lead.gap)}` : decided ? '; level' : '; verdict undecided'}`;
+  const said = !both ? `Role score: ${(L || R).name} ${(L ? sL : sR).value === null ? 'unavailable' : fmtScore((L ? sL : sR).value)}`
+    : `Role score: ${L.name} ${sL.value === null ? 'unavailable' : fmtScore(sL.value)}, ${R.name} ${sR.value === null ? 'unavailable' : fmtScore(sR.value)}${lead ? `; ${(lead.side === 'left' ? L : R).name} leads by ${fmtScore(lead.gap)}` : decided ? '; level' : '; verdict undecided'}`;
   return h('li', { class: `cmp-row role-score-row${lead ? ` lead-${lead.side} lead-s2` : ''}`, 'aria-label': said },
     cell(L, sL),
     h('div', { class: 'cmp-mid', 'aria-hidden': 'true' }, gap('left'),
-      h('span', { class: 'role-row-label' }, 'Role attributes', h('span', { class: 'role-row-sub' }, verdict === 'undecided' ? 'out of 100 · undecided' : verdict === 'level' ? 'out of 100 · level' : 'out of 100')),
+      h('span', { class: 'role-row-label' }, 'Role score', verdict ? h('span', { class: 'role-row-sub' }, verdict) : null),
       gap('right')),
     cell(R, sR));
 }
 
 /** Role dropdown for one phase: options sorted by the players' average score (highest first). */
-function rolePick(cat, pos, phase, role, L, R, onPick, legacy = null) {
+function rolePick(cat, pos, phase, role, L, R, onPick) {
   if (!rolesFor(cat, pos, phase.id).length) return h('p', { class: 'role-none muted small' }, NO_ROLES_TEXT);
   const sides = [L, R].filter(Boolean);
   const scoresOf = (r) => sides.map((res) => roleScore(r, res.player).value);
@@ -262,8 +261,7 @@ function rolePick(cat, pos, phase, role, L, R, onPick, legacy = null) {
     h('div', { class: `role-pick${role ? '' : ' role-pick-none'}` },
       h('span', { class: 'role-pick-name' }, role ? role.name : 'Choose a role'),
       h('span', { class: 'role-pick-chev', 'aria-hidden': 'true' }),
-      select),
-    !role && legacy ? h('p', { class: 'role-legacy' }, `${legacy.name} is no longer listed. Choose a role.`) : null);
+      select));
 }
 
 function phaseBody(role, phase, L, R) {
@@ -271,8 +269,8 @@ function phaseBody(role, phase, L, R) {
   const sR = R ? roleScore(role, R.player) : null;
   const summary = h('ul', { class: 'cmp-list role-cmp-summary' }, scoreRow(L, R, sL, sR));
 
-  // Radar: the role's Key attributes (the score inputs), same order for both players.
-  const keys = keyAttrs(role), prefs = preferredAttrs(role);
+  // Radar: exactly the role's key attributes (the score inputs), same order for both players.
+  const keys = keyAttrs(role);
   const sides = [['left', L], ['right', R]].filter(([, res]) => res);
   const series = sides.map(([side, res]) => {
     const values = keys.map((a) => roleValue(res.player, a));
@@ -283,7 +281,7 @@ function phaseBody(role, phase, L, R) {
   radarBox.classList.add('cmp-radar');
   radarBox.querySelector('summary > span').append(h('span', { class: 'cmp-radar-sub' }, role.name));
 
-  // Table: only this role's attributes; tendencies stay neutral (no lead, not in the net).
+  // Table: only this role's key attributes.
   const acc = { net: 0 };
   const title = `${phase.label}: ${role.name}`;
   const rows = keys.map((a) => row({ key: a.key, label: a.label }, a.block, L, R, acc));
@@ -291,11 +289,7 @@ function phaseBody(role, phase, L, R) {
     h('ul', { class: 'cmp-list' }, rows),
     L && R ? summaryRow(acc, title, L, R) : null,
   ]);
-  // Preferred attributes: context only (not scored, not in the net).
-  const prefTable = prefs.length ? group(`role-pref:${phase.id}`, 'Preferred attributes', false, [
-    h('ul', { class: 'cmp-list' }, prefs.map((a) => row({ key: a.key, label: a.label }, a.block, L, R, { net: 0 }))),
-  ]) : null;
-  return [summary, radarBox, h('section', { class: 'cmp-table', 'aria-label': `${title} attributes` }, table, prefTable)];
+  return [summary, radarBox, h('section', { class: 'cmp-table', 'aria-label': `${title} attributes` }, table)];
 }
 
 /** Position grid + both phases, one after the other. */
@@ -313,13 +307,12 @@ function roleMode(cat, L, R) {
     },
   });
 
-  /** The remembered role for this position + phase (renames mapped); `legacy` when it must be reselected. */
+  /** The remembered role for this position + phase (migrations saved; an unmappable id is cleared). */
   function savedRef(phase) {
     const r = resolveSavedRole(cat, pos, phase, getCompare().roleByPos?.[pos]?.[phase]);
-    if (r.renamedFrom) saveRole(phase, r.id);
+    if (r.renamedFrom || r.cleared) saveRole(phase, r.id);
     return r;
   }
-  const savedRole = (phase) => savedRef(phase).role;
   function saveRole(phase, id) {
     const byPos = { ...getCompare().roleByPos };
     byPos[pos] = { ...byPos[pos], [phase]: id };
@@ -333,7 +326,7 @@ function roleMode(cat, L, R) {
       const ref = savedRef(phase.id);
       const role = ref.role;
       el.replaceChildren(h('h3', { class: 'cmp-phase-title' }, phase.label),
-        rolePick(cat, pos, phase, role, L, R, (id) => { saveRole(phase.id, id); drawPhase(); }, ref.legacy),
+        rolePick(cat, pos, phase, role, L, R, (id) => { saveRole(phase.id, id); drawPhase(); }),
         ...(role ? phaseBody(role, phase, L, R) : []));
     };
     drawPhase();
@@ -347,13 +340,7 @@ function roleMode(cat, L, R) {
       panel.replaceChildren(h('p', { class: 'muted small role-hint' }, `The role catalogue has no roles for ${formatPositions([pos])}.`));
       return;
     }
-    // The description sheet only when a chosen role has a description.
-    const chosen = Object.fromEntries(PHASES.map((ph) => [ph.id, savedRole(ph.id)]));
-    const info = PHASES.some((ph) => chosen[ph.id]?.description) ? h('button', {
-      type: 'button', class: 'info-btn', 'aria-label': 'Role descriptions', 'aria-haspopup': 'dialog',
-      onclick: () => openRoleInfo(position, chosen),
-    }, 'i') : null;
-    panel.replaceChildren(h('div', { class: 'role-x-head' }, h('h3', { class: 'cmp-roles-head' }, 'Roles · ', h('span', { class: 'role-x-pos' }, position.short)), info),
+    panel.replaceChildren(h('div', { class: 'role-x-head' }, h('h3', { class: 'cmp-roles-head' }, 'Roles · ', h('span', { class: 'role-x-pos' }, position.short))),
       ...PHASES.map(phaseSection));
   }
   draw();

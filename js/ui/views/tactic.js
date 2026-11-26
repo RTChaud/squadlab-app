@@ -1,10 +1,9 @@
 // Tactic: pick a position on the pitch, then an optional role for each phase
 // (In Possession / Out of Possession) from the role catalogue. Each chosen
-// role shows its description (when the catalogue has one), its Key attributes
-// (the search criteria) and its Preferred attributes (context only). "Find
-// matching players" opens Shortlists → All with the same criteria as filters
-// (familiarity ≥ 16 at the position, Key attributes ≥ 15, tendencies listed
-// but unset); its count uses the same player pool and matching as that list.
+// role shows its key attributes for that position and phase (the search
+// criteria). "Find matching players" opens Shortlists → All with the same
+// criteria as filters (familiarity ≥ 16 at the position, key attributes ≥ 15);
+// its count uses the same player pool and matching as that list.
 //
 // The selection is remembered per career, so Back from the results restores it.
 // Route: #/tactic
@@ -12,7 +11,7 @@
 import { h } from '../dom.js';
 import { getModel, getTactic, setTactic, getListSection, setListSection } from '../../store.js';
 import { ALL_LIST_ID } from '../../data/snapshot.js';
-import { PHASES, loadRoleCatalogue, positionByCode, rolesFor, resolveSavedRole, keyAttrs, preferredAttrs, NO_ROLES_TEXT } from '../../data/roles.js';
+import { PHASES, loadRoleCatalogue, positionByCode, rolesFor, resolveSavedRole, keyAttrs, NO_ROLES_TEXT } from '../../data/roles.js';
 import { buildRow, matchesFilters, tacticFilters, ROLE_DEFAULT_MIN } from '../../data/listView.js';
 import { loadNations } from '../../data/nations.js';
 import { FamiliarityPitch } from '../components/familiarityPitch.js';
@@ -38,14 +37,11 @@ export async function TacticView() {
   const saved = getTactic();
   const sel = { position: positionByCode(cat, saved.position) ? saved.position : null, in_possession: null, out_of_possession: null };
   const roleOf = (phase) => (sel.position && sel[phase] ? rolesFor(cat, sel.position, phase).find((r) => r.id === sel[phase]) || null : null);
-  // Renamed roles map to their new id; a role that's no longer listed keeps its name for the prompt.
-  const legacy = {};
+  // Migrated ids are saved under the new id; one that can't be mapped is cleared.
   for (const ph of PHASES) {
-    const r = sel.position ? resolveSavedRole(cat, sel.position, ph.id, saved[ph.id]) : { id: null };
-    sel[ph.id] = r.id;
-    legacy[ph.id] = r.legacy || null;
+    sel[ph.id] = sel.position ? resolveSavedRole(cat, sel.position, ph.id, saved[ph.id]).id : null;
   }
-  if (PHASES.some((ph) => sel[ph.id] !== (saved[ph.id] || null) && !legacy[ph.id])) setTactic({ ...sel });
+  if (sel.position !== (saved.position || null) || PHASES.some((ph) => sel[ph.id] !== (saved[ph.id] || null))) setTactic({ ...sel });
 
   const save = () => setTactic({ ...sel });
   const roles = () => ({ in_possession: roleOf('in_possession'), out_of_possession: roleOf('out_of_possession') });
@@ -62,7 +58,6 @@ export async function TacticView() {
       sel.position = code;
       // Keep a role only if the new position has the same role in that phase.
       for (const ph of PHASES) {
-        legacy[ph.id] = null;
         const slug = slugOf(sel[ph.id]);
         sel[ph.id] = slug ? rolesFor(cat, code, ph.id).find((r) => slugOf(r.id) === slug)?.id || null : null;
       }
@@ -87,21 +82,16 @@ export async function TacticView() {
     }
     const select = h('select', {
       class: 'role-pick-select', 'data-phase': ph.id, 'aria-label': `${ph.label} role`, disabled: !sel.position || !list.length,
-      onchange: (e) => { sel[ph.id] = e.target.value || null; legacy[ph.id] = null; save(); render(); },
+      onchange: (e) => { sel[ph.id] = e.target.value || null; save(); render(); },
     }, h('option', { value: '', selected: !role }, 'No role'),
       list.map((r) => h('option', { value: r.id, selected: role?.id === r.id }, r.name)));
     const pickLabel = !sel.position ? 'Choose a position' : role ? role.name : 'No role';
-    const pref = role ? preferredAttrs(role) : [];
     const details = role ? [
-      role.description ? h('p', { class: 'tac-desc' }, role.description) : null,
       h('p', { class: 'tac-sub' }, 'Key attributes'),
       h('ul', { class: 'tac-attrs' }, keyAttrs(role).map((a) => h('li', { class: 'tac-attr', 'data-key': a.key },
         h('span', { class: 'tac-attr-name' }, a.label),
-        h('span', { class: `tac-attr-min${a.tendency || !a.mapped ? ' muted' : ''}` }, a.tendency ? 'Tendency' : a.mapped ? `≥ ${ROLE_DEFAULT_MIN}` : '—')))),
-      pref.length ? h('p', { class: 'tac-sub' }, 'Preferred attributes') : null,
-      pref.length ? h('ul', { class: 'tac-attrs tac-pref' }, pref.map((a) => h('li', { class: 'tac-attr', 'data-key': a.key },
-        h('span', { class: 'tac-attr-name' }, a.label)))) : null,
-    ].filter(Boolean) : (legacy[ph.id] ? [h('p', { class: 'role-legacy' }, `${legacy[ph.id].name} is no longer listed. Choose a role.`)] : []);
+        h('span', { class: `tac-attr-min${!a.mapped ? ' muted' : ''}` }, a.mapped ? `≥ ${ROLE_DEFAULT_MIN}` : '—')))),
+    ] : [];
     return h('div', { class: 'tac-col', 'data-phase': ph.id },
       h('p', { class: 'tac-phase' }, ph.label),
       h('div', { class: `role-pick${role ? '' : ' role-pick-none'}${!sel.position ? ' tac-off' : ''}` },

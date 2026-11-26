@@ -5,9 +5,10 @@
 // data/lineups.js; this file only decides where each slot is drawn.
 //
 // On the three default lineups each slot also shows its saved In Possession /
-// Out of Possession roles (short labels; full names in the slot sheet). The
-// roles belong to the slot, not the player, and are shared by First XI,
-// Backup XI and Future XI, so editing them from any of the three changes all.
+// Out of Possession roles (short labels; full names in the slot sheet, with the
+// assigned player's role score for each phase). The roles belong to the slot,
+// not the player, and are shared by First XI, Backup XI and Future XI, so
+// editing them from any of the three changes all.
 
 import { h, icon } from '../dom.js';
 import {
@@ -15,7 +16,7 @@ import {
   renameLineup, duplicateLineup, deleteLineup, getSlotRoles, setSlotRoles,
 } from '../../store.js';
 import { SLOT_IDS, SLOT_BY_ID, isDefault, ROLE_PHASES } from '../../data/lineups.js';
-import { loadRoleCatalogue, rolesFor, positionByCode, resolveSavedRole, NO_ROLES_TEXT } from '../../data/roles.js';
+import { loadRoleCatalogue, rolesFor, positionByCode, resolveSavedRole, roleScore, fmtScore, NO_ROLES_TEXT } from '../../data/roles.js';
 import { compactNameOf, displayNameOf, isClubOwned, persistentId } from '../../data/players.js';
 import { formatGameDate } from '../../data/snapshot.js';
 import { intOrNull } from '../../data/attributes.js';
@@ -43,22 +44,25 @@ export function roleAbbr(name) {
   return parts.map((w) => w[0]).join('').slice(0, 4) || String(name || '').slice(0, 3);
 }
 
-/** A stored id at a slot, resolved: { role } (renames mapped) or { legacy: { name } } when it must be reselected. */
+/** A stored id at a slot, resolved: { id, role } (migrations mapped) or { cleared } when it can't be mapped. */
 function refFor(cat, slot, phase, id) {
-  if (!id || !cat || cat.error) return { role: null, legacy: null };
+  if (!id || !cat || cat.error) return { id: null, role: null, cleared: null };
   return resolveSavedRole(cat, SLOT_BY_ID[slot].fam, phase, id);
 }
-const roleFor = (cat, slot, phase, id) => refFor(cat, slot, phase, id).role;
 
-/** Full role names for a slot, for the slot sheet. */
-function rolesSummary(cat, slot, roles) {
+/** Full role names for a slot, for the slot sheet; with a player, their role score per phase (1–20). */
+function rolesSummary(cat, slot, roles, player = null) {
   return h('dl', { class: 'slot-roles' }, ROLE_PHASES.flatMap((ph) => {
     const r = refFor(cat, slot, ph, roles?.[ph]);
     const none = !rolesFor(cat, SLOT_BY_ID[slot].fam, ph).length;
+    const s = r.role && player ? roleScore(r.role, player) : null;
     return [h('dt', {}, PHASE_LABEL[ph]),
-      r.role ? h('dd', {}, r.role.name)
-        : r.legacy ? h('dd', { class: 'slot-legacy' }, `${r.legacy.name} · no longer listed, reselect`)
-          : h('dd', { class: 'muted' }, none ? NO_ROLES_TEXT : 'Not set')];
+      r.role ? h('dd', {}, r.role.name, s ? h('span', {
+        class: `slot-role-score${s.value === null ? ' none' : ''}`,
+        title: s.value === null ? `Unavailable: no value for ${s.missing.join(', ')}` : null,
+        'aria-label': `role score ${s.value === null ? 'unavailable' : fmtScore(s.value)}`,
+      }, fmtScore(s.value)) : null)
+        : h('dd', { class: 'muted' }, none ? NO_ROLES_TEXT : 'Not set')];
   }));
 }
 
@@ -73,17 +77,14 @@ function editRoles(cat, slot) {
     const list = rolesFor(cat, fam, ph);
     const ref = refFor(cat, slot, ph, current[ph]);
     if (!list.length) {
-      // Nothing to choose; a saved (legacy) value is left as it is.
       selects[ph] = null;
-      return h('div', { class: 'field' }, h('p', { class: 'field-label' }, PHASE_LABEL[ph]), h('p', { class: 'role-none muted small', id }, NO_ROLES_TEXT),
-        ref.legacy ? h('p', { class: 'role-legacy' }, `Previously ${ref.legacy.name}, which is no longer listed.`) : null);
+      return h('div', { class: 'field' }, h('p', { class: 'field-label' }, PHASE_LABEL[ph]), h('p', { class: 'role-none muted small', id }, NO_ROLES_TEXT));
     }
     const sel = h('select', { class: 'select', id },
       h('option', { value: '' }, 'Not set'),
       list.map((r) => h('option', { value: r.id, selected: r.id === ref.role?.id }, r.name)));
     selects[ph] = sel;
-    return h('div', { class: 'field' }, h('label', { class: 'field-label', for: id }, PHASE_LABEL[ph]), sel,
-      ref.legacy ? h('p', { class: 'role-legacy' }, `Previously ${ref.legacy.name}, which is no longer listed. Choose a role.`) : null);
+    return h('div', { class: 'field' }, h('label', { class: 'field-label', for: id }, PHASE_LABEL[ph]), sel);
   });
   openSheet({
     title: `Roles · ${slot}${pos ? ` (${pos.short})` : ''}`,
@@ -116,27 +117,30 @@ export async function LineupView({ id, query }) {
   const cat = shared ? await loadRoleCatalogue() : null;
   const catOk = cat && !cat.error;
   let slotRoles = shared ? getSlotRoles() : null;
-  // Saved roles from the previous catalogue: clear renames are saved under the new id once.
+  // Saved roles from earlier catalogues: migrated ids are saved under the new id;
+  // one that can't be mapped is cleared (only that phase of that slot), to choose again.
   if (shared && catOk) {
+    let changed = false;
     for (const slot of SLOT_IDS) {
       const upd = {};
-      for (const ph of ROLE_PHASES) { const r = refFor(cat, slot, ph, slotRoles[slot]?.[ph]); if (r.renamedFrom) upd[ph] = r.id; }
-      if (Object.keys(upd).length) await setSlotRoles(slot, upd);
+      for (const ph of ROLE_PHASES) {
+        const r = refFor(cat, slot, ph, slotRoles[slot]?.[ph]);
+        if (r.renamedFrom || r.cleared) upd[ph] = r.id;
+      }
+      if (Object.keys(upd).length) { await setSlotRoles(slot, upd); changed = true; }
     }
-    slotRoles = getSlotRoles();
+    if (changed) slotRoles = getSlotRoles();
   }
-  // Roles that are no longer listed, to reselect.
-  const stale = shared && catOk ? SLOT_IDS.flatMap((slot) => ROLE_PHASES.map((ph) => ({ slot, ph, ref: refFor(cat, slot, ph, slotRoles[slot]?.[ph]) })).filter((x) => x.ref.legacy)) : [];
 
   /** "AP/AM" under the slot (In / Out of Possession); "–" for a phase that isn't set. */
   function rolesLine(slot) {
     if (!shared || !catOk) return null;
     const roles = slotRoles[slot] || {};
     const refs = ROLE_PHASES.map((ph) => refFor(cat, slot, ph, roles[ph]));
-    const short = refs.map((r) => (r.role ? roleAbbr(r.role.name) : r.legacy ? '!' : null));
+    const short = refs.map((r) => (r.role ? roleAbbr(r.role.name) : null));
     if (!short[0] && !short[1]) return null;
-    const label = ROLE_PHASES.map((ph, i) => `${PHASE_LABEL[ph]}: ${refs[i].role?.name || (refs[i].legacy ? `${refs[i].legacy.name}, no longer listed — reselect` : 'Not set')}`).join('; ');
-    return h('span', { class: `pslot-roles${refs.some((r) => r.legacy) ? ' stale' : ''}`, title: label, 'aria-label': label }, `${short[0] || '–'}/${short[1] || '–'}`);
+    const label = ROLE_PHASES.map((ph, i) => `${PHASE_LABEL[ph]}: ${refs[i].role?.name || 'Not set'}`).join('; ');
+    return h('span', { class: 'pslot-roles', title: label, 'aria-label': label }, `${short[0] || '–'}/${short[1] || '–'}`);
   }
 
   function emptyActions(slot) {
@@ -188,7 +192,7 @@ export async function LineupView({ id, query }) {
       title: `${slot} · ${name}`,
       content: [
         r && !r.current ? h('p', { class: 'sheet-note' }, `Last recorded ${formatGameDate(r.gameDate)} — not in the latest snapshot.`) : null,
-        shared && catOk ? rolesSummary(cat, slot, slotRoles[slot]) : null,
+        shared && catOk ? rolesSummary(cat, slot, slotRoles[slot], r?.player || null) : null,
       ].filter(Boolean),
       actions: [
         ...(r ? [{ label: 'View player', kind: 'secondary', onClick: (close) => { close(); location.hash = linkWithFrom(`/player/${encodeURIComponent(pid)}`, here); } }] : []),
@@ -238,10 +242,6 @@ export async function LineupView({ id, query }) {
       h('div', { class: 'lineup-bar' },
         h('span', { class: 'muted small' }, shared ? 'Tap a position for players and roles.' : filledCount ? 'Tap a player for options.' : 'Tap a position to add a player.'),
         h('button', { type: 'button', class: 'btn btn-secondary lineup-opts', onclick: options }, icon('settings'), 'Options')),
-      stale.length ? h('div', { class: 'lineup-stale', role: 'status' },
-        h('p', { class: 'lineup-stale-title' }, `${stale.length === 1 ? '1 saved role is' : `${stale.length} saved roles are`} no longer in the role catalogue`),
-        h('p', { class: 'small' }, stale.map((x) => `${x.slot} ${PHASE_LABEL[x.ph]}: ${x.ref.legacy.name}`).join(' · ')),
-        h('p', { class: 'muted small' }, 'Tap the slot and choose Edit roles to reselect.')) : null,
       h('div', { class: 'pitch-field', role: 'group', 'aria-label': `${lineup.name} pitch` },
         h('div', { class: 'pitch-lines', 'aria-hidden': 'true' }, h('span', { class: 'pl-half' }), h('span', { class: 'pl-circle' }), h('span', { class: 'pl-box top' }), h('span', { class: 'pl-box bottom' })),
         PITCH_ROWS_4231.map((row) => h('div', { class: `pitch-line n${row.length}` }, row.map(slotCard))),

@@ -166,8 +166,8 @@ function details(p, model, current, backHere) {
 
 /**
  * One attribute row: neutral name, coloured value badge. The small marker
- * before the name is reserved for future role key attributes (orange); it is
- * empty for now.
+ * before the name shows the key attributes of the roles chosen in the role
+ * explorer (solid: In Possession, faint: Out of Possession, split: both).
  */
 function attrRow(def, v, chg, baseV, isKey = false) {
   const direction = attributeDirection(def.key);
@@ -176,17 +176,13 @@ function attrRow(def, v, chg, baseV, isKey = false) {
     type: 'button', class: 'attr-name', 'aria-haspopup': 'dialog',
     onclick: () => openAttributeInfo(def, btn),
   }, def.label);
-  return h('li', { class: `attr${isKey ? ' key-attr' : ''}` },
+  return h('li', { class: `attr${isKey ? ' key-attr' : ''}`, dataset: { attr: def.key } },
     h('span', { class: 'attr-mark', 'aria-hidden': 'true' }),
     btn,
     chg.active ? deltaEl(describeChange(v, baseV, direction), `${def.label} change`) : null,
     h('span', { class: `attr-val ${band || 'none'}` }, orDash(v)));
 }
 
-/**
- * @param highlightKeys  future: role key attributes (orange outline, separate
- *                       from the value colours). Empty for now.
- */
 function attributeGroup(group, p, chg, open, highlightKeys = new Set()) {
   const rows = group.attrs.map((a) => attrRow(a, intOrNull(p.attributes?.[a.key]), chg,
     intOrNull(chg.base?.attributes?.[a.key]), highlightKeys.has(a.key)));
@@ -224,17 +220,45 @@ function changesControls(chg) {
   return { toggle, bar };
 }
 
-function attributesSection(p, chg) {
+/** Marks the chosen roles' key attributes in the Attributes section (per phase). */
+function keyHighlighter() {
+  let section = null, legend = null, roles = {};
+  const apply = () => {
+    if (!section) return;
+    const ip = new Set((roles.in_possession?.attrs || []).map((a) => a.key));
+    const oop = new Set((roles.out_of_possession?.attrs || []).map((a) => a.key));
+    for (const li of section.querySelectorAll('li.attr[data-attr]')) {
+      const k = li.dataset.attr;
+      li.classList.toggle('key-ip', ip.has(k));
+      li.classList.toggle('key-oop', oop.has(k));
+    }
+    const items = [['in_possession', 'In Possession', 'ip'], ['out_of_possession', 'Out of Possession', 'oop']]
+      .filter(([ph]) => roles[ph]).map(([ph, label, cls]) => h('span', { class: `key-legend-item ${cls}` },
+        h('span', { class: 'key-legend-mark', 'aria-hidden': 'true' }), `${label}: ${roles[ph].name}`));
+    legend.hidden = !items.length;
+    legend.replaceChildren(...items);
+  };
+  return {
+    attach(el, legendEl) { section = el; legend = legendEl; apply(); },
+    set(next) { roles = next || {}; apply(); },
+  };
+}
+
+function attributesSection(p, chg, keys) {
   const isGK = isNaturalGoalkeeper(p);
   // Goalkeepers: goalkeeping first and open, outfield technical folded away.
   const order = isGK ? ['goalkeeping', 'mental', 'physical', 'technical'] : ['technical', 'mental', 'physical', 'goalkeeping'];
   const groups = order.map((k) => ATTRIBUTE_GROUPS.find((g) => g.key === k));
   const { toggle, bar } = changesControls(chg);
-  return h('section', { class: `psection${chg.active ? ' show-changes' : ''}` },
+  const legend = h('p', { class: 'key-legend', hidden: true });
+  const el = h('section', { class: `psection${chg.active ? ' show-changes' : ''}` },
     h('div', { class: 'psection-head attr-head' }, h('h3', {}, 'Attributes'), toggle),
     bar,
+    legend,
     groups.map((g) => attributeGroup(g, p, chg, isGK ? g.key !== 'technical' : g.key !== 'goalkeeping')),
   );
+  keys.attach(el, legend);
+  return el;
 }
 
 function traitsSection(p) {
@@ -252,8 +276,8 @@ function traitsSection(p) {
 
 // Pitch layout, attack at the top; left side on the left. (No sweeper: not in current FM.)
 // Tapping a tile explores that position's roles underneath (role explorer).
-function familiaritySection(p) {
-  const { pitch, panel } = RoleExplorer(p, playerKeyOf(p));
+function familiaritySection(p, keys) {
+  const { pitch, panel } = RoleExplorer(p, playerKeyOf(p), { onRoles: (roles) => keys.set(roles) });
   return h('section', { class: 'psection fam-section' }, h('h3', {}, 'Position familiarity'), pitch, panel);
 }
 
@@ -339,6 +363,7 @@ export async function PlayerView({ pid, query }) {
     chg.active = !!chg.base;
   }
   const headEl = header(p, model, chg);
+  const keys = keyHighlighter();
 
   return {
     title: displayName(p).main,
@@ -355,9 +380,9 @@ export async function PlayerView({ pid, query }) {
       actionRow(p, devHref, model, current),
       aiRow(p, model, current, cat, history),
       details(p, model, current, backHere),
-      familiaritySection(p),
+      familiaritySection(p, keys),
       RadarSection(p, playerKeyOf(p)),
-      attributesSection(p, chg),
+      attributesSection(p, chg, keys),
       traitsSection(p),
       hiddenSection(p, chg),
     ),
