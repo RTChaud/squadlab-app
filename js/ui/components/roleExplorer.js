@@ -2,17 +2,16 @@
 //
 // Tap a position tile (tap it again to close) → two columns for that position: In Possession (left)
 // and Out of Possession (right), each with a role dropdown (options sorted by
-// the player's Role attributes /100, highest first) and the chosen role's
-// score. Underneath, both phases side by side: the role radars (Key
-// attributes, the score inputs), then each role's Key and Preferred
-// attributes. Familiarity stays on the tiles, separate from the score.
+// the player's role score, highest first) and the chosen role's score (1–20).
+// Underneath, both phases side by side: the role radars (exactly the key
+// attributes, the score inputs), then each role's key attributes. The two
+// phases are scored separately. Familiarity stays on the tiles.
 // A phase the catalogue lists no roles for says so instead of a dropdown.
 //
 // Remembered per player: the selected position and the last
 // valid role for every position + phase (so M (C) → DM → M (C) restores the
 // M (C) choices). Role ids are checked against the active catalogue: a
-// renamed role is mapped, one that's no longer listed keeps its old name and
-// asks to be reselected.
+// migrated id is updated; one that can't be mapped is cleared.
 
 import { h, DASH } from '../dom.js';
 import { getRadarPrefs, saveRoleExplorer } from '../../store.js';
@@ -20,10 +19,9 @@ import { attrBand, attributeDirection, scoreBand, ATTRIBUTE_ABBR } from '../../d
 import { formatPositions } from '../../data/positions.js';
 import {
   PHASES, loadRoleCatalogue, positionByCode, rolesFor, roleScore, roleValue, fmtScore,
-  keyAttrs, preferredAttrs, resolveSavedRole, NO_ROLES_TEXT,
+  keyAttrs, resolveSavedRole, NO_ROLES_TEXT,
 } from '../../data/roles.js';
 import { FamiliarityPitch } from './familiarityPitch.js';
-import { openRoleInfo } from './roleControls.js';
 import { openAttributeInfo } from './attributeInfoSheet.js';
 import { RadarChart } from './radarChart.js';
 
@@ -58,7 +56,7 @@ function roleRadar(p, phase, role, readout) {
   return h('div', { class: 'role-radar', 'data-phase': phase.id }, chart.el);
 }
 
-/** Key attributes (the score inputs), then Preferred attributes (context), with the player's values. */
+/** The role's key attributes (the score inputs) with the player's values. */
 function roleDetails(p, role) {
   const list = (attrs) => h('ul', { class: 'attr-list role-attrs' }, attrs.map((a) => {
     const value = roleValue(p, a);
@@ -67,19 +65,16 @@ function roleDetails(p, role) {
     return h('li', { class: 'attr' }, h('span', { class: 'attr-mark', 'aria-hidden': 'true' }), btn,
       h('span', { class: `attr-val ${band || 'none'}` }, value ?? DASH));
   }));
-  const pref = preferredAttrs(role);
-  return [
-    h('p', { class: 'role-attr-tier' }, 'Key'), list(keyAttrs(role)),
-    pref.length ? h('p', { class: 'role-attr-tier' }, 'Preferred') : null, pref.length ? list(pref) : null,
-  ].filter(Boolean);
+  return [h('p', { class: 'role-attr-tier' }, 'Key attributes'), list(keyAttrs(role))];
 }
 
 /**
  * @param p player record (the profile's snapshot)
  * @param playerKey persistent player key (preferences)
+ * @param onRoles   called with { in_possession, out_of_possession } (catalogue roles) whenever the chosen roles change
  * Returns { pitch, panel } — the selectable grid and the role panel beneath it.
  */
-export function RoleExplorer(p, playerKey) {
+export function RoleExplorer(p, playerKey, { onRoles = null } = {}) {
   const prefs = () => getRadarPrefs(playerKey);
   let pos = prefs().rolePos;
   let cat = null;
@@ -96,20 +91,20 @@ export function RoleExplorer(p, playerKey) {
     },
   });
 
-  /** The saved role for this position + phase (renames mapped); `legacy` when it must be reselected. */
+  /** The saved role for this position + phase (migrations saved; an unmappable id is cleared). */
   function savedRef(phase) {
     const r = resolveSavedRole(cat, pos, phase, prefs().roleByPos?.[pos]?.[phase]);
-    if (r.renamedFrom) saveRoleExplorer(playerKey, { role: { position: pos, phase, id: r.id } });
+    if (r.renamedFrom || r.cleared) saveRoleExplorer(playerKey, { role: { position: pos, phase, id: r.id } });
     return r;
   }
 
-  function column(phase, role, scores, legacy) {
+  function column(phase, role, scores) {
     if (!rolesFor(cat, pos, phase.id).length) {
       return h('div', { class: 'role-col', 'data-phase': phase.id },
         h('p', { class: 'role-col-phase' }, phase.label),
         h('p', { class: 'role-none muted small' }, NO_ROLES_TEXT));
     }
-    // Highest Role attributes first; unavailable scores last; ties by name.
+    // Highest role score first; unavailable scores last; ties by name.
     const val = (r) => scores.get(r.id).value ?? -1;
     const roles = [...rolesFor(cat, pos, phase.id)].sort((a, b) => val(b) - val(a) || a.name.localeCompare(b.name));
     const s = role ? scores.get(role.id) : null;
@@ -129,14 +124,14 @@ export function RoleExplorer(p, playerKey) {
         h('span', { class: 'role-pick-name' }, role ? role.name : 'Choose a role'),
         h('span', { class: 'role-pick-chev', 'aria-hidden': 'true' }),
         select),
-      !role && legacy ? h('p', { class: 'role-legacy' }, `${legacy.name} is no longer listed. Choose a role.`) : null,
       h('div', { class: 'role-col-score' },
         h('span', { class: `role-col-num${!s || s.value === null ? ' none' : ''}` }, s && s.value !== null ? fmtScore(s.value) : DASH),
         h('span', { class: 'role-col-unit', title: s?.incomplete ? `No recorded value for ${s.missing.join(', ')}` : null },
-          s?.incomplete ? `Incomplete · no value for ${s.missing.join(', ')}` : 'Role attributes /100')));
+          s?.incomplete ? `Unavailable · no value for ${s.missing.join(', ')}` : 'Role score')));
   }
 
   function draw(reveal = false) {
+    onRoles?.({});
     if (!cat) { panel.replaceChildren(h('p', { class: 'muted small role-hint' }, 'Loading roles…')); return; }
     if (cat.error) { panel.replaceChildren(h('p', { class: 'muted small role-hint' }, cat.error)); return; }
     if (!pos) { panel.replaceChildren(h('p', { class: 'muted small role-hint' }, 'Tap a position to explore roles.')); return; }
@@ -147,14 +142,12 @@ export function RoleExplorer(p, playerKey) {
     }
     const refs = Object.fromEntries(PHASES.map((ph) => [ph.id, savedRef(ph.id)]));
     const roles = Object.fromEntries(PHASES.map((ph) => [ph.id, refs[ph.id].role]));
+    onRoles?.(roles);
     const scores = new Map(PHASES.flatMap((ph) => rolesFor(cat, pos, ph.id)).map((r) => [r.id, roleScore(r, p)]));
 
-    // The description sheet only when a chosen role has a description.
-    const described = PHASES.some((ph) => roles[ph.id]?.description);
     const head = h('div', { class: 'role-x-head' },
-      h('h4', {}, 'Roles · ', h('span', { class: 'role-x-pos' }, position.short)),
-      described ? h('button', { type: 'button', class: 'info-btn', 'aria-label': 'Role descriptions', 'aria-haspopup': 'dialog', onclick: () => openRoleInfo(position, roles) }, 'i') : null);
-    const cols = h('div', { class: 'role-cols' }, PHASES.map((ph) => column(ph, roles[ph.id], scores, refs[ph.id].legacy)));
+      h('h4', {}, 'Roles · ', h('span', { class: 'role-x-pos' }, position.short)));
+    const cols = h('div', { class: 'role-cols' }, PHASES.map((ph) => column(ph, roles[ph.id], scores)));
 
     const readout = h('div', { class: 'radar-readout', 'aria-live': 'polite', hidden: true });
     const radars = h('div', { class: 'role-radars' }, PHASES.map((ph) => (rolesFor(cat, pos, ph.id).length ? roleRadar(p, ph, roles[ph.id], readout) : h('div', { class: 'role-radar role-radar-none', 'data-phase': ph.id }, h('p', {}, NO_ROLES_TEXT)))));
@@ -162,7 +155,7 @@ export function RoleExplorer(p, playerKey) {
     // Key attributes for both phases, under their radars.
     const details = h('div', { class: 'role-attr-cols' }, PHASES.map((ph) => {
       const role = roles[ph.id];
-      return h('div', { class: 'role-attr-col', 'data-phase': ph.id, 'aria-label': `${ph.label} key and preferred attributes` },
+      return h('div', { class: 'role-attr-col', 'data-phase': ph.id, 'aria-label': `${ph.label} key attributes` },
         role ? roleDetails(p, role) : null); // the radar above already says “Choose a role”
     }));
 

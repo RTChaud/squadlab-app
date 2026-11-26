@@ -7,33 +7,33 @@
 import { h } from '../dom.js';
 import { formatGameDate } from '../../data/snapshot.js';
 import { shortMoney, adviceText, verdictText } from '../../data/chatPrompt.js';
+import { fmtScore } from '../../data/roles.js';
 
 const PHASE_LABEL = { in_possession: 'In Possession', out_of_possession: 'Out of Possession' };
 const PHASES = ['in_possession', 'out_of_possession'];
-const score = (v) => (typeof v === 'number' && Number.isFinite(v) ? String(Math.round(v * 10) / 10) : '–');
+const score = (v) => (typeof v === 'number' && Number.isFinite(v) ? fmtScore(v) : '–');
 const sec = (label, ...kids) => h('section', { class: 'ai-sec', 'aria-label': label }, h('p', { class: 'ai-kicker' }, label), ...kids);
 
-/** A phase card: role, SquadLab score, its Key attributes (score inputs) and Preferred attributes (context). */
+/** A phase card: role, SquadLab score (1–20) and its key attributes (the score inputs). */
 function phaseCard(ph, roleName, scoreValue, explanation, fit = null) {
   const vals = (o) => Object.entries(o || {}).map(([k, v]) => `${k} ${v ?? '–'}`).join(' · ');
-  const key = vals(fit?.key_attributes), pref = vals(fit?.preferred_attributes);
-  if (fit?.score_incomplete) scoreValue = undefined;
+  const key = vals(fit?.key_attributes);
+  if (fit?.score_unavailable) scoreValue = undefined;
   return h('li', { class: 'ai-phase' },
     h('span', { class: 'ai-phase-head' }, PHASE_LABEL[ph], scoreValue !== undefined ? h('b', {}, score(scoreValue)) : null),
     roleName ? h('span', { class: 'ai-phase-role' }, roleName) : null,
-    key ? h('span', { class: 'ai-phase-inputs' }, `Key: ${key}`) : null,
-    pref ? h('span', { class: 'ai-phase-inputs' }, `Preferred: ${pref}`) : null,
-    fit?.score_incomplete ? h('span', { class: 'ai-phase-inputs' }, `Score incomplete: no value for ${(fit.missing_key_attributes || []).join(', ')}`) : null,
+    key ? h('span', { class: 'ai-phase-inputs' }, `Key attributes: ${key}`) : null,
+    fit?.score_unavailable ? h('span', { class: 'ai-phase-inputs' }, `Score unavailable: no value for ${(fit.missing_key_attributes || []).join(', ')}`) : null,
     explanation ? h('span', { class: 'ai-text' }, explanation) : null);
 }
 
-/** The role's SquadLab score and its Key / Preferred values at a position, from the request. */
+/** The role's SquadLab score and its key attribute values at a position, from the request. */
 function roleAt(payload, position, ph, roleName) {
   const pos = payload.positions.find((x) => x.position === position);
   const r = pos?.best_roles?.[ph]?.find((x) => x.name === roleName);
-  if (r) return { score: r.squadlab_role_score_out_of_100, fit: r };
+  if (r) return { score: r.role_score_1_to_20, fit: r };
   const a = (payload.lineup_assignments || []).find((x) => x.position === position && x.role_fit?.[ph]?.role === roleName);
-  return a ? { score: a.role_fit[ph].squadlab_role_score_out_of_100, fit: a.role_fit[ph] } : { score: undefined, fit: null };
+  return a ? { score: a.role_fit[ph].role_score_1_to_20, fit: a.role_fit[ph] } : { score: undefined, fit: null };
 }
 
 export function developmentView(report, payload) {
@@ -96,7 +96,7 @@ export function recruitmentView(report, payload) {
         const f = fit?.his_role_fit?.[ph];
         const saved = !!fit?.saved_roles?.[ph];
         const roleName = f ? (saved ? f.role : `${f.role} · general fit, role not set`) : null;
-        return phaseCard(ph, roleName, f ? f.squadlab_role_score_out_of_100 : undefined, bf[ph] || null, f || null);
+        return phaseCard(ph, roleName, f ? f.role_score_1_to_20 : undefined, bf[ph] || null, f || null);
       })) : null),
     report.competition.length ? sec('Competition',
       h('ul', { class: 'ai-phases' }, report.competition.map((c) => {

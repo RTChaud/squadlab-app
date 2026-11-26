@@ -19,8 +19,9 @@ import { resolveNation, loadNations } from '../../data/nations.js';
 import {
   buildRow, matchesSearch, matchesFilters, filterChips, activeFilterCount, sortRows, sortableKeys,
   columnDef, defaultConfig, sanitizeConfig, sameConfig, emptyFilters, buildDevContext, DEFAULT_VIEW_ID,
-  nationOptions, tacticPoolFilters,
+  nationOptions, tacticPoolFilters, reconcileRoleFilter,
 } from '../../data/listView.js';
+import { loadRoleCatalogue, resolveSavedRole } from '../../data/roles.js';
 import { PlayerTable } from './playerTable.js';
 import { openFilterSheet } from './filterSheet.js';
 import { openViewSheet } from './viewSheet.js';
@@ -67,7 +68,10 @@ export function browserRowContext(model, older = new Map()) {
  */
 export async function PlayerBrowser(o) {
   const model = getModel();
-  const [metrics] = await Promise.all([getCareerMetrics(), loadNations()]);
+  const [metrics, cat] = await Promise.all([getCareerMetrics(), loadRoleCatalogue(), loadNations()]);
+  // Saved role filters follow the role catalogue (migrated ids, cleared roles, current key attributes).
+  const resolveRole = (position, phase, id) => (cat && !cat.error ? resolveSavedRole(cat, position, phase, id).role : null);
+  const withRoles = (c) => (!c?.filters?.roles || !cat || cat.error ? c : { ...c, filters: reconcileRoleFilter(c.filters, resolveRole) });
 
   const ses = session[o.section] || (session[o.section] = { search: '', scrollX: 0, source: null });
   const sourceChanged = ses.source !== null && ses.source !== o.source;
@@ -87,7 +91,7 @@ export async function PlayerBrowser(o) {
   const current = () => getListSection(o.section);
   const config = () => current().config;
   const savedView = (id) => getListPrefs().views.find((v) => v.id === id) || null;
-  const referenceConfig = (viewId) => (viewId === DEFAULT_VIEW_ID ? defaultConfig(o.section) : sanitizeConfig(savedView(viewId)?.config, o.section));
+  const referenceConfig = (viewId) => (viewId === DEFAULT_VIEW_ID ? defaultConfig(o.section) : withRoles(sanitizeConfig(savedView(viewId)?.config, o.section)));
   const isModified = () => !sameConfig(config(), referenceConfig(current().viewId));
   const viewName = () => (current().viewId === DEFAULT_VIEW_ID ? 'Default' : savedView(current().viewId)?.name || 'Default');
 
@@ -163,6 +167,11 @@ export async function PlayerBrowser(o) {
 
   function refresh() {
     let cfg = config();
+    const reconciled = withRoles(cfg);
+    if (reconciled.filters !== cfg.filters) {
+      setListSection(o.section, { config: sanitizeConfig(reconciled, o.section) });
+      cfg = config();
+    }
     // A new pool (other squad, shortlist, position or role) drops selected countries it doesn't contain.
     if (cfg.filters.nations.length) {
       const available = new Set(countriesFor(cfg.filters).map((n) => n.name));

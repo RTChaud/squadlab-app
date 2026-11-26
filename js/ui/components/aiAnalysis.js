@@ -12,6 +12,7 @@
 // per device, and again if it's refused.
 
 import { h } from '../dom.js';
+import { fmtScore } from '../../data/roles.js';
 import { openSheet } from './sheet.js';
 import { toast } from './feedback.js';
 import { buildChatPrompt, buildPlayerChatPrompt } from '../../data/chatPrompt.js';
@@ -49,7 +50,7 @@ function start(req) {
 const PHASE_LABEL = { in_possession: 'In Possession', out_of_possession: 'Out of Possession' };
 const VERDICT_LABEL = { recruitment: 'Recruitment Verdict', mixed: 'Recruitment Verdict', squad: 'Squad Verdict' };
 
-const scoreText = (v) => (typeof v === 'number' && Number.isFinite(v) ? String(Math.round(v * 100) / 100) : '–');
+const scoreText = (v) => (typeof v === 'number' && Number.isFinite(v) ? fmtScore(v) : '–');
 
 function reportView(report, req) {
   const payload = req.payload;
@@ -67,8 +68,8 @@ function reportView(report, req) {
       h('span', { class: 'ai-phase-head' }, PHASE_LABEL[x.phase] || 'Phase', h('b', {}, x.choice === 'level' ? 'Level' : names[x.choice])),
       role ? h('span', { class: 'ai-phase-role' }, role.name) : null,
       h('span', { class: 'ai-phase-scores' },
-        h('span', {}, names.A, ' ', h('b', {}, scoreText(pa.role_fit?.[x.phase]?.squadlab_role_score_out_of_100))),
-        h('span', {}, names.B, ' ', h('b', {}, scoreText(pb.role_fit?.[x.phase]?.squadlab_role_score_out_of_100)))),
+        h('span', {}, names.A, ' ', h('b', {}, scoreText(pa.role_fit?.[x.phase]?.role_score_1_to_20))),
+        h('span', {}, names.B, ' ', h('b', {}, scoreText(pb.role_fit?.[x.phase]?.role_score_1_to_20)))),
       h('span', { class: 'ai-text' }, say(x.explanation)));
   };
   // Role mode is described by the header; otherwise say what the comparison rests on.

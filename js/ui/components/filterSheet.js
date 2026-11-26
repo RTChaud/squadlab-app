@@ -4,8 +4,8 @@
 // switch to "All selected"); every attribute condition must match.
 //
 // Role filters (exactly one position selected): an optional role per phase;
-// each role's key attributes become editable conditions (default at least 15,
-// tendencies unset), one row per attribute even when both roles list it. They
+// each role's key attributes become editable conditions (default at least 15),
+// one row per attribute even when both roles list it. They
 // are ANDed with everything else. The Apply button shows a live match count.
 //
 // Nationality: tick any countries from those represented in the view's player
@@ -177,9 +177,9 @@ export function openFilterSheet(o) {
   function requiredAttrs() {
     const req = new Map();
     for (const ph of PHASES) {
-      for (const a of (roleOf(ph.id)?.attrs || []).filter((x) => x.tier === 'key')) {
+      for (const a of roleOf(ph.id)?.attrs || []) {
         if (!a.mapped || !ATTR_CHOICE[a.key]) continue;
-        const e = req.get(a.key) || { tendency: !!a.tendency, phases: [] };
+        const e = req.get(a.key) || { tendency: false, phases: [] };
         e.phases.push(ph.id);
         req.set(a.key, e);
       }
